@@ -1,10 +1,11 @@
 <script lang="ts">
   import "@picocss/pico/css/pico.jade.min.css";
   import init, { MapModel } from "backend";
+  import { Geocoder } from "svelte-utils";
   import type { Map } from "maplibre-gl";
   import { onMount } from "svelte";
   import { FillLayer, GeoJSON, MapLibre } from "svelte-maplibre";
-  import { Geocoder, Layout } from "./common";
+  import { Layout } from "./common";
   import { PolygonToolLayer } from "maplibre-draw-polygon";
   import DebugMode from "./DebugMode.svelte";
   import IsochroneMode from "./IsochroneMode.svelte";
@@ -77,7 +78,7 @@
       hash
       bind:map
     >
-      <Geocoder />
+      <Geocoder {map} apiKey={maptilerApiKey} />
       <div bind:this={mapDiv} />
 
       <PolygonToolLayer />
