@@ -1,8 +1,8 @@
 <script lang="ts">
   import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
-  import { notNull, Popup } from "./common";
+  import { notNull } from "./common";
   import SplitComponent from "./SplitComponent.svelte";
-  import { PropertiesTable } from "svelte-utils";
+  import { PropertiesTable, Popup } from "svelte-utils";
   import { mode, model } from "./stores";
 </script>
 

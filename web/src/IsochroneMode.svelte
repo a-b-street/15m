@@ -5,8 +5,8 @@
   import NetworkLayer from "./NetworkLayer.svelte";
   import SplitComponent from "./SplitComponent.svelte";
   import { mode, model } from "./stores";
-  import { makeColorRamp, Popup } from "./common";
-  import { SequentialLegend } from "svelte-utils";
+  import { makeColorRamp } from "./common";
+  import { SequentialLegend, Popup } from "svelte-utils";
 
   // TODO Maybe need to do this when model changes
   let bbox: number[] = Array.from($model!.getBounds());

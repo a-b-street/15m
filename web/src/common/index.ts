@@ -5,9 +5,7 @@ import type {
 } from "maplibre-gl";
 
 export { default as Layout } from "./Layout.svelte";
-export { default as Modal } from "./Modal.svelte";
 export { default as OverpassSelector } from "./OverpassSelector.svelte";
-export { default as Popup } from "./Popup.svelte";
 
 export const isPolygon: ExpressionSpecification = [
   "==",
