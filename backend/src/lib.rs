@@ -45,6 +45,14 @@ impl fmt::Display for IntersectionID {
     }
 }
 
+#[derive(Debug)]
+pub enum Direction {
+    Forwards,
+    Backwards,
+    Both,
+    None,
+}
+
 pub struct Road {
     id: RoadID,
     src_i: IntersectionID,
@@ -54,6 +62,11 @@ pub struct Road {
     node2: osm_reader::NodeID,
     linestring: LineString,
     tags: Tags,
+
+    // A simplified view of who can access a road. All might be None (buses, trains ignored)
+    access_car: Direction,
+    access_bicycle: Direction,
+    access_foot: Direction,
 }
 
 pub struct Intersection {
@@ -128,6 +141,7 @@ impl MapModel {
 impl Road {
     fn to_gj(&self, mercator: &Mercator) -> Feature {
         let mut f = Feature::from(Geometry::from(&mercator.to_wgs84(&self.linestring)));
+        // TODO Rethink most of this -- it's debug info
         f.set_property("id", self.id.0);
         f.set_property("way", self.way.to_string());
         f.set_property("node1", self.node1.to_string());
@@ -135,6 +149,9 @@ impl Road {
         for (k, v) in &self.tags.0 {
             f.set_property(k, v.to_string());
         }
+        f.set_property("access_car", format!("{:?}", self.access_car));
+        f.set_property("access_bicycle", format!("{:?}", self.access_bicycle));
+        f.set_property("access_foot", format!("{:?}", self.access_foot));
         f
     }
 }

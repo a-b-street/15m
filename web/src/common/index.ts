@@ -6,6 +6,7 @@ import type {
 
 export { default as Layout } from "./Layout.svelte";
 export { default as OverpassSelector } from "./OverpassSelector.svelte";
+export { default as PickTravelMode } from "./PickTravelMode.svelte";
 
 export const isPolygon: ExpressionSpecification = [
   "==",

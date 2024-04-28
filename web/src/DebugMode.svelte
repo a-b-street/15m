@@ -1,9 +1,11 @@
 <script lang="ts">
   import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
-  import { notNull } from "./common";
+  import { notNull, PickTravelMode } from "./common";
   import SplitComponent from "./SplitComponent.svelte";
   import { PropertiesTable, Popup } from "svelte-utils";
-  import { mode, model } from "./stores";
+  import { mode, model, type TravelMode, filterForMode } from "./stores";
+
+  let travelMode: TravelMode = "foot";
 </script>
 
 <SplitComponent>
@@ -14,6 +16,8 @@
       <button on:click={() => ($mode = "isochrone")}>Isochrones</button>
     </div>
     <p>Hover to see a segment's properties, and click to open OSM</p>
+
+    <PickTravelMode bind:travelMode />
   </div>
   <div slot="map">
     <GeoJSON data={JSON.parse(notNull($model).render())} generateId>
@@ -23,6 +27,7 @@
           "line-width": hoverStateFilter(5, 7),
           "line-color": "black",
         }}
+        filter={filterForMode(travelMode)}
         manageHoverState
         on:click={(e) =>
           window.open(notNull(e.detail.features[0].properties).way, "_blank")}
