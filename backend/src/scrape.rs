@@ -1,4 +1,5 @@
 use anyhow::Result;
+use muv_osm::{AccessLevel, TMode};
 use rstar::RTree;
 use utils::Tags;
 
@@ -27,20 +28,22 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<MapModel> {
     let roads = graph
         .edges
         .into_iter()
-        .map(|e| Road {
-            id: RoadID(e.id.0),
-            src_i: IntersectionID(e.src.0),
-            dst_i: IntersectionID(e.dst.0),
-            way: e.osm_way,
-            node1: e.osm_node1,
-            node2: e.osm_node2,
-            linestring: e.linestring,
+        .map(|e| {
+            let (access_car, access_bicycle, access_foot) = calculate_access(&e.osm_tags);
+            Road {
+                id: RoadID(e.id.0),
+                src_i: IntersectionID(e.src.0),
+                dst_i: IntersectionID(e.dst.0),
+                way: e.osm_way,
+                node1: e.osm_node1,
+                node2: e.osm_node2,
+                linestring: e.linestring,
 
-            // TODO Should also look at any barriers
-            access_car: is_car_allowed(&e.osm_tags),
-            access_bicycle: is_bicycle_allowed(&e.osm_tags),
-            access_foot: is_foot_allowed(&e.osm_tags),
-            tags: e.osm_tags,
+                access_car,
+                access_bicycle,
+                access_foot,
+                tags: e.osm_tags,
+            }
         })
         .collect();
 
@@ -59,32 +62,81 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<MapModel> {
     })
 }
 
-// TODO Use Muv (rstar is pinning to an old smallvec). This is just placeholder.
-fn is_car_allowed(tags: &Tags) -> Direction {
-    if tags.is_any(
-        "highway",
-        vec![
-            "footway",
-            "steps",
-            "path",
-            "track",
-            "corridor",
-            "crossing",
-            "pedestrian",
-        ],
-    ) {
-        return Direction::None;
+// TODO Should also look at any barriers
+fn calculate_access(tags: &Tags) -> (Direction, Direction, Direction) {
+    let tags: muv_osm::Tag = tags.0.iter().collect();
+    let regions: [&'static str; 0] = [];
+    let lanes = muv_osm::lanes::highway_lanes(&tags, &regions).unwrap();
+
+    let mut car_forwards = false;
+    let mut car_backwards = false;
+    let mut bicycle_forwards = false;
+    let mut bicycle_backwards = false;
+    // TODO Is one-way ever possible?
+    let mut foot_forwards = false;
+    let mut foot_backwards = false;
+
+    // TODO Check if this logic is correct
+    for lane in lanes.lanes {
+        if let muv_osm::lanes::LaneVariant::Travel(lane) = lane.variant {
+            for (bit, mode) in [
+                (&mut car_forwards, TMode::Motorcar),
+                (&mut bicycle_forwards, TMode::Bicycle),
+                (&mut foot_forwards, TMode::Foot),
+            ] {
+                if let Some(conditional_access) = lane.forward.access.get(mode) {
+                    if let Some(access) = conditional_access.base() {
+                        if access_level_allowed(access) {
+                            *bit = true;
+                        }
+                    }
+                }
+            }
+
+            for (bit, mode) in [
+                (&mut car_backwards, TMode::Motorcar),
+                (&mut bicycle_backwards, TMode::Bicycle),
+                (&mut foot_backwards, TMode::Foot),
+            ] {
+                if let Some(conditional_access) = lane.backward.access.get(mode) {
+                    if let Some(access) = conditional_access.base() {
+                        if access_level_allowed(access) {
+                            *bit = true;
+                        }
+                    }
+                }
+            }
+        }
     }
-    Direction::Both
+
+    (
+        bool_to_dir(car_forwards, car_backwards),
+        bool_to_dir(bicycle_forwards, bicycle_backwards),
+        bool_to_dir(foot_forwards, foot_backwards),
+    )
 }
 
-fn is_bicycle_allowed(_tags: &Tags) -> Direction {
-    Direction::Both
+fn access_level_allowed(access: &AccessLevel) -> bool {
+    matches!(
+        access,
+        AccessLevel::Designated
+            | AccessLevel::Yes
+            | AccessLevel::Permissive
+            | AccessLevel::Discouraged
+            | AccessLevel::Destination
+            | AccessLevel::Customers
+            | AccessLevel::Private
+    )
 }
 
-fn is_foot_allowed(tags: &Tags) -> Direction {
-    if tags.is_any("highway", vec!["motorway", "motorway_link"]) {
-        return Direction::None;
+fn bool_to_dir(f: bool, b: bool) -> Direction {
+    if f && b {
+        Direction::Both
+    } else if f {
+        Direction::Forwards
+    } else if b {
+        Direction::Backwards
+    } else {
+        Direction::None
     }
-    Direction::Both
 }

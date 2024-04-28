@@ -13,6 +13,7 @@ console_log = "1.0.0"
 geo = "0.28.0"
 geojson = { git = "https://github.com/georust/geojson", features = ["geo-types"] }
 log = "0.4.20"
+muv-osm = { git = "https://gitlab.com/LeLuxNet/Muv", features = ["lanes"] }
 osm-reader = { git = "https://github.com/a-b-street/osm-reader" }
 rstar = { version = "0.12.0" }
 serde = "1.0.188"
