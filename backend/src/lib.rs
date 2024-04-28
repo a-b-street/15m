@@ -45,12 +45,19 @@ impl fmt::Display for IntersectionID {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Direction {
     Forwards,
     Backwards,
     Both,
     None,
+}
+
+#[derive(Clone, Copy)]
+pub enum Mode {
+    Car,
+    Bicycle,
+    Foot,
 }
 
 pub struct Road {
@@ -64,6 +71,7 @@ pub struct Road {
     tags: Tags,
 
     // A simplified view of who can access a road. All might be None (buses, trains ignored)
+    // TODO enum map?
     access_car: Direction,
     access_bicycle: Direction,
     access_foot: Direction,
@@ -134,11 +142,46 @@ impl MapModel {
     pub fn isochrone(&self, input: JsValue) -> Result<String, JsValue> {
         let req: IsochroneRequest = serde_wasm_bindgen::from_value(input)?;
         let start = self.mercator.pt_to_mercator(Coord { x: req.x, y: req.y });
-        isochrone::calculate(&self, start).map_err(err_to_js)
+        let mode = match req.mode.as_str() {
+            "car" => Mode::Car,
+            "bicycle" => Mode::Bicycle,
+            "foot" => Mode::Foot,
+            // TODO error plumbing
+            x => panic!("bad input {x}"),
+        };
+        isochrone::calculate(&self, start, mode).map_err(err_to_js)
+    }
+}
+
+impl MapModel {
+    fn roads_per_intersection(&self, i: IntersectionID, mode: Mode) -> impl Iterator<Item = &Road> {
+        self.intersections[i.0]
+            .roads
+            .iter()
+            .map(|r| &self.roads[r.0])
+            .filter(move |r| r.allows_forwards(mode) || r.allows_backwards(mode))
     }
 }
 
 impl Road {
+    fn allows_forwards(&self, mode: Mode) -> bool {
+        let dir = match mode {
+            Mode::Car => self.access_car,
+            Mode::Bicycle => self.access_bicycle,
+            Mode::Foot => self.access_foot,
+        };
+        matches!(dir, Direction::Forwards | Direction::Both)
+    }
+
+    fn allows_backwards(&self, mode: Mode) -> bool {
+        let dir = match mode {
+            Mode::Car => self.access_car,
+            Mode::Bicycle => self.access_bicycle,
+            Mode::Foot => self.access_foot,
+        };
+        matches!(dir, Direction::Backwards | Direction::Both)
+    }
+
     fn to_gj(&self, mercator: &Mercator) -> Feature {
         let mut f = Feature::from(Geometry::from(&mercator.to_wgs84(&self.linestring)));
         // TODO Rethink most of this -- it's debug info
@@ -160,6 +203,7 @@ impl Road {
 pub struct IsochroneRequest {
     x: f64,
     y: f64,
+    mode: String,
 }
 
 fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {

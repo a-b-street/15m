@@ -4,9 +4,11 @@
   import { GeoJSON, LineLayer, Marker } from "svelte-maplibre";
   import NetworkLayer from "./NetworkLayer.svelte";
   import SplitComponent from "./SplitComponent.svelte";
-  import { mode, model } from "./stores";
-  import { makeColorRamp } from "./common";
+  import { mode, model, type TravelMode, filterForMode } from "./stores";
+  import { makeColorRamp, PickTravelMode } from "./common";
   import { SequentialLegend, Popup } from "svelte-utils";
+
+  let travelMode: TravelMode = "foot";
 
   // TODO Maybe need to do this when model changes
   let bbox: number[] = Array.from($model!.getBounds());
@@ -24,6 +26,7 @@
         $model!.isochrone({
           x: start.lng,
           y: start.lat,
+          mode: travelMode,
         }),
       );
       err = "";
@@ -47,10 +50,14 @@
       <button on:click={() => ($mode = "title")}>Change study area</button>
       <button on:click={() => ($mode = "debug")}>Debug OSM</button>
     </div>
+
     <p>
       Move the pin to calculate an isochrone from that start. The cost is
       distance in meters.
     </p>
+
+    <PickTravelMode bind:travelMode />
+
     <SequentialLegend {colorScale} {limits} />
     {#if err}
       <p>{err}</p>

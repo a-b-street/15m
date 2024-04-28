@@ -5,11 +5,13 @@ use crate::{MapModel, RoadID};
 use anyhow::Result;
 use geo::{Coord, EuclideanLength};
 
-pub fn calculate(map: &MapModel, req: Coord) -> Result<String> {
+use crate::Mode;
+
+pub fn calculate(map: &MapModel, req: Coord, mode: Mode) -> Result<String> {
     // 1km in cm
     // TODO Use a real cost type
     let limit = 1000 * 100;
-    let cost_per_road = get_costs(map, req, limit);
+    let cost_per_road = get_costs(map, req, mode, limit);
 
     // Show cost per road
     let mut features = Vec::new();
@@ -25,7 +27,8 @@ pub fn calculate(map: &MapModel, req: Coord) -> Result<String> {
     Ok(x)
 }
 
-fn get_costs(map: &MapModel, req: Coord, limit: usize) -> HashMap<RoadID, usize> {
+fn get_costs(map: &MapModel, req: Coord, mode: Mode, limit: usize) -> HashMap<RoadID, usize> {
+    // TODO This needs to be per mode
     let start = map
         .closest_intersection
         .nearest_neighbor(&[req.x, req.y])
@@ -34,8 +37,9 @@ fn get_costs(map: &MapModel, req: Coord, limit: usize) -> HashMap<RoadID, usize>
 
     let mut queue: BinaryHeap<PriorityQueueItem<usize, RoadID>> = BinaryHeap::new();
     // TODO Match closest road. For now, start with all roads for the closest intersection
-    for r in &map.intersections[start.0].roads {
-        queue.push(PriorityQueueItem::new(0, *r));
+    // TODO Think through directions for this initial case. Going by road is strange.
+    for road in map.roads_per_intersection(start, mode) {
+        queue.push(PriorityQueueItem::new(0, road.id));
     }
 
     let mut cost_per_road: HashMap<RoadID, usize> = HashMap::new();
@@ -49,10 +53,21 @@ fn get_costs(map: &MapModel, req: Coord, limit: usize) -> HashMap<RoadID, usize>
         cost_per_road.insert(current.value, current.cost);
 
         let current_road = &map.roads[current.value.0];
-        for i in [current_road.src_i, current_road.dst_i] {
-            for r in &map.intersections[i.0].roads {
-                let cost = (100.0 * map.roads[r.0].linestring.euclidean_length()).round() as usize;
-                queue.push(PriorityQueueItem::new(current.cost + cost, *r));
+        // TODO Think through how this search should work with directions. This is assuming
+        // incorrectly we're starting from src_i.
+        let mut endpoints = Vec::new();
+        if current_road.allows_forwards(mode) {
+            endpoints.push(current_road.dst_i);
+        }
+        if current_road.allows_backwards(mode) {
+            endpoints.push(current_road.src_i);
+        }
+
+        for i in endpoints {
+            for road in map.roads_per_intersection(i, mode) {
+                // TODO Different cost per mode
+                let cost = (100.0 * road.linestring.euclidean_length()).round() as usize;
+                queue.push(PriorityQueueItem::new(current.cost + cost, road.id));
             }
         }
     }
