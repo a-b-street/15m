@@ -3,11 +3,11 @@ use muv_osm::{AccessLevel, TMode};
 use rstar::RTree;
 use utils::Tags;
 
-use crate::{
-    Direction, Intersection, IntersectionID, IntersectionLocation, MapModel, Road, RoadID,
+use crate::graph::{
+    Direction, Graph, Intersection, IntersectionID, IntersectionLocation, Road, RoadID,
 };
 
-pub fn scrape_osm(input_bytes: &[u8]) -> Result<MapModel> {
+pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
     let graph = utils::osm2graph::Graph::new(input_bytes, |tags| {
         tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes")
     })?;
@@ -53,7 +53,7 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<MapModel> {
     }
     let closest_intersection = RTree::bulk_load(points);
 
-    Ok(MapModel {
+    Ok(Graph {
         roads,
         intersections,
         mercator: graph.mercator,
