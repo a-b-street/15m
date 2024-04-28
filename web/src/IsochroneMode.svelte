@@ -2,10 +2,9 @@
   import { colorScale } from "./colors";
   import type { FeatureCollection } from "geojson";
   import { GeoJSON, LineLayer, Marker } from "svelte-maplibre";
-  import NetworkLayer from "./NetworkLayer.svelte";
   import SplitComponent from "./SplitComponent.svelte";
   import { mode, model, type TravelMode, filterForMode } from "./stores";
-  import { makeColorRamp, PickTravelMode } from "./common";
+  import { makeColorRamp, PickTravelMode, notNull } from "./common";
   import { SequentialLegend, Popup } from "svelte-utils";
 
   let travelMode: TravelMode = "foot";
@@ -64,7 +63,16 @@
     {/if}
   </div>
   <div slot="map">
-    <NetworkLayer />
+    <GeoJSON data={JSON.parse(notNull($model).render())}>
+      <LineLayer
+        id="network"
+        paint={{
+          "line-width": 5,
+          "line-color": "black",
+          "line-opacity": ["case", filterForMode(travelMode), 1, 0.5],
+        }}
+      />
+    </GeoJSON>
 
     <Marker bind:lngLat={start} draggable><span class="dot">X</span></Marker>
     {#if gj}
