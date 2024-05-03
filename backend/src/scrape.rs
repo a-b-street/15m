@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use enum_map::{enum_map, EnumMap};
+use enum_map::EnumMap;
 use geo::{Coord, LineString};
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::{Element, OsmID};
@@ -134,40 +134,26 @@ fn calculate_access(tags: &Tags) -> EnumMap<Mode, Direction> {
     let regions: [&'static str; 0] = [];
     let lanes = muv_osm::lanes::highway_lanes(&tags, &regions).unwrap();
 
-    let mut car_forwards = false;
-    let mut car_backwards = false;
-    let mut bicycle_forwards = false;
-    let mut bicycle_backwards = false;
-    // TODO Is one-way ever possible?
-    let mut foot_forwards = false;
-    let mut foot_backwards = false;
+    let mut forwards: EnumMap<Mode, bool> = EnumMap::default();
+    let mut backwards: EnumMap<Mode, bool> = EnumMap::default();
 
     // TODO Check if this logic is correct
     for lane in lanes.lanes {
         if let muv_osm::lanes::LaneVariant::Travel(lane) = lane.variant {
-            for (bit, mode) in [
-                (&mut car_forwards, TMode::Motorcar),
-                (&mut bicycle_forwards, TMode::Bicycle),
-                (&mut foot_forwards, TMode::Foot),
+            for (direction_per_mode, lane_direction) in [
+                (&mut forwards, &lane.forward),
+                (&mut backwards, &lane.backward),
             ] {
-                if let Some(conditional_access) = lane.forward.access.get(mode) {
-                    if let Some(access) = conditional_access.base() {
-                        if access_level_allowed(access) {
-                            *bit = true;
-                        }
-                    }
-                }
-            }
-
-            for (bit, mode) in [
-                (&mut car_backwards, TMode::Motorcar),
-                (&mut bicycle_backwards, TMode::Bicycle),
-                (&mut foot_backwards, TMode::Foot),
-            ] {
-                if let Some(conditional_access) = lane.backward.access.get(mode) {
-                    if let Some(access) = conditional_access.base() {
-                        if access_level_allowed(access) {
-                            *bit = true;
+                for (mode, muv_mode) in [
+                    (Mode::Car, TMode::Motorcar),
+                    (Mode::Bicycle, TMode::Bicycle),
+                    (Mode::Foot, TMode::Foot),
+                ] {
+                    if let Some(conditional_access) = lane_direction.access.get(muv_mode) {
+                        if let Some(access) = conditional_access.base() {
+                            if access_level_allowed(access) {
+                                direction_per_mode[mode] = true;
+                            }
                         }
                     }
                 }
@@ -175,11 +161,7 @@ fn calculate_access(tags: &Tags) -> EnumMap<Mode, Direction> {
         }
     }
 
-    enum_map! {
-        Mode::Car => bool_to_dir(car_forwards, car_backwards),
-        Mode::Bicycle => bool_to_dir(bicycle_forwards, bicycle_backwards),
-        Mode::Foot => bool_to_dir(foot_forwards, foot_backwards),
-    }
+    EnumMap::from_fn(|mode| bool_to_dir(forwards[mode], backwards[mode]))
 }
 
 fn access_level_allowed(access: &AccessLevel) -> bool {
