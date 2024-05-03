@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use enum_map::{enum_map, EnumMap};
-use geo::Coord;
+use geo::{Coord, LineString};
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::{Element, OsmID};
-use rstar::primitives::{GeomWithData, Line};
+use rstar::primitives::GeomWithData;
 use rstar::RTree;
 use utils::Tags;
 
@@ -219,4 +219,23 @@ fn bool_to_dir(f: bool, b: bool) -> Direction {
     }
 }
 
-fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>) {}
+type EdgeLocation = GeomWithData<LineString, RoadID>;
+
+fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>) {
+    let closest_per_mode = EnumMap::from_fn(|mode| {
+        RTree::bulk_load(
+            roads
+                .iter()
+                .filter(|r| r.access[mode] != Direction::None)
+                .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
+                .collect(),
+        )
+    });
+    for amenity in amenities {
+        for (mode, closest) in &closest_per_mode {
+            if let Some(r) = closest.nearest_neighbor(&amenity.point) {
+                roads[r.data.0].amenities[mode].push(amenity.id);
+            }
+        }
+    }
+}
