@@ -109,6 +109,9 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
             }
         })
         .collect();
+    for a in &mut amenities {
+        a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
+    }
 
     let mut points = Vec::new();
     for i in &intersections {

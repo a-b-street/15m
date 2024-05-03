@@ -48,9 +48,10 @@
         id="amenities"
         paint={{
           "circle-radius": 10,
-          "circle-color": "cyan",
+          "circle-color": hoverStateFilter("cyan", "red"),
         }}
         manageHoverState
+        filter={["==", ["get", "kind"], "amenity"]}
         on:click={(e) =>
           window.open(
             notNull(e.detail.features[0].properties).osm_id,

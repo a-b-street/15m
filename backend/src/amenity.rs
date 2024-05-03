@@ -16,6 +16,7 @@ pub struct Amenity {
 impl Amenity {
     pub fn to_gj(&self, mercator: &Mercator) -> Feature {
         let mut f = Feature::from(Geometry::from(&mercator.to_wgs84(&self.point)));
+        f.set_property("kind", "amenity");
         f.set_property("osm_id", self.osm_id.to_string());
         if let Some(ref name) = self.name {
             f.set_property("name", name.clone());
