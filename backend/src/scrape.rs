@@ -111,11 +111,18 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
 
     snap_amenities(&mut roads, &amenities);
 
-    let mut points = Vec::new();
-    for i in &intersections {
-        points.push(IntersectionLocation::new(i.point.into(), i.id));
-    }
-    let closest_intersection = RTree::bulk_load(points);
+    let closest_intersection = EnumMap::from_fn(|mode| {
+        let mut points = Vec::new();
+        for i in &intersections {
+            if i.roads
+                .iter()
+                .any(|r| roads[r.0].allows_forwards(mode) || roads[r.0].allows_backwards(mode))
+            {
+                points.push(IntersectionLocation::new(i.point.into(), i.id));
+            }
+        }
+        RTree::bulk_load(points)
+    });
 
     Ok(Graph {
         roads,

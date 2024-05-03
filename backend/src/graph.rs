@@ -12,7 +12,7 @@ pub struct Graph {
     pub intersections: Vec<Intersection>,
     // All geometry stored in worldspace, including rtrees
     pub mercator: Mercator,
-    pub closest_intersection: RTree<IntersectionLocation>,
+    pub closest_intersection: EnumMap<Mode, RTree<IntersectionLocation>>,
     pub boundary_polygon: Polygon,
 
     // Unrelated to the transportation graph above. Maybe should be more separate.

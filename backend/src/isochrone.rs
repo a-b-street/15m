@@ -32,8 +32,7 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
 
 fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: usize) -> HashMap<RoadID, usize> {
     // TODO This needs to be per mode
-    let start = graph
-        .closest_intersection
+    let start = graph.closest_intersection[mode]
         .nearest_neighbor(&[req.x, req.y])
         .unwrap()
         .data;
