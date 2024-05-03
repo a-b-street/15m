@@ -51,7 +51,7 @@
           "circle-color": hoverStateFilter("cyan", "red"),
         }}
         manageHoverState
-        filter={["==", ["get", "kind"], "amenity"]}
+        filter={["has", "amenity_kind"]}
         on:click={(e) =>
           window.open(
             notNull(e.detail.features[0].properties).osm_id,

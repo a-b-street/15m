@@ -26,10 +26,11 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
             node_mapping.insert(id, pt);
 
             let tags = tags.into();
-            if Amenity::is_amenity(&tags) {
+            if let Some(kind) = Amenity::is_amenity(&tags) {
                 amenities.push(Amenity {
                     osm_id: OsmID::Node(id),
                     point: pt.into(),
+                    kind,
                     name: tags.get("name").cloned(),
                     brand: tags.get("brand").cloned(),
                     cuisine: tags.get("cuisine").cloned(),
@@ -44,12 +45,13 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         } => {
             let tags: Tags = tags.into();
 
-            if Amenity::is_amenity(&tags) {
+            if let Some(kind) = Amenity::is_amenity(&tags) {
                 amenities.push(Amenity {
                     osm_id: OsmID::Way(id),
                     // TODO Centroid
                     point: node_mapping[&node_ids[0]].into(),
                     name: tags.get("name").cloned(),
+                    kind,
                     brand: tags.get("brand").cloned(),
                     cuisine: tags.get("cuisine").cloned(),
                 });

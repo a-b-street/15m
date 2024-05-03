@@ -6,6 +6,7 @@ use utils::{Mercator, Tags};
 pub struct Amenity {
     pub osm_id: OsmID,
     pub point: Point,
+    pub kind: String,
     pub name: Option<String>,
 
     // Supporting details for some cases only
@@ -16,7 +17,7 @@ pub struct Amenity {
 impl Amenity {
     pub fn to_gj(&self, mercator: &Mercator) -> Feature {
         let mut f = Feature::from(Geometry::from(&mercator.to_wgs84(&self.point)));
-        f.set_property("kind", "amenity");
+        f.set_property("amenity_kind", self.kind.clone());
         f.set_property("osm_id", self.osm_id.to_string());
         if let Some(ref name) = self.name {
             f.set_property("name", name.clone());
@@ -31,8 +32,8 @@ impl Amenity {
     }
 
     /// Determines if this OSM object should count as some kind of useful commercial amenity. Many
-    /// categories are excluded.
-    pub fn is_amenity(tags: &Tags) -> bool {
+    /// categories are excluded. Returns the category.
+    pub fn is_amenity(tags: &Tags) -> Option<String> {
         // TODO Allowlist might be easier
         if tags.is_any(
             "amenity",
@@ -68,9 +69,9 @@ impl Amenity {
                 "waste_disposal",
             ],
         ) {
-            return false;
+            return None;
         }
 
-        tags.has("amenity") || tags.has("shop")
+        tags.get("amenity").or_else(|| tags.get("shop")).cloned()
     }
 }
