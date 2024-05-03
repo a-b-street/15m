@@ -7,6 +7,8 @@ use rstar::{primitives::GeomWithData, RTree};
 use serde::Serialize;
 use utils::{Mercator, Tags};
 
+use crate::amenity::Amenity;
+
 pub struct Graph {
     pub roads: Vec<Road>,
     pub intersections: Vec<Intersection>,
@@ -14,6 +16,9 @@ pub struct Graph {
     pub mercator: Mercator,
     pub closest_intersection: RTree<IntersectionLocation>,
     pub boundary_polygon: Polygon,
+
+    // Unrelated to the transportation graph above. Maybe should be more separate.
+    pub amenities: Vec<Amenity>,
 }
 
 pub type IntersectionLocation = GeomWithData<[f64; 2], IntersectionID>;
@@ -82,12 +87,15 @@ impl Graph {
         crate::scrape::scrape_osm(input_bytes)
     }
 
-    /// Returns a GeoJSON string. Just shows the full network
+    /// Returns a GeoJSON string. Just shows the full network and amenities
     pub fn render(&self) -> Result<String> {
         let mut features = Vec::new();
 
         for r in &self.roads {
             features.push(r.to_gj(&self.mercator));
+        }
+        for a in &self.amenities {
+            features.push(a.to_gj(&self.mercator));
         }
 
         let gj = GeoJson::from(features);

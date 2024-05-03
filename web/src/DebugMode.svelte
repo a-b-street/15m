@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
+  import {
+    CircleLayer,
+    GeoJSON,
+    hoverStateFilter,
+    LineLayer,
+  } from "svelte-maplibre";
   import { notNull, PickTravelMode } from "./common";
   import SplitComponent from "./SplitComponent.svelte";
   import { PropertiesTable, Popup } from "svelte-utils";
@@ -32,11 +37,32 @@
         on:click={(e) =>
           window.open(notNull(e.detail.features[0].properties).way, "_blank")}
         hoverCursor="pointer"
+        eventsIfTopMost
       >
         <Popup openOn="hover" let:props>
           <PropertiesTable properties={props} />
         </Popup>
       </LineLayer>
+
+      <CircleLayer
+        id="amenities"
+        paint={{
+          "circle-radius": 10,
+          "circle-color": "cyan",
+        }}
+        manageHoverState
+        on:click={(e) =>
+          window.open(
+            notNull(e.detail.features[0].properties).osm_id,
+            "_blank",
+          )}
+        hoverCursor="pointer"
+        eventsIfTopMost
+      >
+        <Popup openOn="hover" let:props>
+          <PropertiesTable properties={props} />
+        </Popup>
+      </CircleLayer>
     </GeoJSON>
   </div>
 </SplitComponent>

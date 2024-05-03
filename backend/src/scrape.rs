@@ -1,16 +1,79 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
+use geo::Coord;
 use muv_osm::{AccessLevel, TMode};
+use osm_reader::{Element, OsmID};
 use rstar::RTree;
 use utils::Tags;
 
+use crate::amenity::Amenity;
 use crate::graph::{
     Direction, Graph, Intersection, IntersectionID, IntersectionLocation, Road, RoadID,
 };
 
 pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
-    let graph = utils::osm2graph::Graph::new(input_bytes, |tags| {
-        tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes")
+    info!("Parsing {} bytes of OSM data", input_bytes.len());
+    // This doesn't use osm2graph's helper, because it needs to scrape more things from OSM
+    let mut node_mapping = HashMap::new();
+    let mut highways = Vec::new();
+    let mut amenities = Vec::new();
+    osm_reader::parse(input_bytes, |elem| match elem {
+        Element::Node {
+            id, lon, lat, tags, ..
+        } => {
+            let pt = Coord { x: lon, y: lat };
+            node_mapping.insert(id, pt);
+
+            let tags = tags.into();
+            if Amenity::is_amenity(&tags) {
+                amenities.push(Amenity {
+                    osm_id: OsmID::Node(id),
+                    point: pt.into(),
+                    name: tags.get("name").cloned(),
+                    brand: tags.get("brand").cloned(),
+                    cuisine: tags.get("cuisine").cloned(),
+                });
+            }
+        }
+        Element::Way {
+            id,
+            mut node_ids,
+            tags,
+            ..
+        } => {
+            let tags: Tags = tags.into();
+
+            if Amenity::is_amenity(&tags) {
+                amenities.push(Amenity {
+                    osm_id: OsmID::Way(id),
+                    // TODO Centroid
+                    point: node_mapping[&node_ids[0]].into(),
+                    name: tags.get("name").cloned(),
+                    brand: tags.get("brand").cloned(),
+                    cuisine: tags.get("cuisine").cloned(),
+                });
+            }
+
+            if tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes") {
+                // TODO This sometimes happens from Overpass?
+                let num = node_ids.len();
+                node_ids.retain(|n| node_mapping.contains_key(n));
+                if node_ids.len() != num {
+                    warn!("{id} refers to nodes outside the imported area");
+                }
+                if node_ids.len() >= 2 {
+                    highways.push(utils::osm2graph::Way { id, node_ids, tags });
+                }
+            }
+        }
+        // TODO Amenity relations?
+        Element::Relation { .. } => {}
+        Element::Bounds { .. } => {}
     })?;
+
+    info!("Splitting {} ways into edges", highways.len());
+    let graph = utils::osm2graph::Graph::from_scraped_osm(node_mapping, highways);
 
     // Copy all the fields
     let intersections: Vec<Intersection> = graph
@@ -59,6 +122,8 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         mercator: graph.mercator,
         closest_intersection,
         boundary_polygon: graph.boundary_polygon,
+
+        amenities,
     })
 }
 

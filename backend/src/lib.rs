@@ -1,5 +1,5 @@
-//#[macro_use]
-//extern crate log;
+#[macro_use]
+extern crate log;
 
 use std::sync::Once;
 
@@ -9,6 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use graph::{Graph, Mode};
 
+mod amenity;
 mod graph;
 mod isochrone;
 mod scrape;
