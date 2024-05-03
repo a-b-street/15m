@@ -3,7 +3,10 @@ use geojson::{Feature, Geometry};
 use osm_reader::OsmID;
 use utils::{Mercator, Tags};
 
+use crate::graph::AmenityID;
+
 pub struct Amenity {
+    pub id: AmenityID,
     pub osm_id: OsmID,
     pub point: Point,
     pub kind: String,

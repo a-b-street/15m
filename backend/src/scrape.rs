@@ -1,15 +1,18 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use enum_map::{enum_map, EnumMap};
 use geo::Coord;
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::{Element, OsmID};
+use rstar::primitives::{GeomWithData, Line};
 use rstar::RTree;
 use utils::Tags;
 
 use crate::amenity::Amenity;
 use crate::graph::{
-    Direction, Graph, Intersection, IntersectionID, IntersectionLocation, Road, RoadID,
+    AmenityID, Direction, Graph, Intersection, IntersectionID, IntersectionLocation, Mode, Road,
+    RoadID,
 };
 
 pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
@@ -27,7 +30,9 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
 
             let tags = tags.into();
             if let Some(kind) = Amenity::is_amenity(&tags) {
+                let amenity_id = AmenityID(amenities.len());
                 amenities.push(Amenity {
+                    id: amenity_id,
                     osm_id: OsmID::Node(id),
                     point: pt.into(),
                     kind,
@@ -46,7 +51,9 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
             let tags: Tags = tags.into();
 
             if let Some(kind) = Amenity::is_amenity(&tags) {
+                let amenity_id = AmenityID(amenities.len());
                 amenities.push(Amenity {
+                    id: amenity_id,
                     osm_id: OsmID::Way(id),
                     // TODO Centroid
                     point: node_mapping[&node_ids[0]].into(),
@@ -90,11 +97,11 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         .collect();
 
     // Add in a bit
-    let roads = graph
+    let mut roads = graph
         .edges
         .into_iter()
         .map(|e| {
-            let (access_car, access_bicycle, access_foot) = calculate_access(&e.osm_tags);
+            let access = calculate_access(&e.osm_tags);
             Road {
                 id: RoadID(e.id.0),
                 src_i: IntersectionID(e.src.0),
@@ -104,16 +111,17 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
                 node2: e.osm_node2,
                 linestring: e.linestring,
 
-                access_car,
-                access_bicycle,
-                access_foot,
+                access,
                 tags: e.osm_tags,
+                amenities: EnumMap::default(),
             }
         })
         .collect();
     for a in &mut amenities {
         a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
     }
+
+    snap_amenities(&mut roads, &amenities);
 
     let mut points = Vec::new();
     for i in &intersections {
@@ -133,7 +141,7 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
 }
 
 // TODO Should also look at any barriers
-fn calculate_access(tags: &Tags) -> (Direction, Direction, Direction) {
+fn calculate_access(tags: &Tags) -> EnumMap<Mode, Direction> {
     let tags: muv_osm::Tag = tags.0.iter().collect();
     let regions: [&'static str; 0] = [];
     let lanes = muv_osm::lanes::highway_lanes(&tags, &regions).unwrap();
@@ -179,11 +187,11 @@ fn calculate_access(tags: &Tags) -> (Direction, Direction, Direction) {
         }
     }
 
-    (
-        bool_to_dir(car_forwards, car_backwards),
-        bool_to_dir(bicycle_forwards, bicycle_backwards),
-        bool_to_dir(foot_forwards, foot_backwards),
-    )
+    enum_map! {
+        Mode::Car => bool_to_dir(car_forwards, car_backwards),
+        Mode::Bicycle => bool_to_dir(bicycle_forwards, bicycle_backwards),
+        Mode::Foot => bool_to_dir(foot_forwards, foot_backwards),
+    }
 }
 
 fn access_level_allowed(access: &AccessLevel) -> bool {
@@ -210,3 +218,5 @@ fn bool_to_dir(f: bool, b: bool) -> Direction {
         Direction::None
     }
 }
+
+fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>) {}

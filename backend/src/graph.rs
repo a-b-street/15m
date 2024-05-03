@@ -1,10 +1,8 @@
-use std::fmt;
-
 use anyhow::Result;
+use enum_map::{Enum, EnumMap};
 use geo::{LineString, Point, Polygon};
 use geojson::{Feature, GeoJson, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
-use serde::Serialize;
 use utils::{Mercator, Tags};
 
 use crate::amenity::Amenity;
@@ -25,20 +23,10 @@ pub type IntersectionLocation = GeomWithData<[f64; 2], IntersectionID>;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct RoadID(pub usize);
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct IntersectionID(pub usize);
-
-impl fmt::Display for RoadID {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Road #{}", self.0)
-    }
-}
-
-impl fmt::Display for IntersectionID {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Intersection #{}", self.0)
-    }
-}
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+pub struct AmenityID(pub usize);
 
 #[derive(Clone, Copy, Debug)]
 pub enum Direction {
@@ -48,7 +36,7 @@ pub enum Direction {
     None,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Enum)]
 pub enum Mode {
     Car,
     Bicycle,
@@ -66,10 +54,11 @@ pub struct Road {
     pub tags: Tags,
 
     // A simplified view of who can access a road. All might be None (buses, trains ignored)
-    // TODO enum map?
-    pub access_car: Direction,
-    pub access_bicycle: Direction,
-    pub access_foot: Direction,
+    pub access: EnumMap<Mode, Direction>,
+
+    // These're broken down this way because the 3 graphs look different and could snap to
+    // different roads in each case
+    pub amenities: EnumMap<Mode, Vec<AmenityID>>,
 }
 
 pub struct Intersection {
@@ -136,21 +125,11 @@ impl Graph {
 
 impl Road {
     pub fn allows_forwards(&self, mode: Mode) -> bool {
-        let dir = match mode {
-            Mode::Car => self.access_car,
-            Mode::Bicycle => self.access_bicycle,
-            Mode::Foot => self.access_foot,
-        };
-        matches!(dir, Direction::Forwards | Direction::Both)
+        matches!(self.access[mode], Direction::Forwards | Direction::Both)
     }
 
     pub fn allows_backwards(&self, mode: Mode) -> bool {
-        let dir = match mode {
-            Mode::Car => self.access_car,
-            Mode::Bicycle => self.access_bicycle,
-            Mode::Foot => self.access_foot,
-        };
-        matches!(dir, Direction::Backwards | Direction::Both)
+        matches!(self.access[mode], Direction::Backwards | Direction::Both)
     }
 
     pub fn to_gj(&self, mercator: &Mercator) -> Feature {
@@ -163,9 +142,12 @@ impl Road {
         for (k, v) in &self.tags.0 {
             f.set_property(k, v.to_string());
         }
-        f.set_property("access_car", format!("{:?}", self.access_car));
-        f.set_property("access_bicycle", format!("{:?}", self.access_bicycle));
-        f.set_property("access_foot", format!("{:?}", self.access_foot));
+        f.set_property("access_car", format!("{:?}", self.access[Mode::Car]));
+        f.set_property(
+            "access_bicycle",
+            format!("{:?}", self.access[Mode::Bicycle]),
+        );
+        f.set_property("access_foot", format!("{:?}", self.access[Mode::Foot]));
         f
     }
 }
