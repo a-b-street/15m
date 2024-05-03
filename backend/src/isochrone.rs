@@ -20,6 +20,10 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
         ));
         f.set_property("cost_meters", (cost as f64) / 100.0);
         features.push(f);
+
+        for a in &graph.roads[r.0].amenities[mode] {
+            features.push(graph.amenities[a.0].to_gj(&graph.mercator));
+        }
     }
     let gj = geojson::GeoJson::from(features);
     let x = serde_json::to_string(&gj)?;

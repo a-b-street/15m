@@ -1,11 +1,18 @@
 <script lang="ts">
+  import AmenityList from "./AmenityList.svelte";
   import { colorScale } from "./colors";
   import type { FeatureCollection } from "geojson";
-  import { GeoJSON, LineLayer, Marker } from "svelte-maplibre";
+  import {
+    GeoJSON,
+    CircleLayer,
+    hoverStateFilter,
+    LineLayer,
+    Marker,
+  } from "svelte-maplibre";
   import SplitComponent from "./SplitComponent.svelte";
   import { mode, model, type TravelMode, filterForMode } from "./stores";
   import { makeColorRamp, PickTravelMode, notNull } from "./common";
-  import { SequentialLegend, Popup } from "svelte-utils";
+  import { PropertiesTable, SequentialLegend, Popup } from "svelte-utils";
 
   let travelMode: TravelMode = "foot";
 
@@ -61,6 +68,10 @@
     {#if err}
       <p>{err}</p>
     {/if}
+
+    {#if gj}
+      <AmenityList {gj} />
+    {/if}
   </div>
   <div slot="map">
     <GeoJSON data={JSON.parse(notNull($model).render())}>
@@ -88,11 +99,35 @@
             ),
             "line-opacity": 0.5,
           }}
+          eventsIfTopMost
         >
           <Popup openOn="hover" let:props>
             {props.cost_meters} m away
           </Popup>
         </LineLayer>
+
+        <CircleLayer
+          id="amenities"
+          paint={{
+            "circle-radius": 5,
+            "circle-opacity": 0,
+            "circle-stroke-width": 2,
+            "circle-stroke-color": hoverStateFilter("orange", "red"),
+          }}
+          manageHoverState
+          filter={["has", "amenity_kind"]}
+          on:click={(e) =>
+            window.open(
+              notNull(e.detail.features[0].properties).osm_id,
+              "_blank",
+            )}
+          hoverCursor="pointer"
+          eventsIfTopMost
+        >
+          <Popup openOn="hover" let:props>
+            <PropertiesTable properties={props} />
+          </Popup>
+        </CircleLayer>
       </GeoJSON>
     {/if}
   </div>
