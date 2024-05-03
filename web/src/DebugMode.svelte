@@ -7,10 +7,13 @@
   } from "svelte-maplibre";
   import { notNull, PickTravelMode } from "./common";
   import SplitComponent from "./SplitComponent.svelte";
+  import AmenityList from "./AmenityList.svelte";
   import { PropertiesTable, Popup } from "svelte-utils";
   import { mode, model, type TravelMode, filterForMode } from "./stores";
 
   let travelMode: TravelMode = "foot";
+
+  let gj = JSON.parse($model!.render());
 </script>
 
 <SplitComponent>
@@ -23,9 +26,11 @@
     <p>Hover to see a segment's properties, and click to open OSM</p>
 
     <PickTravelMode bind:travelMode />
+
+    <AmenityList {gj} />
   </div>
   <div slot="map">
-    <GeoJSON data={JSON.parse(notNull($model).render())} generateId>
+    <GeoJSON data={gj} generateId>
       <LineLayer
         id="network"
         paint={{
