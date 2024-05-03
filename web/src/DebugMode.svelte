@@ -1,13 +1,9 @@
 <script lang="ts">
-  import {
-    CircleLayer,
-    GeoJSON,
-    hoverStateFilter,
-    LineLayer,
-  } from "svelte-maplibre";
+  import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
   import { notNull, PickTravelMode } from "./common";
   import SplitComponent from "./SplitComponent.svelte";
   import AmenityList from "./AmenityList.svelte";
+  import AmenityLayer from "./AmenityLayer.svelte";
   import { PropertiesTable, Popup } from "svelte-utils";
   import { mode, model, type TravelMode, filterForMode } from "./stores";
 
@@ -49,26 +45,7 @@
         </Popup>
       </LineLayer>
 
-      <CircleLayer
-        id="amenities"
-        paint={{
-          "circle-radius": 10,
-          "circle-color": hoverStateFilter("cyan", "red"),
-        }}
-        manageHoverState
-        filter={["has", "amenity_kind"]}
-        on:click={(e) =>
-          window.open(
-            notNull(e.detail.features[0].properties).osm_id,
-            "_blank",
-          )}
-        hoverCursor="pointer"
-        eventsIfTopMost
-      >
-        <Popup openOn="hover" let:props>
-          <PropertiesTable properties={props} />
-        </Popup>
-      </CircleLayer>
+      <AmenityLayer />
     </GeoJSON>
   </div>
 </SplitComponent>
