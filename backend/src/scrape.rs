@@ -29,18 +29,12 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
             node_mapping.insert(id, pt);
 
             let tags = tags.into();
-            if let Some(kind) = Amenity::is_amenity(&tags) {
-                let amenity_id = AmenityID(amenities.len());
-                amenities.push(Amenity {
-                    id: amenity_id,
-                    osm_id: OsmID::Node(id),
-                    point: pt.into(),
-                    kind,
-                    name: tags.get("name").cloned(),
-                    brand: tags.get("brand").cloned(),
-                    cuisine: tags.get("cuisine").cloned(),
-                });
-            }
+            amenities.extend(Amenity::maybe_new(
+                &tags,
+                OsmID::Node(id),
+                pt.into(),
+                AmenityID(amenities.len()),
+            ));
         }
         Element::Way {
             id,
@@ -50,19 +44,13 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         } => {
             let tags: Tags = tags.into();
 
-            if let Some(kind) = Amenity::is_amenity(&tags) {
-                let amenity_id = AmenityID(amenities.len());
-                amenities.push(Amenity {
-                    id: amenity_id,
-                    osm_id: OsmID::Way(id),
-                    // TODO Centroid
-                    point: node_mapping[&node_ids[0]].into(),
-                    name: tags.get("name").cloned(),
-                    kind,
-                    brand: tags.get("brand").cloned(),
-                    cuisine: tags.get("cuisine").cloned(),
-                });
-            }
+            amenities.extend(Amenity::maybe_new(
+                &tags,
+                OsmID::Way(id),
+                // TODO Centroid
+                node_mapping[&node_ids[0]].into(),
+                AmenityID(amenities.len()),
+            ));
 
             if tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes") {
                 // TODO This sometimes happens from Overpass?

@@ -18,6 +18,19 @@ pub struct Amenity {
 }
 
 impl Amenity {
+    pub fn maybe_new(tags: &Tags, osm_id: OsmID, point: Point, id: AmenityID) -> Option<Self> {
+        let kind = Self::is_amenity(tags)?;
+        Some(Self {
+            id,
+            osm_id,
+            point,
+            name: tags.get("name").cloned(),
+            kind,
+            brand: tags.get("brand").cloned(),
+            cuisine: tags.get("cuisine").cloned(),
+        })
+    }
+
     pub fn to_gj(&self, mercator: &Mercator) -> Feature {
         let mut f = Feature::from(Geometry::from(&mercator.to_wgs84(&self.point)));
         f.set_property("amenity_kind", self.kind.clone());
@@ -36,7 +49,7 @@ impl Amenity {
 
     /// Determines if this OSM object should count as some kind of useful commercial amenity. Many
     /// categories are excluded. Returns the category.
-    pub fn is_amenity(tags: &Tags) -> Option<String> {
+    fn is_amenity(tags: &Tags) -> Option<String> {
         // TODO Allowlist might be easier
         if tags.is_any(
             "amenity",
