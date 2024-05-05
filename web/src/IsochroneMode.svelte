@@ -7,8 +7,13 @@
   import { GeoJSON, LineLayer, Marker } from "svelte-maplibre";
   import SplitComponent from "./SplitComponent.svelte";
   import { mode, model, type TravelMode, filterForMode } from "./stores";
-  import { makeColorRamp, PickTravelMode, notNull } from "./common";
-  import { SequentialLegend, Popup } from "svelte-utils";
+  import { PickTravelMode } from "./common";
+  import {
+    SequentialLegend,
+    Popup,
+    makeColorRamp,
+    notNull,
+  } from "svelte-utils";
 
   let travelMode: TravelMode = "foot";
 

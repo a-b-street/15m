@@ -1,10 +1,10 @@
 <script lang="ts">
   import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
-  import { notNull, PickTravelMode } from "./common";
+  import { PickTravelMode } from "./common";
   import SplitComponent from "./SplitComponent.svelte";
   import AmenityList from "./AmenityList.svelte";
   import AmenityLayer from "./AmenityLayer.svelte";
-  import { PropertiesTable, Popup } from "svelte-utils";
+  import { PropertiesTable, Popup, notNull } from "svelte-utils";
   import { mode, model, type TravelMode, filterForMode } from "./stores";
 
   let travelMode: TravelMode = "foot";
