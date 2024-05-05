@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use geo::Coord;
+use web_time::Instant;
 
 use crate::costs::cost;
 use crate::graph::{Graph, Mode, RoadID};
@@ -12,7 +13,9 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
     // 15 minutes
     let limit = Duration::from_secs(15 * 60);
 
+    let t1 = Instant::now();
     let cost_per_road = get_costs(graph, req, mode, limit);
+    let t2 = Instant::now();
 
     // Show cost per road
     let mut features = Vec::new();
@@ -29,6 +32,13 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
     }
     let gj = geojson::GeoJson::from(features);
     let x = serde_json::to_string(&gj)?;
+    let t3 = Instant::now();
+
+    info!("Total backend isochrone time: {:?}", t3 - t1);
+    for (label, dt) in [("get_costs", t2 - t1), ("to GJ", t3 - t2)] {
+        info!("  {label} took {dt:?}");
+    }
+
     Ok(x)
 }
 

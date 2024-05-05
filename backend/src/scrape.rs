@@ -8,6 +8,7 @@ use osm_reader::{Element, OsmID};
 use rstar::primitives::GeomWithData;
 use rstar::RTree;
 use utils::Tags;
+use web_time::Instant;
 
 use crate::amenity::Amenity;
 use crate::graph::{
@@ -17,6 +18,7 @@ use crate::graph::{
 use crate::route::Router;
 
 pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
+    let t1 = Instant::now();
     info!("Parsing {} bytes of OSM data", input_bytes.len());
     // This doesn't use osm2graph's helper, because it needs to scrape more things from OSM
     let mut node_mapping = HashMap::new();
@@ -70,6 +72,7 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         Element::Bounds { .. } => {}
     })?;
 
+    let t2 = Instant::now();
     info!("Splitting {} ways into edges", highways.len());
     let graph = utils::osm2graph::Graph::from_scraped_osm(node_mapping, highways);
 
@@ -112,8 +115,10 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
     }
 
+    let t3 = Instant::now();
     snap_amenities(&mut roads, &amenities);
 
+    let t4 = Instant::now();
     let closest_intersection = EnumMap::from_fn(|mode| {
         let mut points = Vec::new();
         for i in &intersections {
@@ -128,6 +133,17 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
     });
 
     let router = EnumMap::from_fn(|mode| Router::new(&roads, mode));
+    let t5 = Instant::now();
+
+    info!("Total backend setup time: {:?}", t5 - t1);
+    for (label, dt) in [
+        ("parsing", t2 - t1),
+        ("making graph", t3 - t2),
+        ("amenities", t4 - t3),
+        ("router", t5 - t4),
+    ] {
+        info!("  {label} took {dt:?}");
+    }
 
     Ok(Graph {
         roads,
@@ -167,6 +183,12 @@ fn calculate_access(tags: &Tags) -> EnumMap<Mode, Direction> {
                             if access_level_allowed(access) {
                                 direction_per_mode[mode] = true;
                             }
+                        }
+                    }
+
+                    if let Some(conditional_speed) = lane_direction.maxspeed.get(muv_mode) {
+                        if let Some(_speed) = conditional_speed.base() {
+                            // TODO
                         }
                     }
                 }
