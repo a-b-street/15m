@@ -14,6 +14,7 @@ use crate::graph::{
     AmenityID, Direction, Graph, Intersection, IntersectionID, IntersectionLocation, Mode, Road,
     RoadID,
 };
+use crate::route::Router;
 
 pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
     info!("Parsing {} bytes of OSM data", input_bytes.len());
@@ -126,11 +127,14 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         RTree::bulk_load(points)
     });
 
+    let router = EnumMap::from_fn(|mode| Router::new(&roads, mode));
+
     Ok(Graph {
         roads,
         intersections,
         mercator: graph.mercator,
         closest_intersection,
+        router,
         boundary_polygon: graph.boundary_polygon,
 
         amenities,

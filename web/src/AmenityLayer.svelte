@@ -2,6 +2,9 @@
   import { notNull } from "./common";
   import { CircleLayer, hoverStateFilter } from "svelte-maplibre";
   import { PropertiesTable, Popup } from "svelte-utils";
+  import type { Feature, Point } from "geojson";
+
+  export let hovered: Feature<Point> | null = null;
 </script>
 
 <CircleLayer
@@ -18,6 +21,7 @@
     window.open(notNull(e.detail.features[0].properties).osm_id, "_blank")}
   hoverCursor="pointer"
   eventsIfTopMost
+  bind:hovered
 >
   <Popup openOn="hover" let:props>
     <PropertiesTable properties={props} />

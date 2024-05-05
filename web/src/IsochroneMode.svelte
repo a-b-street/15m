@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Feature, Point } from "geojson";
   import AmenityLayer from "./AmenityLayer.svelte";
   import AmenityList from "./AmenityList.svelte";
   import { colorScale } from "./colors";
@@ -18,12 +19,15 @@
     lat: lerp(0.5, bbox[1], bbox[3]),
   };
 
-  let gj: FeatureCollection | null = null;
+  let isochroneGj: FeatureCollection | null = null;
+  let routeGj: FeatureCollection | null = null;
   let err = "";
+
+  let hoveredAmenity: Feature<Point> | null;
 
   $: if (start) {
     try {
-      gj = JSON.parse(
+      isochroneGj = JSON.parse(
         $model!.isochrone({
           x: start.lng,
           y: start.lat,
@@ -32,9 +36,29 @@
       );
       err = "";
     } catch (err: any) {
-      gj = null;
+      isochroneGj = null;
       err = err.toString();
     }
+  }
+
+  $: if (start && hoveredAmenity) {
+    try {
+      routeGj = JSON.parse(
+        $model!.route({
+          x1: start.lng,
+          y1: start.lat,
+          x2: hoveredAmenity.geometry.coordinates[0],
+          y2: hoveredAmenity.geometry.coordinates[1],
+          mode: travelMode,
+        }),
+      );
+      err = "";
+    } catch (err: any) {
+      routeGj = null;
+      err = err.toString();
+    }
+  } else {
+    routeGj = null;
   }
 
   function lerp(pct: number, a: number, b: number): number {
@@ -65,8 +89,8 @@
       <p>{err}</p>
     {/if}
 
-    {#if gj}
-      <AmenityList {gj} />
+    {#if isochroneGj}
+      <AmenityList gj={isochroneGj} />
     {/if}
   </div>
   <div slot="map">
@@ -82,8 +106,9 @@
     </GeoJSON>
 
     <Marker bind:lngLat={start} draggable><span class="dot">X</span></Marker>
-    {#if gj}
-      <GeoJSON data={gj}>
+
+    {#if isochroneGj}
+      <GeoJSON data={isochroneGj}>
         <LineLayer
           id="isochrone"
           paint={{
@@ -102,7 +127,19 @@
           </Popup>
         </LineLayer>
 
-        <AmenityLayer />
+        <AmenityLayer bind:hovered={hoveredAmenity} />
+      </GeoJSON>
+    {/if}
+
+    {#if routeGj}
+      <GeoJSON data={routeGj}>
+        <LineLayer
+          id="route"
+          paint={{
+            "line-width": 10,
+            "line-color": "red",
+          }}
+        />
       </GeoJSON>
     {/if}
   </div>

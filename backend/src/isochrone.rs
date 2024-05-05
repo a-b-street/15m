@@ -2,9 +2,10 @@ use std::collections::{BinaryHeap, HashMap};
 use std::time::Duration;
 
 use anyhow::Result;
-use geo::{Coord, EuclideanLength};
+use geo::Coord;
 
-use crate::graph::{Graph, Mode, Road, RoadID};
+use crate::costs::cost;
+use crate::graph::{Graph, Mode, RoadID};
 use crate::priority_queue::PriorityQueueItem;
 
 pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
@@ -76,21 +77,4 @@ fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: Duration) -> HashMap<
     }
 
     cost_per_road
-}
-
-fn cost(road: &Road, mode: Mode) -> Duration {
-    // TODO Configurable
-    // 10 mph
-    let max_bicycle_speed = 4.4704;
-    // 3 mph
-    let max_foot_speed = 1.34112;
-
-    // All speeds are meters/second, so the units work out
-    let distance = road.linestring.euclidean_length();
-    match mode {
-        Mode::Car => Duration::from_secs_f64(distance / road.max_speed),
-        // TODO Use elevation and other more detailed things
-        Mode::Bicycle => Duration::from_secs_f64(distance / max_bicycle_speed),
-        Mode::Foot => Duration::from_secs_f64(distance / max_foot_speed),
-    }
 }

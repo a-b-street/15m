@@ -6,6 +6,7 @@ use rstar::{primitives::GeomWithData, RTree};
 use utils::{Mercator, Tags};
 
 use crate::amenity::Amenity;
+use crate::route::Router;
 
 pub struct Graph {
     pub roads: Vec<Road>,
@@ -13,6 +14,7 @@ pub struct Graph {
     // All geometry stored in worldspace, including rtrees
     pub mercator: Mercator,
     pub closest_intersection: EnumMap<Mode, RTree<IntersectionLocation>>,
+    pub router: EnumMap<Mode, Router>,
     pub boundary_polygon: Polygon,
 
     // Unrelated to the transportation graph above. Maybe should be more separate.
@@ -123,6 +125,17 @@ impl Graph {
             .iter()
             .map(|r| &self.roads[r.0])
             .filter(move |r| r.allows_forwards(mode) || r.allows_backwards(mode))
+    }
+
+    pub fn find_edge(&self, i1: IntersectionID, i2: IntersectionID) -> &Road {
+        // TODO Store lookup table
+        for r in &self.intersections[i1.0].roads {
+            let road = &self.roads[r.0];
+            if road.src_i == i2 || road.dst_i == i2 {
+                return road;
+            }
+        }
+        panic!("no road from {i1:?} to {i2:?} or vice versa");
     }
 }
 
