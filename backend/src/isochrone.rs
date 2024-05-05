@@ -1,15 +1,16 @@
-use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
+use std::time::Duration;
 
 use anyhow::Result;
 use geo::{Coord, EuclideanLength};
 
-use crate::graph::{Graph, Mode, RoadID};
+use crate::graph::{Graph, Mode, Road, RoadID};
+use crate::priority_queue::PriorityQueueItem;
 
 pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
-    // 1km in cm
-    // TODO Use a real cost type
-    let limit = 1000 * 100;
+    // 15 minutes
+    let limit = Duration::from_secs(15 * 60);
+
     let cost_per_road = get_costs(graph, req, mode, limit);
 
     // Show cost per road
@@ -18,7 +19,7 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
         let mut f = geojson::Feature::from(geojson::Geometry::from(
             &graph.mercator.to_wgs84(&graph.roads[r.0].linestring),
         ));
-        f.set_property("cost_meters", (cost as f64) / 100.0);
+        f.set_property("cost_seconds", cost.as_secs());
         features.push(f);
 
         for a in &graph.roads[r.0].amenities[mode] {
@@ -30,21 +31,20 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
     Ok(x)
 }
 
-fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: usize) -> HashMap<RoadID, usize> {
-    // TODO This needs to be per mode
+fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: Duration) -> HashMap<RoadID, Duration> {
     let start = graph.closest_intersection[mode]
         .nearest_neighbor(&[req.x, req.y])
         .unwrap()
         .data;
 
-    let mut queue: BinaryHeap<PriorityQueueItem<usize, RoadID>> = BinaryHeap::new();
+    let mut queue: BinaryHeap<PriorityQueueItem<Duration, RoadID>> = BinaryHeap::new();
     // TODO Match closest road. For now, start with all roads for the closest intersection
     // TODO Think through directions for this initial case. Going by road is strange.
     for road in graph.roads_per_intersection(start, mode) {
-        queue.push(PriorityQueueItem::new(0, road.id));
+        queue.push(PriorityQueueItem::new(Duration::ZERO, road.id));
     }
 
-    let mut cost_per_road: HashMap<RoadID, usize> = HashMap::new();
+    let mut cost_per_road: HashMap<RoadID, Duration> = HashMap::new();
     while let Some(current) = queue.pop() {
         if cost_per_road.contains_key(&current.value) {
             continue;
@@ -67,9 +67,10 @@ fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: usize) -> HashMap<Roa
 
         for i in endpoints {
             for road in graph.roads_per_intersection(i, mode) {
-                // TODO Different cost per mode
-                let cost = (100.0 * road.linestring.euclidean_length()).round() as usize;
-                queue.push(PriorityQueueItem::new(current.cost + cost, road.id));
+                queue.push(PriorityQueueItem::new(
+                    current.cost + cost(road, mode),
+                    road.id,
+                ));
             }
         }
     }
@@ -77,33 +78,19 @@ fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: usize) -> HashMap<Roa
     cost_per_road
 }
 
-/// Use with `BinaryHeap`. Since it's a max-heap, reverse the comparison to get the smallest cost
-/// first.
-#[derive(PartialEq, Eq, Clone)]
-struct PriorityQueueItem<K, V> {
-    pub cost: K,
-    pub value: V,
-}
+fn cost(road: &Road, mode: Mode) -> Duration {
+    // TODO Configurable
+    // 10 mph
+    let max_bicycle_speed = 4.4704;
+    // 3 mph
+    let max_foot_speed = 1.34112;
 
-impl<K, V> PriorityQueueItem<K, V> {
-    fn new(cost: K, value: V) -> Self {
-        Self { cost, value }
-    }
-}
-
-impl<K: Ord, V: Ord> PartialOrd for PriorityQueueItem<K, V> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<K: Ord, V: Ord> Ord for PriorityQueueItem<K, V> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        let ord = other.cost.cmp(&self.cost);
-        if ord != Ordering::Equal {
-            return ord;
-        }
-        // The tie-breaker is arbitrary, based on the value
-        self.value.cmp(&other.value)
+    // All speeds are meters/second, so the units work out
+    let distance = road.linestring.euclidean_length();
+    match mode {
+        Mode::Car => Duration::from_secs_f64(distance / road.max_speed),
+        // TODO Use elevation and other more detailed things
+        Mode::Bicycle => Duration::from_secs_f64(distance / max_bicycle_speed),
+        Mode::Foot => Duration::from_secs_f64(distance / max_foot_speed),
     }
 }

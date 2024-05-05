@@ -59,6 +59,9 @@ pub struct Road {
     // These're broken down this way because the 3 graphs look different and could snap to
     // different roads in each case
     pub amenities: EnumMap<Mode, Vec<AmenityID>>,
+
+    // Meters/second, for cars
+    pub max_speed: f64,
 }
 
 pub struct Intersection {
@@ -148,6 +151,7 @@ impl Road {
             format!("{:?}", self.access[Mode::Bicycle]),
         );
         f.set_property("access_foot", format!("{:?}", self.access[Mode::Foot]));
+        f.set_property("max_speed_mph", self.max_speed * 2.23694);
         f
     }
 }

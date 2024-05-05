@@ -90,6 +90,7 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         .into_iter()
         .map(|e| {
             let access = calculate_access(&e.osm_tags);
+            let max_speed = calculate_max_speed(&e.osm_tags);
             Road {
                 id: RoadID(e.id.0),
                 src_i: IntersectionID(e.src.0),
@@ -100,6 +101,7 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
                 linestring: e.linestring,
 
                 access,
+                max_speed,
                 tags: e.osm_tags,
                 amenities: EnumMap::default(),
             }
@@ -194,6 +196,20 @@ fn bool_to_dir(f: bool, b: bool) -> Direction {
     } else {
         Direction::None
     }
+}
+
+fn calculate_max_speed(tags: &Tags) -> f64 {
+    // TODO Use muv
+    if let Some(x) = tags.get("maxspeed") {
+        if let Some(kmph) = x.parse::<f64>().ok() {
+            return 0.277778 * kmph;
+        }
+        if let Some(mph) = x.strip_suffix(" mph").and_then(|x| x.parse::<f64>().ok()) {
+            return 0.44704 * mph;
+        }
+    }
+    // Arbitrary fallback
+    30.0 * 0.44704
 }
 
 type EdgeLocation = GeomWithData<LineString, RoadID>;

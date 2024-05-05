@@ -41,7 +41,8 @@
     return a + pct * (b - a);
   }
 
-  let limits = [0, 200, 400, 600, 800, 1000];
+  let limitsMinutes = [0, 3, 6, 9, 12, 15];
+  let limitsSeconds = limitsMinutes.map((x) => x * 60);
 </script>
 
 <SplitComponent>
@@ -53,13 +54,13 @@
     </div>
 
     <p>
-      Move the pin to calculate an isochrone from that start. The cost is
-      distance in meters.
+      Move the pin to calculate an isochrone from that start. The cost is time
+      in seconds.
     </p>
 
     <PickTravelMode bind:travelMode />
 
-    <SequentialLegend {colorScale} {limits} />
+    <SequentialLegend {colorScale} limits={limitsMinutes} />
     {#if err}
       <p>{err}</p>
     {/if}
@@ -88,8 +89,8 @@
           paint={{
             "line-width": 20,
             "line-color": makeColorRamp(
-              ["get", "cost_meters"],
-              limits,
+              ["get", "cost_seconds"],
+              limitsSeconds,
               colorScale,
             ),
             "line-opacity": 0.5,
@@ -97,7 +98,7 @@
           eventsIfTopMost
         >
           <Popup openOn="hover" let:props>
-            {props.cost_meters} m away
+            {(props.cost_seconds / 60).toFixed(1)} minutes away
           </Popup>
         </LineLayer>
 

@@ -12,6 +12,7 @@ use graph::{Graph, Mode};
 mod amenity;
 mod graph;
 mod isochrone;
+mod priority_queue;
 mod scrape;
 
 static START: Once = Once::new();
