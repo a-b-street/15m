@@ -1,8 +1,7 @@
 <script lang="ts">
   import { MapModel } from "backend";
   import { onMount } from "svelte";
-  import { OverpassSelector } from "../common";
-  import { Loading } from "svelte-utils";
+  import { Loading, OverpassSelector } from "svelte-utils";
   import { map, model } from "../stores";
 
   let example = "";

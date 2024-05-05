@@ -29,7 +29,6 @@
   },
   "dependencies": {
     "@picocss/pico": "^2.0.3",
-    "maplibre-draw-polygon": "github:dabreegster/maplibre-draw-polygon",
     "svelte-maplibre": "^0.8.1",
     "svelte-utils": "github:a-b-street/svelte-utils"
   }
