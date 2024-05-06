@@ -4,23 +4,24 @@ use std::time::Duration;
 use anyhow::Result;
 use geo::{Coord, Densify};
 use utils::{Grid, PriorityQueueItem};
-use web_time::Instant;
 
 use crate::costs::cost;
 use crate::graph::{Graph, Mode, RoadID};
+use crate::timer::Timer;
 
 pub fn calculate(graph: &Graph, req: Coord, mode: Mode, contours: bool) -> Result<String> {
     // 15 minutes
     let limit = Duration::from_secs(15 * 60);
 
-    let t1 = Instant::now();
+    let mut timer = Timer::new("isochrone request");
+    timer.step("get_costs");
     let cost_per_road = get_costs(graph, req, mode, limit);
-    let t2 = Instant::now();
+    timer.push("render to GJ");
 
     // Show cost per road
     let mut features = Vec::new();
     if contours {
-        features = make_contours(graph, cost_per_road);
+        features = make_contours(graph, cost_per_road, &mut timer);
     } else {
         for (r, cost) in cost_per_road {
             let mut f = geojson::Feature::from(geojson::Geometry::from(
@@ -34,15 +35,11 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode, contours: bool) -> Resul
             }
         }
     }
+    timer.pop();
 
     let gj = geojson::GeoJson::from(features);
     let x = serde_json::to_string(&gj)?;
-    let t3 = Instant::now();
-
-    info!("Total backend isochrone time: {:?}", t3 - t1);
-    for (label, dt) in [("get_costs", t2 - t1), ("to GJ", t3 - t2)] {
-        info!("  {label} took {dt:?}");
-    }
+    timer.done();
 
     Ok(x)
 }
@@ -96,7 +93,12 @@ fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: Duration) -> HashMap<
 
 const RESOLUTION_M: f64 = 100.0;
 
-fn make_contours(graph: &Graph, cost_per_road: HashMap<RoadID, Duration>) -> Vec<geojson::Feature> {
+fn make_contours(
+    graph: &Graph,
+    cost_per_road: HashMap<RoadID, Duration>,
+    timer: &mut Timer,
+) -> Vec<geojson::Feature> {
+    timer.step("make grid");
     // Grid values are cost in seconds
     let mut grid: Grid<f64> = Grid::new(
         (graph.mercator.width / RESOLUTION_M).ceil() as usize,
@@ -116,6 +118,7 @@ fn make_contours(graph: &Graph, cost_per_road: HashMap<RoadID, Duration>) -> Vec
         }
     }
 
+    timer.step("make contours");
     let smooth = false;
     let contour_builder = contour::ContourBuilder::new(grid.width, grid.height, smooth)
         .x_step(RESOLUTION_M)

@@ -15,6 +15,7 @@ mod graph;
 mod isochrone;
 mod route;
 mod scrape;
+mod timer;
 
 static START: Once = Once::new();
 

@@ -8,7 +8,6 @@ use osm_reader::{Element, OsmID};
 use rstar::primitives::GeomWithData;
 use rstar::RTree;
 use utils::Tags;
-use web_time::Instant;
 
 use crate::amenity::Amenity;
 use crate::graph::{
@@ -16,9 +15,11 @@ use crate::graph::{
     RoadID,
 };
 use crate::route::Router;
+use crate::timer::Timer;
 
 pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
-    let t1 = Instant::now();
+    let mut timer = Timer::new("build Graph");
+    timer.step("parse OSM");
     info!("Parsing {} bytes of OSM data", input_bytes.len());
     // This doesn't use osm2graph's helper, because it needs to scrape more things from OSM
     let mut node_mapping = HashMap::new();
@@ -72,10 +73,11 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         Element::Bounds { .. } => {}
     })?;
 
-    let t2 = Instant::now();
+    timer.step("split graph");
     info!("Splitting {} ways into edges", highways.len());
     let graph = utils::osm2graph::Graph::from_scraped_osm(node_mapping, highways);
 
+    timer.step("calculate road attributes");
     // Copy all the fields
     let intersections: Vec<Intersection> = graph
         .intersections
@@ -115,11 +117,11 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
     }
 
-    let t3 = Instant::now();
-    snap_amenities(&mut roads, &amenities);
+    snap_amenities(&mut roads, &amenities, &mut timer);
 
-    let t4 = Instant::now();
+    timer.push("build closest_intersection");
     let closest_intersection = EnumMap::from_fn(|mode| {
+        timer.step(format!("for {mode:?}"));
         let mut points = Vec::new();
         for i in &intersections {
             if i.roads
@@ -131,19 +133,16 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
         }
         RTree::bulk_load(points)
     });
+    timer.pop();
 
-    let router = EnumMap::from_fn(|mode| Router::new(&roads, mode));
-    let t5 = Instant::now();
+    timer.push("building router");
+    let router = EnumMap::from_fn(|mode| {
+        timer.step(format!("for {mode:?}"));
+        Router::new(&roads, mode)
+    });
+    timer.pop();
 
-    info!("Total backend setup time: {:?}", t5 - t1);
-    for (label, dt) in [
-        ("parsing", t2 - t1),
-        ("making graph", t3 - t2),
-        ("amenities", t4 - t3),
-        ("router", t5 - t4),
-    ] {
-        info!("  {label} took {dt:?}");
-    }
+    timer.done();
 
     Ok(Graph {
         roads,
@@ -240,8 +239,11 @@ fn calculate_max_speed(tags: &Tags) -> f64 {
 
 type EdgeLocation = GeomWithData<LineString, RoadID>;
 
-fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>) {
+fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>, timer: &mut Timer) {
+    timer.push("snap amenities");
+    timer.push("build closest_per_mode");
     let closest_per_mode = EnumMap::from_fn(|mode| {
+        timer.step(format!("for {mode:?}"));
         RTree::bulk_load(
             roads
                 .iter()
@@ -250,6 +252,8 @@ fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>) {
                 .collect(),
         )
     });
+    timer.pop();
+    timer.step("find closest roads");
     for amenity in amenities {
         for (mode, closest) in &closest_per_mode {
             if let Some(r) = closest.nearest_neighbor(&amenity.point) {
@@ -257,4 +261,5 @@ fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>) {
             }
         }
     }
+    timer.pop();
 }

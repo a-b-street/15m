@@ -38,7 +38,7 @@ pub enum Direction {
     None,
 }
 
-#[derive(Clone, Copy, Enum)]
+#[derive(Clone, Copy, Enum, Debug)]
 pub enum Mode {
     Car,
     Bicycle,
