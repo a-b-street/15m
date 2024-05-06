@@ -88,7 +88,7 @@
 <div>
   <label>
     Load an example:
-    <select bind:value={example} on:change={() => loadExample(example)}>
+    <select bind:value={example}>
       <option value="">Custom file loaded</option>
       {#each exampleAreas as [country, areas]}
         <optgroup label={country}>
