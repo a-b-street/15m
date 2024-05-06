@@ -13,7 +13,6 @@ mod amenity;
 mod costs;
 mod graph;
 mod isochrone;
-mod priority_queue;
 mod route;
 mod scrape;
 
@@ -73,7 +72,7 @@ impl MapModel {
             // TODO error plumbing
             x => panic!("bad input {x}"),
         };
-        isochrone::calculate(&self.graph, start, mode).map_err(err_to_js)
+        isochrone::calculate(&self.graph, start, mode, req.contours).map_err(err_to_js)
     }
 
     // mut because of path_calc
@@ -112,6 +111,7 @@ pub struct IsochroneRequest {
     x: f64,
     y: f64,
     mode: String,
+    contours: bool,
 }
 
 #[derive(Deserialize)]

@@ -2,14 +2,14 @@ use std::collections::{BinaryHeap, HashMap};
 use std::time::Duration;
 
 use anyhow::Result;
-use geo::Coord;
+use geo::{Coord, Densify};
+use utils::{Grid, PriorityQueueItem};
 use web_time::Instant;
 
 use crate::costs::cost;
 use crate::graph::{Graph, Mode, RoadID};
-use crate::priority_queue::PriorityQueueItem;
 
-pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
+pub fn calculate(graph: &Graph, req: Coord, mode: Mode, contours: bool) -> Result<String> {
     // 15 minutes
     let limit = Duration::from_secs(15 * 60);
 
@@ -19,17 +19,22 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode) -> Result<String> {
 
     // Show cost per road
     let mut features = Vec::new();
-    for (r, cost) in cost_per_road {
-        let mut f = geojson::Feature::from(geojson::Geometry::from(
-            &graph.mercator.to_wgs84(&graph.roads[r.0].linestring),
-        ));
-        f.set_property("cost_seconds", cost.as_secs());
-        features.push(f);
+    if contours {
+        features = make_contours(graph, cost_per_road);
+    } else {
+        for (r, cost) in cost_per_road {
+            let mut f = geojson::Feature::from(geojson::Geometry::from(
+                &graph.mercator.to_wgs84(&graph.roads[r.0].linestring),
+            ));
+            f.set_property("cost_seconds", cost.as_secs());
+            features.push(f);
 
-        for a in &graph.roads[r.0].amenities[mode] {
-            features.push(graph.amenities[a.0].to_gj(&graph.mercator));
+            for a in &graph.roads[r.0].amenities[mode] {
+                features.push(graph.amenities[a.0].to_gj(&graph.mercator));
+            }
         }
     }
+
     let gj = geojson::GeoJson::from(features);
     let x = serde_json::to_string(&gj)?;
     let t3 = Instant::now();
@@ -87,4 +92,44 @@ fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: Duration) -> HashMap<
     }
 
     cost_per_road
+}
+
+const RESOLUTION_M: f64 = 100.0;
+
+fn make_contours(graph: &Graph, cost_per_road: HashMap<RoadID, Duration>) -> Vec<geojson::Feature> {
+    // Grid values are cost in seconds
+    let mut grid: Grid<f64> = Grid::new(
+        (graph.mercator.width / RESOLUTION_M).ceil() as usize,
+        (graph.mercator.height / RESOLUTION_M).ceil() as usize,
+        0.0,
+    );
+
+    for (r, cost) in cost_per_road {
+        for pt in graph.roads[r.0].linestring.densify(RESOLUTION_M / 2.0).0 {
+            let grid_idx = grid.idx(
+                (pt.x / RESOLUTION_M) as usize,
+                (pt.y / RESOLUTION_M) as usize,
+            );
+            // If there are overlapping grid cells (bridges, tunnels, precision), just blindly
+            // clobber
+            grid.data[grid_idx] = cost.as_secs_f64();
+        }
+    }
+
+    let smooth = false;
+    let contour_builder = contour::ContourBuilder::new(grid.width, grid.height, smooth)
+        .x_step(RESOLUTION_M)
+        .y_step(RESOLUTION_M);
+    let thresholds = vec![3. * 60., 6. * 60., 9. * 60., 12. * 60., 15. * 60.];
+
+    let mut features = Vec::new();
+    for band in contour_builder.isobands(&grid.data, &thresholds).unwrap() {
+        let mut f = geojson::Feature::from(geojson::Geometry::from(
+            &graph.mercator.to_wgs84(band.geometry()),
+        ));
+        f.set_property("min_seconds", band.min_v());
+        f.set_property("max_seconds", band.max_v());
+        features.push(f);
+    }
+    features
 }

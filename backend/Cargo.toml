@@ -10,13 +10,14 @@ crate-type = ["cdylib", "rlib"]
 anyhow = "1.0.82"
 console_error_panic_hook = "0.1.6"
 console_log = "1.0.0"
+contour = "0.13.1"
 fast_paths = { git = "https://github.com/easbar/fast_paths" }
 geo = "0.28.0"
 geojson = { git = "https://github.com/georust/geojson", features = ["geo-types"] }
 log = "0.4.20"
 muv-osm = { git = "https://gitlab.com/LeLuxNet/Muv", features = ["lanes"] }
 osm-reader = { git = "https://github.com/a-b-street/osm-reader" }
-rstar = { version = "0.12.0" }
+rstar = "0.12.0"
 serde = "1.0.188"
 serde_json = "1.0.105"
 serde-wasm-bindgen = "0.6.0"

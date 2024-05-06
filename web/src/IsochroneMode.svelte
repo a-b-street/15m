@@ -4,7 +4,7 @@
   import AmenityList from "./AmenityList.svelte";
   import { colorScale } from "./colors";
   import type { FeatureCollection } from "geojson";
-  import { GeoJSON, LineLayer, Marker } from "svelte-maplibre";
+  import { GeoJSON, FillLayer, LineLayer, Marker } from "svelte-maplibre";
   import SplitComponent from "./SplitComponent.svelte";
   import { mode, model, type TravelMode, filterForMode } from "./stores";
   import { PickTravelMode } from "./common";
@@ -13,6 +13,8 @@
     Popup,
     makeColorRamp,
     notNull,
+    isLine,
+    isPolygon,
   } from "svelte-utils";
 
   let travelMode: TravelMode = "foot";
@@ -23,6 +25,7 @@
     lng: lerp(0.5, bbox[0], bbox[2]),
     lat: lerp(0.5, bbox[1], bbox[3]),
   };
+  let contours = true;
 
   let isochroneGj: FeatureCollection | null = null;
   let routeGj: FeatureCollection | null = null;
@@ -37,6 +40,7 @@
           x: start.lng,
           y: start.lat,
           mode: travelMode,
+          contours,
         }),
       );
       err = "";
@@ -89,6 +93,8 @@
 
     <PickTravelMode bind:travelMode />
 
+    <label><input type="checkbox" bind:checked={contours} />Contours</label>
+
     <SequentialLegend {colorScale} limits={limitsMinutes} />
     {#if err}
       <p>{err}</p>
@@ -116,6 +122,7 @@
       <GeoJSON data={isochroneGj}>
         <LineLayer
           id="isochrone"
+          filter={isLine}
           paint={{
             "line-width": 20,
             "line-color": makeColorRamp(
@@ -131,6 +138,19 @@
             {(props.cost_seconds / 60).toFixed(1)} minutes away
           </Popup>
         </LineLayer>
+
+        <FillLayer
+          id="isochrone-contours"
+          filter={isPolygon}
+          paint={{
+            "fill-color": makeColorRamp(
+              ["get", "min_seconds"],
+              limitsSeconds,
+              colorScale,
+            ),
+            "fill-opacity": 0.5,
+          }}
+        />
 
         <AmenityLayer bind:hovered={hoveredAmenity} />
       </GeoJSON>
