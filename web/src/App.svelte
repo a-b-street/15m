@@ -6,7 +6,6 @@
   import { onMount } from "svelte";
   import { FillLayer, GeoJSON, MapLibre } from "svelte-maplibre";
   import { Layout } from "./common";
-  import { PolygonToolLayer } from "maplibre-draw-polygon";
   import DebugMode from "./DebugMode.svelte";
   import IsochroneMode from "./IsochroneMode.svelte";
   import {
@@ -81,7 +80,6 @@
       <Geocoder {map} apiKey={maptilerApiKey} />
       <div bind:this={mapDiv} />
 
-      <PolygonToolLayer />
       {#if $mode == "title"}
         <TitleMode {wasmReady} />
       {/if}
