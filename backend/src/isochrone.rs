@@ -20,8 +20,14 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode, contours: bool) -> Resul
 
     // Show cost per road
     let mut features = Vec::new();
+    for (r, _) in &cost_per_road {
+        for a in &graph.roads[r.0].amenities[mode] {
+            features.push(graph.amenities[a.0].to_gj(&graph.mercator));
+        }
+    }
+
     if contours {
-        features = make_contours(graph, cost_per_road, &mut timer);
+        features.extend(make_contours(graph, cost_per_road, &mut timer));
     } else {
         for (r, cost) in cost_per_road {
             let mut f = geojson::Feature::from(geojson::Geometry::from(
@@ -29,10 +35,6 @@ pub fn calculate(graph: &Graph, req: Coord, mode: Mode, contours: bool) -> Resul
             ));
             f.set_property("cost_seconds", cost.as_secs());
             features.push(f);
-
-            for a in &graph.roads[r.0].amenities[mode] {
-                features.push(graph.amenities[a.0].to_gj(&graph.mercator));
-            }
         }
     }
     timer.pop();
