@@ -1,4 +1,4 @@
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::time::Duration;
 
 use anyhow::Result;
@@ -6,7 +6,7 @@ use geo::{Coord, Densify};
 use utils::{Grid, PriorityQueueItem};
 
 use crate::costs::cost;
-use crate::graph::{Graph, Mode, RoadID};
+use crate::graph::{Graph, IntersectionID, Mode, RoadID};
 use crate::timer::Timer;
 
 pub fn calculate(graph: &Graph, req: Coord, mode: Mode, contours: bool) -> Result<String> {
@@ -52,40 +52,31 @@ fn get_costs(graph: &Graph, req: Coord, mode: Mode, limit: Duration) -> HashMap<
         .unwrap()
         .data;
 
-    let mut queue: BinaryHeap<PriorityQueueItem<Duration, RoadID>> = BinaryHeap::new();
-    // TODO Match closest road. For now, start with all roads for the closest intersection
-    // TODO Think through directions for this initial case. Going by road is strange.
-    for road in graph.roads_per_intersection(start, mode) {
-        queue.push(PriorityQueueItem::new(Duration::ZERO, road.id));
-    }
-
+    let mut visited: HashSet<IntersectionID> = HashSet::new();
     let mut cost_per_road: HashMap<RoadID, Duration> = HashMap::new();
+    let mut queue: BinaryHeap<PriorityQueueItem<Duration, IntersectionID>> = BinaryHeap::new();
+
+    queue.push(PriorityQueueItem::new(Duration::ZERO, start));
+
     while let Some(current) = queue.pop() {
-        if cost_per_road.contains_key(&current.value) {
+        if visited.contains(&current.value) {
             continue;
         }
+        visited.insert(current.value);
         if current.cost > limit {
             continue;
         }
-        cost_per_road.insert(current.value, current.cost);
 
-        let current_road = &graph.roads[current.value.0];
-        // TODO Think through how this search should work with directions. This is assuming
-        // incorrectly we're starting from src_i.
-        let mut endpoints = Vec::new();
-        if current_road.allows_forwards(mode) {
-            endpoints.push(current_road.dst_i);
-        }
-        if current_road.allows_backwards(mode) {
-            endpoints.push(current_road.src_i);
-        }
+        for r in &graph.intersections[current.value.0].roads {
+            let road = &graph.roads[r.0];
+            let total_cost = current.cost + cost(road, mode);
+            cost_per_road.entry(*r).or_insert(total_cost);
 
-        for i in endpoints {
-            for road in graph.roads_per_intersection(i, mode) {
-                queue.push(PriorityQueueItem::new(
-                    current.cost + cost(road, mode),
-                    road.id,
-                ));
+            if road.src_i == current.value && road.allows_forwards(mode) {
+                queue.push(PriorityQueueItem::new(total_cost, road.dst_i));
+            }
+            if road.dst_i == current.value && road.allows_backwards(mode) {
+                queue.push(PriorityQueueItem::new(total_cost, road.src_i));
             }
         }
     }

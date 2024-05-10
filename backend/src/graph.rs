@@ -117,18 +117,6 @@ impl Graph {
         Ok(out)
     }
 
-    pub fn roads_per_intersection(
-        &self,
-        i: IntersectionID,
-        mode: Mode,
-    ) -> impl Iterator<Item = &Road> {
-        self.intersections[i.0]
-            .roads
-            .iter()
-            .map(|r| &self.roads[r.0])
-            .filter(move |r| r.allows_forwards(mode) || r.allows_backwards(mode))
-    }
-
     pub fn find_edge(&self, i1: IntersectionID, i2: IntersectionID) -> &Road {
         // TODO Store lookup table
         for r in &self.intersections[i1.0].roads {
