@@ -52,6 +52,8 @@ pub struct Road {
     pub way: osm_reader::WayID,
     pub node1: osm_reader::NodeID,
     pub node2: osm_reader::NodeID,
+    // For performance
+    pub length_meters: f64,
     pub linestring: LineString,
     pub tags: Tags,
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use enum_map::EnumMap;
-use geo::{Coord, LineString};
+use geo::{Coord, EuclideanLength, LineString};
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::{Element, OsmID};
 use rstar::primitives::GeomWithData;
@@ -104,6 +104,7 @@ pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
                 way: e.osm_way,
                 node1: e.osm_node1,
                 node2: e.osm_node2,
+                length_meters: e.linestring.euclidean_length(),
                 linestring: e.linestring,
 
                 access,
