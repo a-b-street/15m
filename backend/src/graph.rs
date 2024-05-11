@@ -7,7 +7,6 @@ use utils::{Mercator, Tags};
 
 use crate::amenity::Amenity;
 use crate::route::Router;
-use crate::Progress;
 
 pub struct Graph {
     pub roads: Vec<Road>,
