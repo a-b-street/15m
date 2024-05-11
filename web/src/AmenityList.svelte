@@ -2,7 +2,7 @@
   import type { Feature, Point, FeatureCollection } from "geojson";
 
   // Can contain things besides amenities
-  export let gj: FeatureCollection<Point, Amenity>;
+  export let gj: FeatureCollection;
 
   interface Amenity {
     amenity_kind: string;
@@ -13,8 +13,8 @@
   }
 
   $: amenityFeatures = gj.features.filter(
-    (f) => "amenity_kind" in f.properties,
-  );
+    (f) => "amenity_kind" in f.properties!,
+  ) as Feature<Point, Amenity>[];
 
   // Sorted by number of members
   function groupByKind(

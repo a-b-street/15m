@@ -7,10 +7,11 @@
   import { PropertiesTable, Popup, notNull } from "svelte-utils";
   import { mode, backend, type TravelMode, filterForMode } from "./stores";
   import { onMount } from "svelte";
+  import type { FeatureCollection } from "geojson";
 
   let travelMode: TravelMode = "foot";
 
-  let gj;
+  let gj: FeatureCollection | null = null;
   onMount(async () => {
     gj = await $backend!.render();
   });
