@@ -8,6 +8,7 @@ use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use graph::{Graph, Mode};
+use timer::Timer;
 
 mod amenity;
 mod costs;
@@ -35,10 +36,10 @@ impl MapModel {
         START.call_once(|| {
             console_log::init_with_level(log::Level::Info).unwrap();
         });
-        let progress = Progress { cb: progress_cb };
 
         Ok(MapModel {
-            graph: Graph::new(input_bytes, progress).map_err(err_to_js)?,
+            graph: Graph::new(input_bytes, Timer::new("build graph", Some(progress_cb)))
+                .map_err(err_to_js)?,
         })
     }
 
@@ -74,7 +75,14 @@ impl MapModel {
             // TODO error plumbing
             x => panic!("bad input {x}"),
         };
-        isochrone::calculate(&self.graph, start, mode, req.contours).map_err(err_to_js)
+        isochrone::calculate(
+            &self.graph,
+            start,
+            mode,
+            req.contours,
+            Timer::new("isochrone request", None),
+        )
+        .map_err(err_to_js)
     }
 
     // mut because of path_calc
@@ -131,16 +139,4 @@ fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {
 
 fn x_y(c: Coord) -> [f64; 2] {
     [c.x, c.y]
-}
-
-struct Progress {
-    cb: js_sys::Function,
-}
-
-impl Progress {
-    fn log<I: Into<String>>(&self, msg: I) {
-        if let Err(err) = self.cb.call1(&JsValue::null(), &JsValue::from(msg.into())) {
-            error!("JS progress callback broke: {err:?}");
-        }
-    }
 }

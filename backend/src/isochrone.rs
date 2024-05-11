@@ -9,11 +9,16 @@ use crate::costs::cost;
 use crate::graph::{Graph, IntersectionID, Mode, RoadID};
 use crate::timer::Timer;
 
-pub fn calculate(graph: &Graph, req: Coord, mode: Mode, contours: bool) -> Result<String> {
+pub fn calculate(
+    graph: &Graph,
+    req: Coord,
+    mode: Mode,
+    contours: bool,
+    mut timer: Timer,
+) -> Result<String> {
     // 15 minutes
     let limit = Duration::from_secs(15 * 60);
 
-    let mut timer = Timer::new("isochrone request");
     timer.step("get_costs");
     let cost_per_road = get_costs(graph, req, mode, limit);
     timer.push("render to GJ");
