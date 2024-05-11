@@ -20,7 +20,7 @@
 
   let travelMode: TravelMode = "foot";
 
-  let start;
+  let start: { lng: number; lat: number } | null = null;
   onMount(async () => {
     // TODO Maybe need to do this when the file changes
     let bbox = await $backend!.getBounds();
@@ -37,7 +37,11 @@
 
   let hoveredAmenity: Feature<Point> | null;
 
-  async function updateIsochrone(x, y, z) {
+  async function updateIsochrone(
+    _x: { lng: number; lat: number } | null,
+    _y: TravelMode,
+    _z: boolean,
+  ) {
     if (start) {
       try {
         isochroneGj = await $backend!.isochrone({
@@ -54,7 +58,10 @@
   }
   $: updateIsochrone(start, travelMode, contours);
 
-  async function updateRoute(x, y) {
+  async function updateRoute(
+    x: { lng: number; lat: number } | null,
+    _y: Feature<Point> | null,
+  ) {
     if (start && hoveredAmenity) {
       try {
         routeGj = await $backend!.route({
