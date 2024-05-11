@@ -16,6 +16,7 @@ use crate::graph::{
 };
 use crate::route::Router;
 use crate::timer::Timer;
+use crate::Progress;
 
 struct ReadAmenities {
     amenities: Vec<Amenity>,
