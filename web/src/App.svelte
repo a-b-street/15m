@@ -58,7 +58,7 @@
     if (ready) {
       console.log("New map model loaded");
       await zoomToFit();
-      $mode = "isochrone";
+      //$mode = "isochrone";
     }
   }
   $: gotModel($isLoaded);

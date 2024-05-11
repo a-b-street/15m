@@ -1,11 +1,12 @@
 <script lang="ts">
   import * as Comlink from "comlink";
   import { onMount } from "svelte";
-  import { Loading, OverpassSelector } from "svelte-utils";
+  import { OverpassSelector } from "svelte-utils";
   import { map, backend, isLoaded } from "../stores";
+  import Loading from "./Loading.svelte";
 
   let example = "";
-  let loading = "";
+  let loading: string[] = [];
   let useLocalVite = false;
   let exampleAreas: [string, [string, string][]][] = [];
 
@@ -37,11 +38,11 @@
     } catch (err) {
       window.alert(`Couldn't open this file: ${err}`);
     }
-    loading = "";
+    loading = [];
   }
 
   async function loadModel(buffer: ArrayBuffer) {
-    loading = "Building map model from OSM input";
+    loading = ["Building map model from OSM input"];
     console.time("load");
     await $backend!.loadFile(new Uint8Array(buffer), Comlink.proxy(progressCb));
     console.timeEnd("load");
@@ -49,8 +50,7 @@
   }
 
   function progressCb(msg: string) {
-    loading = msg;
-    console.log(`Got progress update: ${msg}`);
+    loading = [...loading, msg];
   }
 
   async function gotXml(e: CustomEvent<string>) {
@@ -61,7 +61,7 @@
     } catch (err) {
       window.alert(`Couldn't import from Overpass: ${err}`);
     }
-    loading = "";
+    loading = [];
   }
 
   async function loadExample(example: string) {
@@ -79,13 +79,13 @@
 
   async function loadFromUrl(url: string) {
     try {
-      loading = `Downloading ${url}`;
+      loading = [`Downloading ${url}`];
       let resp = await fetch(url);
       await loadModel(await resp.arrayBuffer());
     } catch (err) {
       window.alert(`Couldn't open from URL ${url}: ${err}`);
     }
-    loading = "";
+    //loading = [];
   }
 </script>
 
@@ -121,6 +121,6 @@
 <OverpassSelector
   map={$map}
   on:gotXml={gotXml}
-  on:loading={(e) => (loading = e.detail)}
+  on:loading={(e) => (loading = [...loading, e.detail])}
   on:error={(e) => window.alert(e.detail)}
 />
