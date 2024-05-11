@@ -29,15 +29,16 @@ pub struct MapModel {
 impl MapModel {
     /// Call with bytes of an osm.pbf or osm.xml string
     #[wasm_bindgen(constructor)]
-    pub fn new(input_bytes: &[u8]) -> Result<MapModel, JsValue> {
+    pub fn new(input_bytes: &[u8], progress_cb: js_sys::Function) -> Result<MapModel, JsValue> {
         // Panics shouldn't happen, but if they do, console.log them.
         console_error_panic_hook::set_once();
         START.call_once(|| {
             console_log::init_with_level(log::Level::Info).unwrap();
         });
+        let progress = Progress { cb: progress_cb };
 
         Ok(MapModel {
-            graph: Graph::new(input_bytes, timer::Timer::new("build graph")).map_err(err_to_js)?,
+            graph: Graph::new(input_bytes, progress).map_err(err_to_js)?,
         })
     }
 
@@ -130,4 +131,16 @@ fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {
 
 fn x_y(c: Coord) -> [f64; 2] {
     [c.x, c.y]
+}
+
+struct Progress {
+    cb: js_sys::Function,
+}
+
+impl Progress {
+    fn log<I: Into<String>>(&self, msg: I) {
+        if let Err(err) = self.cb.call1(&JsValue::null(), &JsValue::from(msg.into())) {
+            error!("JS progress callback broke: {err:?}");
+        }
+    }
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import * as Comlink from "comlink";
   import { onMount } from "svelte";
   import { Loading, OverpassSelector } from "svelte-utils";
   import { map, backend, isLoaded } from "../stores";
@@ -42,9 +43,14 @@
   async function loadModel(buffer: ArrayBuffer) {
     loading = "Building map model from OSM input";
     console.time("load");
-    await $backend!.loadFile(new Uint8Array(buffer));
+    await $backend!.loadFile(new Uint8Array(buffer), Comlink.proxy(progressCb));
     console.timeEnd("load");
     $isLoaded = true;
+  }
+
+  function progressCb(msg: string) {
+    loading = msg;
+    console.log(`Got progress update: ${msg}`);
   }
 
   async function gotXml(e: CustomEvent<string>) {

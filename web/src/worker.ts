@@ -10,11 +10,11 @@ export class Backend {
     this.inner = null;
   }
 
-  async loadFile(osmBytes: Uint8Array) {
+  async loadFile(osmBytes: Uint8Array, progressCb: (msg: string) => void) {
     // TODO Do we need to do this only once?
     await init();
 
-    this.inner = new MapModel(osmBytes);
+    this.inner = new MapModel(osmBytes, progressCb);
   }
 
   isLoaded(): boolean {
