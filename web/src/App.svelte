@@ -49,7 +49,7 @@
   }
 
   async function zoomToFit() {
-    if (map && (await $backend!.isLoaded())) {
+    if (map && $isLoaded) {
       map.fitBounds(await $backend!.getBounds(), { animate: false });
     }
   }

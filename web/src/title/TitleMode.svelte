@@ -7,7 +7,6 @@
   import { onMount } from "svelte";
 
   // When other modes reset here, they can't clear without a race condition
-  // TODO Need to do something to the store so other Svelte things can react
   onMount(async () => {
     $isLoaded = false;
     await $backend!.unset();
