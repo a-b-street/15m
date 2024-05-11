@@ -5,47 +5,53 @@
   import AmenityList from "./AmenityList.svelte";
   import AmenityLayer from "./AmenityLayer.svelte";
   import { PropertiesTable, Popup, notNull } from "svelte-utils";
-  import { mode, model, type TravelMode, filterForMode } from "./stores";
+  import { mode, backend, type TravelMode, filterForMode } from "./stores";
+  import { onMount } from "svelte";
 
   let travelMode: TravelMode = "foot";
 
-  let gj = JSON.parse($model!.render());
+  let gj;
+  onMount(async () => {
+    gj = await $backend!.render();
+  });
 </script>
 
-<SplitComponent>
-  <div slot="sidebar">
-    <h2>Debug mode</h2>
-    <div>
-      <button on:click={() => ($mode = "title")}>Change study area</button>
-      <button on:click={() => ($mode = "isochrone")}>Isochrones</button>
+{#if gj}
+  <SplitComponent>
+    <div slot="sidebar">
+      <h2>Debug mode</h2>
+      <div>
+        <button on:click={() => ($mode = "title")}>Change study area</button>
+        <button on:click={() => ($mode = "isochrone")}>Isochrones</button>
+      </div>
+      <p>Hover to see a segment's properties, and click to open OSM</p>
+
+      <PickTravelMode bind:travelMode />
+
+      <AmenityList {gj} />
     </div>
-    <p>Hover to see a segment's properties, and click to open OSM</p>
+    <div slot="map">
+      <GeoJSON data={gj} generateId>
+        <LineLayer
+          id="network"
+          paint={{
+            "line-width": hoverStateFilter(5, 7),
+            "line-color": "black",
+          }}
+          filter={filterForMode(travelMode)}
+          manageHoverState
+          on:click={(e) =>
+            window.open(notNull(e.detail.features[0].properties).way, "_blank")}
+          hoverCursor="pointer"
+          eventsIfTopMost
+        >
+          <Popup openOn="hover" let:props>
+            <PropertiesTable properties={props} />
+          </Popup>
+        </LineLayer>
 
-    <PickTravelMode bind:travelMode />
-
-    <AmenityList {gj} />
-  </div>
-  <div slot="map">
-    <GeoJSON data={gj} generateId>
-      <LineLayer
-        id="network"
-        paint={{
-          "line-width": hoverStateFilter(5, 7),
-          "line-color": "black",
-        }}
-        filter={filterForMode(travelMode)}
-        manageHoverState
-        on:click={(e) =>
-          window.open(notNull(e.detail.features[0].properties).way, "_blank")}
-        hoverCursor="pointer"
-        eventsIfTopMost
-      >
-        <Popup openOn="hover" let:props>
-          <PropertiesTable properties={props} />
-        </Popup>
-      </LineLayer>
-
-      <AmenityLayer />
-    </GeoJSON>
-  </div>
-</SplitComponent>
+        <AmenityLayer />
+      </GeoJSON>
+    </div>
+  </SplitComponent>
+{/if}
