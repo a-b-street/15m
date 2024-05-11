@@ -2,13 +2,16 @@
   import { PolygonToolLayer } from "maplibre-draw-polygon";
   import SplitComponent from "../SplitComponent.svelte";
   import { Modal, notNull } from "svelte-utils";
-  import { map, model, showAbout } from "../stores";
+  import { map, backend, showAbout, isLoaded } from "../stores";
   import MapLoader from "./MapLoader.svelte";
+  import { onMount } from "svelte";
 
-  export let wasmReady: boolean;
-
-  // When other modes reset here, they can't clear the model without a race condition
-  $model = null;
+  // When other modes reset here, they can't clear without a race condition
+  // TODO Need to do something to the store so other Svelte things can react
+  onMount(async () => {
+    $isLoaded = false;
+    await $backend!.unset();
+  });
 </script>
 
 <SplitComponent>
@@ -42,7 +45,7 @@
     <button on:click={() => ($showAbout = true)}>About this tool</button>
     <hr />
 
-    {#if $map && wasmReady}
+    {#if $map}
       <MapLoader />
     {:else}
       <p>Waiting for MapLibre and WASM to load...</p>

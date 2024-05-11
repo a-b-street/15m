@@ -1,7 +1,6 @@
 <script lang="ts">
   import "@picocss/pico/css/pico.jade.min.css";
-  import init, { MapModel } from "backend";
-  import { Geocoder } from "svelte-utils";
+  import { Geocoder, notNull } from "svelte-utils";
   import type { Map } from "maplibre-gl";
   import { onMount } from "svelte";
   import { FillLayer, GeoJSON, MapLibre } from "svelte-maplibre";
@@ -12,16 +11,36 @@
     mapContents,
     map as mapStore,
     mode,
-    model,
+    backend,
     sidebarContents,
     maptilerApiKey,
+    isLoaded,
   } from "./stores";
   import TitleMode from "./title/TitleMode.svelte";
+  import workerWrapper from "./worker?worker";
+  import { type Backend } from "./worker";
+  import * as Comlink from "comlink";
 
-  let wasmReady = false;
   onMount(async () => {
-    await init();
-    wasmReady = true;
+    // If you get "import declarations may only appear at top level of a
+    // module", then you need a newer browser.
+    // https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
+    //
+    // In Firefox 112, go to about:config and enable dom.workers.modules.enabled
+    //
+    // Note this should work fine in older browsers when doing 'npm run build'.
+    // It's only a problem during local dev mode.
+    interface WorkerConstructor {
+      new (): Backend;
+    }
+
+    const MyWorker: Comlink.Remote<WorkerConstructor> = Comlink.wrap(
+      new workerWrapper(),
+    );
+    // Don't populate the routeInfo store until loadFile is done, so other
+    // places can disable controls until it's ready
+    let backendWorker = await new MyWorker();
+    backend.set(backendWorker);
   });
 
   let map: Map;
@@ -29,24 +48,20 @@
     mapStore.set(map);
   }
 
-  function zoomToFit() {
-    if (map && $model) {
-      map.fitBounds(
-        Array.from($model.getBounds()) as [number, number, number, number],
-        { animate: false },
-      );
+  async function zoomToFit() {
+    if (map && (await $backend!.isLoaded())) {
+      map.fitBounds(await $backend!.getBounds(), { animate: false });
     }
   }
 
-  function gotModel(_m: MapModel | null) {
-    if (!$model) {
-      return;
+  async function gotModel(ready: boolean) {
+    if (ready) {
+      console.log("New map model loaded");
+      await zoomToFit();
+      $mode = "isochrone";
     }
-    console.log("New map model loaded");
-    zoomToFit();
-    $mode = "isochrone";
   }
-  $: gotModel($model);
+  $: gotModel($isLoaded);
 
   let sidebarDiv: HTMLDivElement;
   let mapDiv: HTMLDivElement;
@@ -81,12 +96,14 @@
       <div bind:this={mapDiv} />
 
       {#if $mode == "title"}
-        <TitleMode {wasmReady} />
+        <TitleMode />
       {/if}
-      {#if $model}
-        <GeoJSON data={JSON.parse($model.getInvertedBoundary())}>
-          <FillLayer paint={{ "fill-color": "black", "fill-opacity": 0.3 }} />
-        </GeoJSON>
+      {#if $isLoaded}
+        {#await notNull($backend).getInvertedBoundary() then data}
+          <GeoJSON {data}>
+            <FillLayer paint={{ "fill-color": "black", "fill-opacity": 0.3 }} />
+          </GeoJSON>
+        {/await}
         {#if $mode == "debug"}
           <DebugMode />
         {:else if $mode == "isochrone"}
