@@ -175,10 +175,12 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    display: inline-block;
-    background-color: blue;
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
     color: white;
+    background-color: blue;
     font-weight: bold;
   }
 </style>
