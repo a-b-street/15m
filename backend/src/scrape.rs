@@ -4,7 +4,7 @@ use anyhow::Result;
 use enum_map::EnumMap;
 use geo::{Coord, EuclideanLength, LineString};
 use muv_osm::{AccessLevel, TMode};
-use osm_reader::{Element, OsmID};
+use osm_reader::OsmID;
 use rstar::primitives::GeomWithData;
 use rstar::RTree;
 use utils::Tags;
@@ -17,144 +17,134 @@ use crate::graph::{
 use crate::route::Router;
 use crate::timer::Timer;
 
-pub fn scrape_osm(input_bytes: &[u8]) -> Result<Graph> {
-    let mut timer = Timer::new("build Graph");
-    timer.step("parse OSM");
-    info!("Parsing {} bytes of OSM data", input_bytes.len());
-    // This doesn't use osm2graph's helper, because it needs to scrape more things from OSM
-    let mut node_mapping = HashMap::new();
-    let mut highways = Vec::new();
-    let mut amenities = Vec::new();
-    osm_reader::parse(input_bytes, |elem| match elem {
-        Element::Node {
-            id, lon, lat, tags, ..
-        } => {
-            let pt = Coord { x: lon, y: lat };
-            node_mapping.insert(id, pt);
+struct ReadAmenities {
+    amenities: Vec<Amenity>,
+}
 
-            let tags = tags.into();
-            amenities.extend(Amenity::maybe_new(
-                &tags,
-                OsmID::Node(id),
-                pt.into(),
-                AmenityID(amenities.len()),
-            ));
-        }
-        Element::Way {
-            id,
-            mut node_ids,
-            tags,
-            ..
-        } => {
-            let tags: Tags = tags.into();
-
-            amenities.extend(Amenity::maybe_new(
-                &tags,
-                OsmID::Way(id),
-                // TODO Centroid
-                node_mapping[&node_ids[0]].into(),
-                AmenityID(amenities.len()),
-            ));
-
-            if tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes") {
-                // TODO This sometimes happens from Overpass?
-                let num = node_ids.len();
-                node_ids.retain(|n| node_mapping.contains_key(n));
-                if node_ids.len() != num {
-                    warn!("{id} refers to nodes outside the imported area");
-                }
-                if node_ids.len() >= 2 {
-                    highways.push(utils::osm2graph::Way { id, node_ids, tags });
-                }
-            }
-        }
-        // TODO Amenity relations?
-        Element::Relation { .. } => {}
-        Element::Bounds { .. } => {}
-    })?;
-
-    timer.step("split graph");
-    info!("Splitting {} ways into edges", highways.len());
-    let graph = utils::osm2graph::Graph::from_scraped_osm(node_mapping, highways);
-
-    timer.step("calculate road attributes");
-    // Copy all the fields
-    let intersections: Vec<Intersection> = graph
-        .intersections
-        .into_iter()
-        .map(|i| Intersection {
-            id: IntersectionID(i.id.0),
-            point: i.point,
-            node: i.osm_node,
-            roads: i.edges.into_iter().map(|e| RoadID(e.0)).collect(),
-        })
-        .collect();
-
-    // Add in a bit
-    let mut roads = graph
-        .edges
-        .into_iter()
-        .map(|e| {
-            let access = calculate_access(&e.osm_tags);
-            let max_speed = calculate_max_speed(&e.osm_tags);
-            Road {
-                id: RoadID(e.id.0),
-                src_i: IntersectionID(e.src.0),
-                dst_i: IntersectionID(e.dst.0),
-                way: e.osm_way,
-                node1: e.osm_node1,
-                node2: e.osm_node2,
-                length_meters: e.linestring.euclidean_length(),
-                linestring: e.linestring,
-
-                access,
-                max_speed,
-                tags: e.osm_tags,
-                amenities: EnumMap::default(),
-            }
-        })
-        .collect();
-    for a in &mut amenities {
-        a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
+impl utils::osm2graph::OsmReader for ReadAmenities {
+    fn node(&mut self, id: osm_reader::NodeID, pt: Coord, tags: Tags) {
+        self.amenities.extend(Amenity::maybe_new(
+            &tags,
+            OsmID::Node(id),
+            pt.into(),
+            AmenityID(self.amenities.len()),
+        ));
     }
 
-    snap_amenities(&mut roads, &amenities, &mut timer);
+    fn way(
+        &mut self,
+        id: osm_reader::WayID,
+        node_ids: &Vec<osm_reader::NodeID>,
+        node_mapping: &HashMap<osm_reader::NodeID, Coord>,
+        tags: &Tags,
+    ) {
+        self.amenities.extend(Amenity::maybe_new(
+            tags,
+            OsmID::Way(id),
+            // TODO Centroid
+            node_mapping[&node_ids[0]].into(),
+            AmenityID(self.amenities.len()),
+        ));
+    }
 
-    timer.push("build closest_intersection");
-    let closest_intersection = EnumMap::from_fn(|mode| {
-        timer.step(format!("for {mode:?}"));
-        let mut points = Vec::new();
-        for i in &intersections {
-            if i.roads
-                .iter()
-                .any(|r| roads[r.0].allows_forwards(mode) || roads[r.0].allows_backwards(mode))
-            {
-                points.push(IntersectionLocation::new(i.point.into(), i.id));
-            }
+    // TODO Are there amenities as relations?
+}
+
+impl Graph {
+    /// Call with bytes of an osm.pbf or osm.xml string
+    pub fn new(input_bytes: &[u8], mut timer: Timer) -> Result<Graph> {
+        timer.step("parse OSM and split graph");
+
+        let mut amenities = ReadAmenities {
+            amenities: Vec::new(),
+        };
+        let graph = utils::osm2graph::Graph::new(
+            input_bytes,
+            |tags| {
+                tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes")
+            },
+            &mut amenities,
+        )?;
+
+        timer.step("calculate road attributes");
+        // Copy all the fields
+        let intersections: Vec<Intersection> = graph
+            .intersections
+            .into_iter()
+            .map(|i| Intersection {
+                id: IntersectionID(i.id.0),
+                point: i.point,
+                node: i.osm_node,
+                roads: i.edges.into_iter().map(|e| RoadID(e.0)).collect(),
+            })
+            .collect();
+
+        // Add in a bit
+        let mut roads = graph
+            .edges
+            .into_iter()
+            .map(|e| {
+                let access = calculate_access(&e.osm_tags);
+                let max_speed = calculate_max_speed(&e.osm_tags);
+                Road {
+                    id: RoadID(e.id.0),
+                    src_i: IntersectionID(e.src.0),
+                    dst_i: IntersectionID(e.dst.0),
+                    way: e.osm_way,
+                    node1: e.osm_node1,
+                    node2: e.osm_node2,
+                    length_meters: e.linestring.euclidean_length(),
+                    linestring: e.linestring,
+
+                    access,
+                    max_speed,
+                    tags: e.osm_tags,
+                    amenities: EnumMap::default(),
+                }
+            })
+            .collect();
+        for a in &mut amenities.amenities {
+            a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
         }
-        RTree::bulk_load(points)
-    });
-    timer.pop();
 
-    timer.push("building router");
-    let router = EnumMap::from_fn(|mode| {
-        timer.step(format!("for {mode:?}"));
-        Router::new(&roads, mode)
-    });
-    timer.pop();
+        snap_amenities(&mut roads, &amenities.amenities, &mut timer);
 
-    timer.done();
+        timer.push("build closest_intersection");
+        let closest_intersection = EnumMap::from_fn(|mode| {
+            timer.step(format!("for {mode:?}"));
+            let mut points = Vec::new();
+            for i in &intersections {
+                if i.roads
+                    .iter()
+                    .any(|r| roads[r.0].allows_forwards(mode) || roads[r.0].allows_backwards(mode))
+                {
+                    points.push(IntersectionLocation::new(i.point.into(), i.id));
+                }
+            }
+            RTree::bulk_load(points)
+        });
+        timer.pop();
 
-    Ok(Graph {
-        roads,
-        intersections,
-        mercator: graph.mercator,
-        closest_intersection,
-        router,
-        boundary_polygon: graph.boundary_polygon,
+        timer.push("building router");
+        let router = EnumMap::from_fn(|mode| {
+            timer.step(format!("for {mode:?}"));
+            Router::new(&roads, mode)
+        });
+        timer.pop();
 
-        amenities,
-    })
+        timer.done();
+
+        Ok(Graph {
+            roads,
+            intersections,
+            mercator: graph.mercator,
+            closest_intersection,
+            router,
+            boundary_polygon: graph.boundary_polygon,
+
+            amenities: amenities.amenities,
+        })
+    }
 }
 
 // TODO Should also look at any barriers

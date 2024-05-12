@@ -77,12 +77,6 @@ pub struct Intersection {
 }
 
 impl Graph {
-    /// Call with bytes of an osm.pbf or osm.xml string
-    pub fn new(input_bytes: &[u8]) -> Result<Graph> {
-        // TODO make a method there
-        crate::scrape::scrape_osm(input_bytes)
-    }
-
     /// Returns a GeoJSON string. Just shows the full network and amenities
     pub fn render(&self) -> Result<String> {
         let mut features = Vec::new();

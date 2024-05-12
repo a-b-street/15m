@@ -37,7 +37,7 @@ impl MapModel {
         });
 
         Ok(MapModel {
-            graph: Graph::new(input_bytes).map_err(err_to_js)?,
+            graph: Graph::new(input_bytes, timer::Timer::new("build graph")).map_err(err_to_js)?,
         })
     }
 
