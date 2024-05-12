@@ -85,7 +85,7 @@
     } catch (err) {
       window.alert(`Couldn't open from URL ${url}: ${err}`);
     }
-    //loading = [];
+    loading = [];
   }
 </script>
 
