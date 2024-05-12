@@ -37,8 +37,6 @@
     const MyWorker: Comlink.Remote<WorkerConstructor> = Comlink.wrap(
       new workerWrapper(),
     );
-    // Don't populate the routeInfo store until loadFile is done, so other
-    // places can disable controls until it's ready
     let backendWorker = await new MyWorker();
     backend.set(backendWorker);
   });
