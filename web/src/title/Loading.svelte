@@ -1,16 +1,23 @@
 <script lang="ts">
+  // TODO Upstream to svelte-utils
+
   // Block the rest of the page while 'loading' is non-empty
 
   export let loading: string[];
+
+  let inner: HTMLDivElement;
+
+  $: if (loading.length > 0 && inner) {
+    inner.scrollTop = inner.scrollHeight;
+  }
 </script>
 
 {#if loading.length > 0}
   <div class="outer">
-    <div class="inner">
+    <div class="inner" bind:this={inner}>
       {#each loading as msg}
         <p>{msg}</p>
       {/each}
-      <div class="scroll-to-bottom" />
     </div>
   </div>
 {/if}
@@ -35,17 +42,8 @@
   .inner {
     width: 60%;
     height: 60%;
-    background: white;
+    background-color: var(--pico-background-color);
 
     overflow: auto;
-  }
-
-  .inner * {
-    overflow-anchor: none;
-  }
-
-  .scroll-to-bottom {
-    overflow-anchor: auto;
-    height: 1px;
   }
 </style>
