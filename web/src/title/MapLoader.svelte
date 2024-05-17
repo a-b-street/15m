@@ -1,7 +1,7 @@
 <script lang="ts">
   import * as Comlink from "comlink";
   import { onMount } from "svelte";
-  import { OverpassSelector } from "svelte-utils";
+  import { OverpassSelector } from "svelte-utils/overpass";
   import { map, backend, isLoaded } from "../stores";
   import Loading from "./Loading.svelte";
 
