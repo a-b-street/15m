@@ -1,6 +1,7 @@
 <script lang="ts">
   import { CircleLayer, hoverStateFilter } from "svelte-maplibre";
-  import { PropertiesTable, Popup, notNull } from "svelte-utils";
+  import { PropertiesTable, notNull } from "svelte-utils";
+  import { Popup } from "svelte-utils/map";
   import type { Feature, Point } from "geojson";
 
   export let hovered: Feature<Point> | null = null;

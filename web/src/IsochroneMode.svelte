@@ -8,14 +8,8 @@
   import SplitComponent from "./SplitComponent.svelte";
   import { mode, backend, type TravelMode, filterForMode } from "./stores";
   import { PickTravelMode } from "./common";
-  import {
-    SequentialLegend,
-    Popup,
-    makeColorRamp,
-    isLine,
-    isPolygon,
-    notNull,
-  } from "svelte-utils";
+  import { SequentialLegend, notNull } from "svelte-utils";
+  import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
   import { onMount } from "svelte";
 
   let travelMode: TravelMode = "foot";

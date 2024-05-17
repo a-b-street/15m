@@ -1,6 +1,7 @@
 <script lang="ts">
   import "@picocss/pico/css/pico.jade.min.css";
-  import { Geocoder, notNull } from "svelte-utils";
+  import { notNull } from "svelte-utils";
+  import { Geocoder } from "svelte-utils/map";
   import type { Map } from "maplibre-gl";
   import { onMount } from "svelte";
   import { FillLayer, GeoJSON, MapLibre } from "svelte-maplibre";

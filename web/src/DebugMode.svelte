@@ -4,7 +4,8 @@
   import SplitComponent from "./SplitComponent.svelte";
   import AmenityList from "./AmenityList.svelte";
   import AmenityLayer from "./AmenityLayer.svelte";
-  import { PropertiesTable, Popup, notNull } from "svelte-utils";
+  import { PropertiesTable, notNull } from "svelte-utils";
+  import { Popup } from "svelte-utils/map";
   import { mode, backend, type TravelMode, filterForMode } from "./stores";
   import { onMount } from "svelte";
   import type { FeatureCollection } from "geojson";
