@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TravelMode } from "../stores";
+  import type { TravelMode } from "./stores";
 
   export let travelMode: TravelMode;
 </script>

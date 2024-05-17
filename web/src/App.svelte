@@ -5,15 +5,17 @@
   import type { Map } from "maplibre-gl";
   import { onMount } from "svelte";
   import { FillLayer, GeoJSON, MapLibre } from "svelte-maplibre";
-  import { Layout } from "./common";
+  import {
+    Layout,
+    mapContents,
+    sidebarContents,
+  } from "svelte-utils/two_column_layout";
   import DebugMode from "./DebugMode.svelte";
   import IsochroneMode from "./IsochroneMode.svelte";
   import {
-    mapContents,
     map as mapStore,
     mode,
     backend,
-    sidebarContents,
     maptilerApiKey,
     isLoaded,
   } from "./stores";

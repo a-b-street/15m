@@ -5,9 +5,9 @@
   import { colorScale } from "./colors";
   import type { FeatureCollection } from "geojson";
   import { GeoJSON, FillLayer, LineLayer, Marker } from "svelte-maplibre";
-  import SplitComponent from "./SplitComponent.svelte";
+  import { SplitComponent } from "svelte-utils/two_column_layout";
   import { mode, backend, type TravelMode, filterForMode } from "./stores";
-  import { PickTravelMode } from "./common";
+  import PickTravelMode from "./PickTravelMode.svelte";
   import { SequentialLegend, notNull } from "svelte-utils";
   import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
   import { onMount } from "svelte";

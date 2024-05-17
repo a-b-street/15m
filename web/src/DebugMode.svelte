@@ -1,7 +1,7 @@
 <script lang="ts">
   import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
-  import { PickTravelMode } from "./common";
-  import SplitComponent from "./SplitComponent.svelte";
+  import PickTravelMode from "./PickTravelMode.svelte";
+  import { SplitComponent } from "svelte-utils/two_column_layout";
   import AmenityList from "./AmenityList.svelte";
   import AmenityLayer from "./AmenityLayer.svelte";
   import { PropertiesTable, notNull } from "svelte-utils";

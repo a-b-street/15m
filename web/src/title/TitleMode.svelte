@@ -1,6 +1,6 @@
 <script lang="ts">
   import { PolygonToolLayer } from "maplibre-draw-polygon";
-  import SplitComponent from "../SplitComponent.svelte";
+  import { SplitComponent } from "svelte-utils/two_column_layout";
   import { Modal, notNull } from "svelte-utils";
   import { map, backend, showAbout, isLoaded } from "../stores";
   import MapLoader from "./MapLoader.svelte";

@@ -6,9 +6,6 @@ import { type Backend } from "./worker";
 
 export let maptilerApiKey = "MZEJTanw3WpxRvt7qDfo";
 
-export let sidebarContents: Writable<HTMLDivElement | null> = writable(null);
-export let mapContents: Writable<HTMLDivElement | null> = writable(null);
-
 export type Mode = "title" | "debug" | "isochrone";
 
 export let mode: Writable<Mode> = writable("title");
