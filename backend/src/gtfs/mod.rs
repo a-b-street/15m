@@ -31,3 +31,12 @@ pub struct StopID(String);
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub struct TripID(String);
+
+impl GtfsModel {
+    pub fn empty() -> Self {
+        Self {
+            stops: BTreeMap::new(),
+            trips: BTreeMap::new(),
+        }
+    }
+}

@@ -14,6 +14,7 @@ use crate::graph::{
     AmenityID, Direction, Graph, Intersection, IntersectionID, IntersectionLocation, Mode, Road,
     RoadID,
 };
+use crate::gtfs::GtfsModel;
 use crate::route::Router;
 use crate::timer::Timer;
 
@@ -100,6 +101,7 @@ impl Graph {
                     max_speed,
                     tags: e.osm_tags,
                     amenities: EnumMap::default(),
+                    stops: Vec::new(),
                 }
             })
             .collect();
@@ -132,6 +134,13 @@ impl Graph {
         });
         timer.pop();
 
+        timer.push("setting up GTFS");
+        timer.step("parse");
+        // TODO just include_str! or something for now
+        let gtfs = GtfsModel::parse("/home/dabreegster/Downloads/uk_gtfs", &graph.mercator)?;
+        snap_stops(&mut roads, &gtfs, &mut timer);
+        timer.pop();
+
         timer.done();
 
         Ok(Graph {
@@ -143,6 +152,7 @@ impl Graph {
             boundary_polygon: graph.boundary_polygon,
 
             amenities: amenities.amenities,
+            gtfs,
         })
     }
 }
@@ -253,4 +263,29 @@ fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>, timer: &mut T
         }
     }
     timer.pop();
+}
+
+fn snap_stops(roads: &mut Vec<Road>, gtfs: &GtfsModel, timer: &mut Timer) {
+    if gtfs.stops.is_empty() {
+        return;
+    }
+
+    // Only care about one mode
+    // TODO Could we reuse from snap_amenities for some perf?
+    timer.step("build closest_road");
+    let closest_road = RTree::bulk_load(
+        roads
+            .iter()
+            .filter(|r| r.access[Mode::Foot] != Direction::None)
+            .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
+            .collect(),
+    );
+
+    timer.step("find closest roads per stop");
+    for (stop_id, stop) in &gtfs.stops {
+        if let Some(r) = closest_road.nearest_neighbor(&stop.point.into()) {
+            // TODO Limit how far away we snap, or use the boundary polygon
+            roads[r.data.0].stops.push(stop_id.clone());
+        }
+    }
 }
