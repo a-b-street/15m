@@ -4,6 +4,7 @@
   import { SplitComponent } from "svelte-utils/two_column_layout";
   import AmenityList from "./AmenityList.svelte";
   import AmenityLayer from "./AmenityLayer.svelte";
+  import StopsLayer from "./StopsLayer.svelte";
   import { PropertiesTable, notNull } from "svelte-utils";
   import { Popup } from "svelte-utils/map";
   import { mode, backend, type TravelMode, filterForMode } from "./stores";
@@ -53,6 +54,7 @@
         </LineLayer>
 
         <AmenityLayer />
+        <StopsLayer />
       </GeoJSON>
     </div>
   </SplitComponent>

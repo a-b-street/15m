@@ -96,6 +96,9 @@ impl Graph {
         for a in &self.amenities {
             features.push(a.to_gj(&self.mercator));
         }
+        for s in self.gtfs.stops.values() {
+            features.push(s.to_gj(&self.mercator));
+        }
 
         let gj = GeoJson::from(features);
         let out = serde_json::to_string(&gj)?;
