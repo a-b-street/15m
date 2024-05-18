@@ -6,6 +6,7 @@ use rstar::{primitives::GeomWithData, RTree};
 use utils::{Mercator, Tags};
 
 use crate::amenity::Amenity;
+use crate::gtfs::{GtfsModel, StopID};
 use crate::route::Router;
 
 pub struct Graph {
@@ -19,6 +20,8 @@ pub struct Graph {
 
     // Unrelated to the transportation graph above. Maybe should be more separate.
     pub amenities: Vec<Amenity>,
+
+    pub gtfs: GtfsModel,
 }
 
 pub type IntersectionLocation = GeomWithData<[f64; 2], IntersectionID>;
@@ -66,6 +69,8 @@ pub struct Road {
 
     // Meters/second, for cars
     pub max_speed: f64,
+
+    pub stops: Vec<StopID>,
 }
 
 pub struct Intersection {
