@@ -1,8 +1,11 @@
 use std::collections::BTreeMap;
 
 use chrono::NaiveTime;
-use geo::Coord;
+use geo::Point;
+use geojson::{Feature, Geometry};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use utils::Mercator;
 
 mod scrape;
 
@@ -18,7 +21,7 @@ pub struct GtfsModel {
 #[derive(Serialize, Deserialize)]
 pub struct Stop {
     pub name: String,
-    pub point: Coord,
+    pub point: Point,
     pub arrivals: Vec<(TripID, NaiveTime)>,
     // Or maybe even... (arrival time, tripid, next stop ID and arrival time there)
 }
@@ -41,5 +44,20 @@ impl GtfsModel {
             stops: BTreeMap::new(),
             trips: BTreeMap::new(),
         }
+    }
+}
+
+impl Stop {
+    pub fn to_gj(&self, mercator: &Mercator) -> Feature {
+        let mut f = Feature::from(Geometry::from(&mercator.to_wgs84(&self.point)));
+        f.set_property("name", self.name.clone());
+        f.set_property(
+            "arrivals",
+            self.arrivals
+                .iter()
+                .map(|(trip_id, time)| json!([trip_id, time]))
+                .collect::<Vec<_>>(),
+        );
+        f
     }
 }

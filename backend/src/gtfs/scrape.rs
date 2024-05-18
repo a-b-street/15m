@@ -3,7 +3,7 @@ use std::fs::File;
 
 use anyhow::Result;
 use chrono::NaiveTime;
-use geo::{Contains, Coord};
+use geo::{Contains, Point};
 use serde::Deserialize;
 use utils::Mercator;
 
@@ -20,10 +20,7 @@ impl GtfsModel {
             let rec: StopRow = rec?;
 
             // TODO Move code to utils
-            let point = Coord {
-                x: rec.stop_lon,
-                y: rec.stop_lat,
-            };
+            let point = Point::new(rec.stop_lon, rec.stop_lat);
             if !mercator.wgs84_bounds.contains(&point) {
                 continue;
             }
@@ -32,7 +29,7 @@ impl GtfsModel {
                 rec.stop_id,
                 Stop {
                     name: rec.stop_name,
-                    point: mercator.pt_to_mercator(point),
+                    point: mercator.to_mercator(&point),
                     arrivals: Vec::new(),
                 },
             );
