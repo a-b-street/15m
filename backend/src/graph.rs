@@ -3,12 +3,14 @@ use enum_map::{Enum, EnumMap};
 use geo::{LineString, Point, Polygon};
 use geojson::{Feature, GeoJson, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
+use serde::{Deserialize, Serialize};
 use utils::{Mercator, Tags};
 
 use crate::amenity::Amenity;
 use crate::gtfs::{GtfsModel, StopID};
 use crate::route::Router;
 
+#[derive(Serialize, Deserialize)]
 pub struct Graph {
     pub roads: Vec<Road>,
     pub intersections: Vec<Intersection>,
@@ -26,14 +28,14 @@ pub struct Graph {
 
 pub type IntersectionLocation = GeomWithData<[f64; 2], IntersectionID>;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RoadID(pub usize);
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct IntersectionID(pub usize);
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AmenityID(pub usize);
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
     Forwards,
     Backwards,
@@ -41,13 +43,14 @@ pub enum Direction {
     None,
 }
 
-#[derive(Clone, Copy, Enum, Debug)]
+#[derive(Clone, Copy, Enum, Debug, Serialize, Deserialize)]
 pub enum Mode {
     Car,
     Bicycle,
     Foot,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Road {
     pub id: RoadID,
     pub src_i: IntersectionID,
@@ -73,6 +76,7 @@ pub struct Road {
     pub stops: Vec<StopID>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Intersection {
     pub id: IntersectionID,
     #[allow(dead_code)]

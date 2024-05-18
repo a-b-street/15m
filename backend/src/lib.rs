@@ -7,8 +7,8 @@ use geo::Coord;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
-use graph::{Graph, Mode};
-use timer::Timer;
+pub use graph::{Graph, Mode};
+pub use timer::Timer;
 
 mod amenity;
 mod costs;
@@ -39,8 +39,12 @@ impl MapModel {
         });
 
         Ok(MapModel {
-            graph: Graph::new(input_bytes, Timer::new("build graph", Some(progress_cb)))
-                .map_err(err_to_js)?,
+            graph: Graph::new(
+                input_bytes,
+                None,
+                Timer::new("build graph", Some(progress_cb)),
+            )
+            .map_err(err_to_js)?,
         })
     }
 
