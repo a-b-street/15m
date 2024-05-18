@@ -94,6 +94,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "simple_logger",
  "utils",
  "wasm-bindgen",
  "web-sys",
@@ -1004,6 +1005,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
+]
+
+[[package]]
+name = "simple_logger"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8c5dfa5e08767553704aa0ffd9d9794d527103c736aba9854773851fd7497eb"
+dependencies = [
+ "log",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
