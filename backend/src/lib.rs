@@ -13,6 +13,7 @@ use timer::Timer;
 mod amenity;
 mod costs;
 mod graph;
+mod gtfs;
 mod isochrone;
 mod route;
 mod scrape;
