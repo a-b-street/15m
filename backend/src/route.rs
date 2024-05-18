@@ -60,12 +60,11 @@ impl Router {
         let start = self.node_map.get(start).unwrap();
         let end = self.node_map.get(end).unwrap();
 
-        // TODO Lazily create this
         let Some(path) = self
             .path_calc
             .borrow_mut()
-            .as_mut()
-            .unwrap()
+            // This'll be empty right after loading a serialized Graph
+            .get_or_insert_with(|| fast_paths::create_calculator(&self.ch))
             .calc_path(&self.ch, start, end)
         else {
             bail!("No path");

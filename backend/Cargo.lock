@@ -1115,6 +1115,7 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 [[package]]
 name = "utils"
 version = "0.1.0"
+source = "git+https://github.com/a-b-street/utils#cd91b66444c073c44cabfb91b658bb0f2c201f2d"
 dependencies = [
  "anyhow",
  "fast_paths",
