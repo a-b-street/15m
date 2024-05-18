@@ -53,7 +53,7 @@ impl utils::osm2graph::OsmReader for ReadAmenities {
 
 impl Graph {
     /// Call with bytes of an osm.pbf or osm.xml string
-    pub fn new(input_bytes: &[u8], mut timer: Timer) -> Result<Graph> {
+    pub fn new(input_bytes: &[u8], gtfs_dir: Option<&String>, mut timer: Timer) -> Result<Graph> {
         timer.step("parse OSM and split graph");
 
         let mut amenities = ReadAmenities {
@@ -136,8 +136,11 @@ impl Graph {
 
         timer.push("setting up GTFS");
         timer.step("parse");
-        // TODO just include_str! or something for now
-        let gtfs = GtfsModel::parse("/home/dabreegster/Downloads/uk_gtfs", &graph.mercator)?;
+        let gtfs = if let Some(path) = gtfs_dir {
+            GtfsModel::parse(path, &graph.mercator)?
+        } else {
+            GtfsModel::empty()
+        };
         snap_stops(&mut roads, &gtfs, &mut timer);
         timer.pop();
 

@@ -1,10 +1,12 @@
 use geo::Point;
 use geojson::{Feature, Geometry};
 use osm_reader::OsmID;
+use serde::{Deserialize, Serialize};
 use utils::{Mercator, Tags};
 
 use crate::graph::AmenityID;
 
+#[derive(Serialize, Deserialize)]
 pub struct Amenity {
     pub id: AmenityID,
     pub osm_id: OsmID,
