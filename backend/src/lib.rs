@@ -29,23 +29,27 @@ pub struct MapModel {
 
 #[wasm_bindgen]
 impl MapModel {
-    /// Call with bytes of an osm.pbf or osm.xml string
+    /// If is_osm is true, expect bytes of an osm.pbf or osm.xml string. Otherwise, expect a
+    /// bincoded graph
     #[wasm_bindgen(constructor)]
-    pub fn new(input_bytes: &[u8], progress_cb: js_sys::Function) -> Result<MapModel, JsValue> {
+    pub fn new(
+        input_bytes: &[u8],
+        is_osm: bool,
+        progress_cb: Option<js_sys::Function>,
+    ) -> Result<MapModel, JsValue> {
         // Panics shouldn't happen, but if they do, console.log them.
         console_error_panic_hook::set_once();
         START.call_once(|| {
             console_log::init_with_level(log::Level::Info).unwrap();
         });
 
-        Ok(MapModel {
-            graph: Graph::new(
-                input_bytes,
-                None,
-                Timer::new("build graph", Some(progress_cb)),
-            )
-            .map_err(err_to_js)?,
-        })
+        let graph = if is_osm {
+            Graph::new(input_bytes, None, Timer::new("build graph", progress_cb))
+                .map_err(err_to_js)?
+        } else {
+            bincode::deserialize_from(input_bytes).map_err(err_to_js)?
+        };
+        Ok(MapModel { graph })
     }
 
     /// Returns a GeoJSON string. Just shows the full network

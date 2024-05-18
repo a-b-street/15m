@@ -30,10 +30,27 @@
     } catch (err) {}
   });
 
-  let fileInput: HTMLInputElement;
-  async function loadFile(e: Event) {
+  let osmFileInput: HTMLInputElement;
+  async function loadOsmFile(e: Event) {
     try {
-      await loadModel(await fileInput.files![0].arrayBuffer());
+      await loadModel(await osmFileInput.files![0].arrayBuffer());
+      example = "";
+    } catch (err) {
+      window.alert(`Couldn't open this file: ${err}`);
+    }
+    loading = [];
+  }
+
+  let graphFileInput: HTMLInputElement;
+  async function loadGraphFile(e: Event) {
+    try {
+      loading = ["Loading pre-built file"];
+      let buffer = await graphFileInput.files![0].arrayBuffer();
+      console.time("load");
+      await $backend!.loadGraphFile(new Uint8Array(buffer));
+      console.timeEnd("load");
+      $isLoaded = true;
+
       example = "";
     } catch (err) {
       window.alert(`Couldn't open this file: ${err}`);
@@ -44,7 +61,10 @@
   async function loadModel(buffer: ArrayBuffer) {
     loading = ["Building map model from OSM input"];
     console.time("load");
-    await $backend!.loadFile(new Uint8Array(buffer), Comlink.proxy(progressCb));
+    await $backend!.loadOsmFile(
+      new Uint8Array(buffer),
+      Comlink.proxy(progressCb),
+    );
     console.timeEnd("load");
     $isLoaded = true;
   }
@@ -112,7 +132,7 @@
 <div>
   <label>
     Load an osm.xml or a .pbf file:
-    <input bind:this={fileInput} on:change={loadFile} type="file" />
+    <input bind:this={osmFileInput} on:change={loadOsmFile} type="file" />
   </label>
 </div>
 
@@ -124,3 +144,12 @@
   on:loading={(e) => (loading = [...loading, e.detail])}
   on:error={(e) => window.alert(e.detail)}
 />
+
+<i>or...</i>
+
+<div>
+  <label>
+    Load a pre-built graph.bin file:
+    <input bind:this={graphFileInput} on:change={loadGraphFile} type="file" />
+  </label>
+</div>
