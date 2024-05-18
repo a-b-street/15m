@@ -12,6 +12,7 @@
   } from "svelte-utils/two_column_layout";
   import DebugMode from "./DebugMode.svelte";
   import IsochroneMode from "./IsochroneMode.svelte";
+  import RouteMode from "./RouteMode.svelte";
   import {
     map as mapStore,
     mode,
@@ -109,6 +110,8 @@
           <DebugMode />
         {:else if $mode == "isochrone"}
           <IsochroneMode />
+        {:else if $mode == "route"}
+          <RouteMode  />
         {/if}
       {/if}
     </MapLibre>
