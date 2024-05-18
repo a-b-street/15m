@@ -11,6 +11,8 @@ use backend::{Graph, Timer};
 /// prebuilt files as the format changes -- which is why, unlike in A/B Street, this'll just be for
 /// manual testing for now.
 fn main() -> Result<()> {
+    simple_logger::SimpleLogger::new().init().unwrap();
+
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
         println!("Usage: osm.pbf [gtfs directory]");
