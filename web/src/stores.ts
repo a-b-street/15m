@@ -6,7 +6,7 @@ import { type Backend } from "./worker";
 
 export let maptilerApiKey = "MZEJTanw3WpxRvt7qDfo";
 
-export type Mode = "title" | "debug" | "isochrone";
+export type Mode = "title" | "debug" | "isochrone" | "route";
 
 export let mode: Writable<Mode> = writable("title");
 export let map: Writable<Map | null> = writable(null);

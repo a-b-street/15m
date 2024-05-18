@@ -87,6 +87,7 @@
     <h2>Isochrone mode</h2>
     <div>
       <button on:click={() => ($mode = "title")}>Change study area</button>
+      <button on:click={() => ($mode = "route")}>Route</button>
       <button on:click={() => ($mode = "debug")}>Debug OSM</button>
     </div>
 
