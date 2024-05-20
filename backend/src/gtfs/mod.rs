@@ -1,11 +1,13 @@
 use std::collections::BTreeMap;
+use std::time::Duration;
 
 use chrono::NaiveTime;
 use geo::Point;
 use geojson::{Feature, Geometry};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use utils::Mercator;
+
+use crate::graph::RoadID;
 
 mod scrape;
 
@@ -22,14 +24,24 @@ pub struct GtfsModel {
 pub struct Stop {
     pub name: String,
     pub point: Point,
-    pub arrivals: Vec<(TripID, NaiveTime)>,
-    // Or maybe even... (arrival time, tripid, next stop ID and arrival time there)
+    pub road: RoadID,
+    // Sorted by time1
+    pub next_steps: Vec<NextStep>,
+}
+
+/// `trip` arrives at some `Stop` at `time`. Then it reaches `stop2` at `time2`
+#[derive(Clone, Serialize, Deserialize)]
+pub struct NextStep {
+    pub time1: NaiveTime,
+    pub trip: TripID,
+    pub stop2: StopID,
+    pub time2: NaiveTime,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Trip {
-    // with arrival time
-    pub stops: Vec<(StopID, NaiveTime)>,
+    // (stop, arrival time) in order
+    pub stop_sequence: Vec<(StopID, NaiveTime)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -45,6 +57,24 @@ impl GtfsModel {
             trips: BTreeMap::new(),
         }
     }
+
+    /// Starting from a stop at some time, find all the next trips going somewhere, waiting up to
+    /// max_wait.
+    pub fn trips_from(&self, stop1: &StopID, time: NaiveTime, max_wait: Duration) -> Vec<NextStep> {
+        // TODO Improve with compact IDs, binary search, etc
+        let mut results = Vec::new();
+        for next_step in &self.stops[stop1].next_steps {
+            // These are sorted by time, so give up after we've seen enough
+            if next_step.time1 > time + max_wait {
+                break;
+            }
+
+            if next_step.time1 > time {
+                results.push(next_step.clone());
+            }
+        }
+        results
+    }
 }
 
 impl Stop {
@@ -52,11 +82,8 @@ impl Stop {
         let mut f = Feature::from(Geometry::from(&mercator.to_wgs84(&self.point)));
         f.set_property("name", self.name.clone());
         f.set_property(
-            "arrivals",
-            self.arrivals
-                .iter()
-                .map(|(trip_id, time)| json!([trip_id, time]))
-                .collect::<Vec<_>>(),
+            "next_steps",
+            serde_json::to_value(&self.next_steps).unwrap(),
         );
         f
     }
