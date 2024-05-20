@@ -136,12 +136,12 @@ impl Graph {
 
         timer.push("setting up GTFS");
         timer.step("parse");
-        let gtfs = if let Some(path) = gtfs_dir {
+        let mut gtfs = if let Some(path) = gtfs_dir {
             GtfsModel::parse(path, &graph.mercator)?
         } else {
             GtfsModel::empty()
         };
-        snap_stops(&mut roads, &gtfs, &mut timer);
+        snap_stops(&mut roads, &mut gtfs, &mut timer);
         timer.pop();
 
         timer.done();
@@ -268,7 +268,7 @@ fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>, timer: &mut T
     timer.pop();
 }
 
-fn snap_stops(roads: &mut Vec<Road>, gtfs: &GtfsModel, timer: &mut Timer) {
+fn snap_stops(roads: &mut Vec<Road>, gtfs: &mut GtfsModel, timer: &mut Timer) {
     if gtfs.stops.is_empty() {
         return;
     }
@@ -285,10 +285,14 @@ fn snap_stops(roads: &mut Vec<Road>, gtfs: &GtfsModel, timer: &mut Timer) {
     );
 
     timer.step("find closest roads per stop");
-    for (stop_id, stop) in &gtfs.stops {
+    for (stop_id, stop) in &mut gtfs.stops {
         if let Some(r) = closest_road.nearest_neighbor(&stop.point.into()) {
             // TODO Limit how far away we snap, or use the boundary polygon
             roads[r.data.0].stops.push(stop_id.clone());
+            stop.road = r.data;
+        } else {
+            // TODO Need to get rid of the stop
+            error!("{stop_id:?} didn't snap to any road");
         }
     }
 }

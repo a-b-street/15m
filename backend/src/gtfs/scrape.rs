@@ -7,7 +7,8 @@ use geo::{Contains, Point};
 use serde::Deserialize;
 use utils::Mercator;
 
-use super::{GtfsModel, Stop, StopID, Trip, TripID};
+use super::{GtfsModel, NextStep, Stop, StopID, Trip, TripID};
+use crate::graph::RoadID;
 
 impl GtfsModel {
     /// Takes a path to a GTFS directory
@@ -30,7 +31,9 @@ impl GtfsModel {
                 Stop {
                     name: rec.stop_name,
                     point: mercator.to_mercator(&point),
-                    arrivals: Vec::new(),
+                    next_steps: Vec::new(),
+                    // Dummy value, fill out later
+                    road: RoadID(0),
                 },
             );
         }
@@ -46,15 +49,36 @@ impl GtfsModel {
                 continue;
             };
 
-            // Which days does this stop occur on?
-            let stop = stops.get_mut(&rec.stop_id).unwrap();
-            stop.arrivals.push((rec.trip_id.clone(), arrival_time));
+            // Skip out-of-bounds stops
+            if !stops.contains_key(&rec.stop_id) {
+                continue;
+            }
 
             trips
                 .entry(rec.trip_id)
-                .or_insert_with(|| Trip { stops: Vec::new() })
-                .stops
+                .or_insert_with(|| Trip {
+                    stop_sequence: Vec::new(),
+                })
+                .stop_sequence
                 .push((rec.stop_id, arrival_time));
+        }
+
+        // Precompute the next steps from each stop
+        for (trip_id, trip) in &trips {
+            for pair in trip.stop_sequence.windows(2) {
+                let (stop1, time1) = &pair[0];
+                let (stop2, time2) = &pair[1];
+                stops.get_mut(&stop1).unwrap().next_steps.push(NextStep {
+                    time1: *time1,
+                    trip: trip_id.clone(),
+                    stop2: stop2.clone(),
+                    time2: *time2,
+                });
+            }
+        }
+
+        for stop in stops.values_mut() {
+            stop.next_steps.sort_by_key(|x| x.time1);
         }
 
         Ok(GtfsModel { stops, trips })
