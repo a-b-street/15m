@@ -10,5 +10,6 @@
     <option value="car">Car</option>
     <option value="bicycle">Bicycle</option>
     <option value="foot">Foot</option>
+    <option value="transit">Public transit</option>
   </select>
 </label>

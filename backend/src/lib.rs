@@ -18,6 +18,7 @@ mod isochrone;
 mod route;
 mod scrape;
 mod timer;
+mod transit_route;
 
 static START: Once = Once::new();
 
@@ -81,6 +82,8 @@ impl MapModel {
             "car" => Mode::Car,
             "bicycle" => Mode::Bicycle,
             "foot" => Mode::Foot,
+            // TODO Unimplemented
+            "transit" => Mode::Foot,
             // TODO error plumbing
             x => panic!("bad input {x}"),
         };
@@ -102,6 +105,8 @@ impl MapModel {
             "car" => Mode::Car,
             "bicycle" => Mode::Bicycle,
             "foot" => Mode::Foot,
+            // For endpoint matching only
+            "transit" => Mode::Foot,
             // TODO error plumbing
             x => panic!("bad input {x}"),
         };
@@ -119,9 +124,14 @@ impl MapModel {
             })))
             .unwrap()
             .data;
-        self.graph.router[mode]
-            .route(&self.graph, start, end)
-            .map_err(err_to_js)
+
+        if req.mode == "transit" {
+            transit_route::route(&self.graph, start, end).map_err(err_to_js)
+        } else {
+            self.graph.router[mode]
+                .route(&self.graph, start, end)
+                .map_err(err_to_js)
+        }
     }
 }
 
