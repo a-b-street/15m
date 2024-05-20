@@ -12,7 +12,7 @@ export let mode: Writable<Mode> = writable("title");
 export let map: Writable<Map | null> = writable(null);
 export let showAbout: Writable<boolean> = writable(true);
 
-export type TravelMode = "car" | "bicycle" | "foot";
+export type TravelMode = "car" | "bicycle" | "foot" | "transit";
 
 export function filterForMode(travelMode: TravelMode): ExpressionSpecification {
   return ["!=", ["get", `access_${travelMode}`], "None"];
