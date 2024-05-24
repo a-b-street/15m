@@ -128,7 +128,8 @@ impl MapModel {
             .data;
 
         if req.mode == "transit" {
-            transit_route::route(&self.graph, start, end).map_err(err_to_js)
+            transit_route::route(&self.graph, start, end, Timer::new("route request", None))
+                .map_err(err_to_js)
         } else {
             self.graph.router[mode]
                 .route(&self.graph, start, end)

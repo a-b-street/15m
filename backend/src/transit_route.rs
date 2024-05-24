@@ -11,8 +11,14 @@ use utils::PriorityQueueItem;
 use crate::costs::cost;
 use crate::graph::{Graph, IntersectionID, Mode, RoadID};
 use crate::gtfs::{StopID, TripID};
+use crate::timer::Timer;
 
-pub fn route(graph: &Graph, start: IntersectionID, end: IntersectionID) -> Result<String> {
+pub fn route(
+    graph: &Graph,
+    start: IntersectionID,
+    end: IntersectionID,
+    mut timer: Timer,
+) -> Result<String> {
     // TODO We'll need a start time too (and a day of the week)
     let start_time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
     if start == end {
@@ -28,17 +34,20 @@ pub fn route(graph: &Graph, start: IntersectionID, end: IntersectionID) -> Resul
     // or a transit thing. an edge is a turn or a transition to/from transit
     let mut backrefs: HashMap<IntersectionID, (IntersectionID, PathStep)> = HashMap::new();
 
+    timer.step("dijkstra");
     let mut queue: BinaryHeap<PriorityQueueItem<NaiveTime, IntersectionID>> = BinaryHeap::new();
     queue.push(PriorityQueueItem::new(start_time, start));
 
     while let Some(current) = queue.pop() {
         if current.value == end {
+            timer.step("render");
             // Found the path
             // TODO Ideally glue together one LineString
             let mut features = Vec::new();
             let mut at = current.value;
             loop {
                 if at == start {
+                    timer.done();
                     return Ok(serde_json::to_string(&GeoJson::from(features))?);
                 }
                 let (prev_i, step) = &backrefs[&at];
