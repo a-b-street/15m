@@ -14,7 +14,7 @@ use crate::graph::{
     AmenityID, Direction, Graph, Intersection, IntersectionID, IntersectionLocation, Mode, Road,
     RoadID,
 };
-use crate::gtfs::GtfsModel;
+use crate::gtfs::{GtfsModel, StopID};
 use crate::route::Router;
 use crate::timer::Timer;
 
@@ -284,10 +284,12 @@ fn snap_stops(roads: &mut Vec<Road>, gtfs: &mut GtfsModel, timer: &mut Timer) {
     );
 
     timer.step("find closest roads per stop");
-    for (stop_id, stop) in &mut gtfs.stops {
+    // TODO Make an iterator method that returns the IDs too
+    for (idx, stop) in gtfs.stops.iter_mut().enumerate() {
+        let stop_id = StopID(idx);
         if let Some(r) = closest_road.nearest_neighbor(&stop.point.into()) {
             // TODO Limit how far away we snap, or use the boundary polygon
-            roads[r.data.0].stops.push(stop_id.clone());
+            roads[r.data.0].stops.push(stop_id);
             stop.road = r.data;
         } else {
             // TODO Need to get rid of the stop

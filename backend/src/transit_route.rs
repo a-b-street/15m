@@ -53,8 +53,8 @@ pub fn route(graph: &Graph, start: IntersectionID, end: IntersectionID) -> Resul
                     PathStep::Transit { stop1, stop2, .. } => {
                         let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(
                             &LineString::new(vec![
-                                graph.gtfs.stops[stop1].point.into(),
-                                graph.gtfs.stops[stop2].point.into(),
+                                graph.gtfs.stops[stop1.0].point.into(),
+                                graph.gtfs.stops[stop2.0].point.into(),
                             ]),
                         )));
                         f.set_property("kind", "transit");
@@ -89,19 +89,19 @@ pub fn route(graph: &Graph, start: IntersectionID, end: IntersectionID) -> Resul
                 for next_step in
                     graph
                         .gtfs
-                        .trips_from(stop1, current.cost, Duration::from_secs(30 * 60))
+                        .trips_from(*stop1, current.cost, Duration::from_secs(30 * 60))
                 {
                     // TODO Here's the awkwardness -- arrive at both the intersections for that
                     // road
-                    let stop2_road = &graph.roads[graph.gtfs.stops[&next_step.stop2].road.0];
+                    let stop2_road = &graph.roads[graph.gtfs.stops[next_step.stop2.0].road.0];
                     for i in [stop2_road.src_i, stop2_road.dst_i] {
                         if let Entry::Vacant(entry) = backrefs.entry(i) {
                             entry.insert((
                                 current.value,
                                 PathStep::Transit {
-                                    stop1: stop1.clone(),
+                                    stop1: *stop1,
                                     trip: next_step.trip.clone(),
-                                    stop2: next_step.stop2.clone(),
+                                    stop2: next_step.stop2,
                                 },
                             ));
                             queue.push(PriorityQueueItem::new(next_step.time2, i));

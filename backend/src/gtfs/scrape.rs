@@ -7,6 +7,7 @@ use geo::{Contains, Point};
 use serde::Deserialize;
 use utils::Mercator;
 
+use super::ids::{orig_ids, IDMapping};
 use super::{GtfsModel, NextStep, Stop, StopID, Trip, TripID};
 use crate::graph::RoadID;
 
@@ -14,7 +15,8 @@ impl GtfsModel {
     /// Takes a path to a GTFS directory
     pub fn parse(dir_path: &str, mercator: &Mercator) -> Result<GtfsModel> {
         println!("Scraping stops.txt");
-        let mut stops: BTreeMap<StopID, Stop> = BTreeMap::new();
+        let mut stop_ids: IDMapping<orig_ids::StopID, StopID> = IDMapping::new();
+        let mut stops: Vec<Stop> = Vec::new();
         for rec in
             csv::Reader::from_reader(File::open(format!("{dir_path}/stops.txt"))?).deserialize()
         {
@@ -26,20 +28,19 @@ impl GtfsModel {
                 continue;
             }
 
-            stops.insert(
-                rec.stop_id,
-                Stop {
-                    name: rec.stop_name,
-                    point: mercator.to_mercator(&point),
-                    next_steps: Vec::new(),
-                    // Dummy value, fill out later
-                    road: RoadID(0),
-                },
-            );
+            stop_ids.insert_new(rec.stop_id.clone())?;
+            stops.push(Stop {
+                name: rec.stop_name,
+                orig_id: rec.stop_id,
+                point: mercator.to_mercator(&point),
+                next_steps: Vec::new(),
+                // Dummy value, fill out later
+                road: RoadID(0),
+            });
         }
 
-        let mut trips: BTreeMap<TripID, Trip> = BTreeMap::new();
         println!("Scraping stop_times.txt");
+        let mut trips_table: BTreeMap<orig_ids::TripID, Trip> = BTreeMap::new();
         for rec in csv::Reader::from_reader(File::open(format!("{dir_path}/stop_times.txt"))?)
             .deserialize()
         {
@@ -50,34 +51,38 @@ impl GtfsModel {
             };
 
             // Skip out-of-bounds stops
-            if !stops.contains_key(&rec.stop_id) {
+            let Some(stop_id) = stop_ids.get(&rec.stop_id) else {
                 continue;
-            }
+            };
 
-            trips
+            trips_table
                 .entry(rec.trip_id)
                 .or_insert_with(|| Trip {
                     stop_sequence: Vec::new(),
                 })
                 .stop_sequence
-                .push((rec.stop_id, arrival_time));
+                .push((stop_id, arrival_time));
         }
 
+        // Produce a compact Trips vec
+        let trips: Vec<Trip> = trips_table.into_values().collect();
+
         // Precompute the next steps from each stop
-        for (trip_id, trip) in &trips {
+        for (idx, trip) in trips.iter().enumerate() {
+            let trip_id = TripID(idx);
             for pair in trip.stop_sequence.windows(2) {
                 let (stop1, time1) = &pair[0];
                 let (stop2, time2) = &pair[1];
-                stops.get_mut(&stop1).unwrap().next_steps.push(NextStep {
+                stops[stop1.0].next_steps.push(NextStep {
                     time1: *time1,
-                    trip: trip_id.clone(),
-                    stop2: stop2.clone(),
+                    trip: trip_id,
+                    stop2: *stop2,
                     time2: *time2,
                 });
             }
         }
 
-        for stop in stops.values_mut() {
+        for stop in &mut stops {
             stop.next_steps.sort_by_key(|x| x.time1);
         }
 
@@ -87,7 +92,7 @@ impl GtfsModel {
 
 #[derive(Deserialize)]
 struct StopRow {
-    stop_id: StopID,
+    stop_id: orig_ids::StopID,
     stop_name: String,
     stop_lon: f64,
     stop_lat: f64,
@@ -95,7 +100,7 @@ struct StopRow {
 
 #[derive(Deserialize)]
 struct StopTimeRow {
-    trip_id: TripID,
-    stop_id: StopID,
+    trip_id: orig_ids::TripID,
+    stop_id: orig_ids::StopID,
     arrival_time: String,
 }

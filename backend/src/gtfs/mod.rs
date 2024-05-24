@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::time::Duration;
 
 use chrono::NaiveTime;
@@ -7,22 +6,26 @@ use geojson::{Feature, Geometry};
 use serde::{Deserialize, Serialize};
 use utils::Mercator;
 
+use self::ids::orig_ids;
+pub use self::ids::{StopID, TripID};
 use crate::graph::RoadID;
 
+mod ids;
 mod scrape;
 
-// TODO cheap numeric IDs, later
 // TODO days of the week, exceptions, etc. a daily model for now.
 
 #[derive(Serialize, Deserialize)]
 pub struct GtfsModel {
-    pub stops: BTreeMap<StopID, Stop>,
-    pub trips: BTreeMap<TripID, Trip>,
+    // Indexed by StopID and TripID
+    pub stops: Vec<Stop>,
+    pub trips: Vec<Trip>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Stop {
     pub name: String,
+    pub orig_id: orig_ids::StopID,
     pub point: Point,
     pub road: RoadID,
     // Sorted by time1
@@ -44,26 +47,20 @@ pub struct Trip {
     pub stop_sequence: Vec<(StopID, NaiveTime)>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct StopID(String);
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct TripID(String);
-
 impl GtfsModel {
     pub fn empty() -> Self {
         Self {
-            stops: BTreeMap::new(),
-            trips: BTreeMap::new(),
+            stops: Vec::new(),
+            trips: Vec::new(),
         }
     }
 
     /// Starting from a stop at some time, find all the next trips going somewhere, waiting up to
     /// max_wait.
-    pub fn trips_from(&self, stop1: &StopID, time: NaiveTime, max_wait: Duration) -> Vec<NextStep> {
-        // TODO Improve with compact IDs, binary search, etc
+    pub fn trips_from(&self, stop1: StopID, time: NaiveTime, max_wait: Duration) -> Vec<NextStep> {
+        // TODO Binary search
         let mut results = Vec::new();
-        for next_step in &self.stops[stop1].next_steps {
+        for next_step in &self.stops[stop1.0].next_steps {
             // These are sorted by time, so give up after we've seen enough
             if next_step.time1 > time + max_wait {
                 break;

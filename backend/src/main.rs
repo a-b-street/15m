@@ -18,7 +18,6 @@ fn main() -> Result<()> {
         println!("Usage: osm.pbf [gtfs directory]");
         std::process::exit(1);
     }
-    // TODO Enable a simple logger backend
 
     let timer = Timer::new("build graph", None);
     let osm_bytes = std::fs::read(&args[1])?;

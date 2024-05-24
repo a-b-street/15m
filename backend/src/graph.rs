@@ -95,7 +95,7 @@ impl Graph {
         for a in &self.amenities {
             features.push(a.to_gj(&self.mercator));
         }
-        for s in self.gtfs.stops.values() {
+        for s in &self.gtfs.stops {
             features.push(s.to_gj(&self.mercator));
         }
 
