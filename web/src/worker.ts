@@ -54,12 +54,12 @@ export class Backend {
     return JSON.parse(this.inner.getInvertedBoundary());
   }
 
-  render(): FeatureCollection {
+  renderDebug(): FeatureCollection {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
     }
 
-    return JSON.parse(this.inner.render());
+    return JSON.parse(this.inner.renderDebug());
   }
 
   isochrone(req: {

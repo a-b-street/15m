@@ -54,9 +54,9 @@ impl MapModel {
     }
 
     /// Returns a GeoJSON string. Just shows the full network
-    #[wasm_bindgen()]
-    pub fn render(&self) -> Result<String, JsValue> {
-        self.graph.render().map_err(err_to_js)
+    #[wasm_bindgen(js_name = renderDebug)]
+    pub fn render_debug(&self) -> Result<String, JsValue> {
+        self.graph.render_debug().map_err(err_to_js)
     }
 
     /// Return a polygon covering the world, minus a hole for the boundary, in WGS84

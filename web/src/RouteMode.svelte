@@ -2,9 +2,8 @@
   import type { MapMouseEvent } from "maplibre-gl";
   import { MapEvents, GeoJSON, LineLayer, Marker } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/two_column_layout";
-  import { mode, backend, type TravelMode, filterForMode } from "./stores";
+  import { mode, backend, type TravelMode } from "./stores";
   import PickTravelMode from "./PickTravelMode.svelte";
-  import { notNull } from "svelte-utils";
   import { constructMatchExpression } from "svelte-utils/map";
   import { onMount } from "svelte";
   import type { FeatureCollection } from "geojson";
@@ -78,19 +77,6 @@
   </div>
   <div slot="map">
     <MapEvents on:contextmenu={onRightClick} />
-
-    {#await notNull($backend).render() then data}
-      <GeoJSON {data}>
-        <LineLayer
-          id="network"
-          paint={{
-            "line-width": 5,
-            "line-color": "black",
-            "line-opacity": ["case", filterForMode(travelMode), 1, 0.5],
-          }}
-        />
-      </GeoJSON>
-    {/await}
 
     {#if start}
       <Marker bind:lngLat={start} draggable><span class="dot">A</span></Marker>

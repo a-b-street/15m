@@ -86,7 +86,7 @@ pub struct Intersection {
 
 impl Graph {
     /// Returns a GeoJSON string. Just shows the full network and amenities
-    pub fn render(&self) -> Result<String> {
+    pub fn render_debug(&self) -> Result<String> {
         let mut features = Vec::new();
 
         for r in &self.roads {

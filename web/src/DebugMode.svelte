@@ -15,7 +15,7 @@
 
   let gj: FeatureCollection | null = null;
   onMount(async () => {
-    gj = await $backend!.render();
+    gj = await $backend!.renderDebug();
   });
 </script>
 

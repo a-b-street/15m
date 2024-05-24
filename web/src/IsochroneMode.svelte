@@ -6,9 +6,9 @@
   import type { FeatureCollection } from "geojson";
   import { GeoJSON, FillLayer, LineLayer, Marker } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/two_column_layout";
-  import { mode, backend, type TravelMode, filterForMode } from "./stores";
+  import { mode, backend, type TravelMode } from "./stores";
   import PickTravelMode from "./PickTravelMode.svelte";
-  import { SequentialLegend, notNull } from "svelte-utils";
+  import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
   import { onMount } from "svelte";
 
@@ -110,19 +110,6 @@
     {/if}
   </div>
   <div slot="map">
-    {#await notNull($backend).render() then data}
-      <GeoJSON {data}>
-        <LineLayer
-          id="network"
-          paint={{
-            "line-width": 5,
-            "line-color": "black",
-            "line-opacity": ["case", filterForMode(travelMode), 1, 0.5],
-          }}
-        />
-      </GeoJSON>
-    {/await}
-
     {#if start}
       <Marker bind:lngLat={start} draggable><span class="dot">X</span></Marker>
     {/if}
