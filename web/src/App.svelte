@@ -111,7 +111,7 @@
         {:else if $mode == "isochrone"}
           <IsochroneMode />
         {:else if $mode == "route"}
-          <RouteMode  />
+          <RouteMode />
         {/if}
       {/if}
     </MapLibre>

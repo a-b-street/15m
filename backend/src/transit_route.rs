@@ -44,15 +44,21 @@ pub fn route(graph: &Graph, start: IntersectionID, end: IntersectionID) -> Resul
                 let (prev_i, step) = &backrefs[&at];
                 match step {
                     PathStep::Road(r) => {
-                        features.push(graph.roads[r.0].to_gj(&graph.mercator));
+                        let mut f = Feature::from(Geometry::from(
+                            &graph.mercator.to_wgs84(&graph.roads[r.0].linestring),
+                        ));
+                        f.set_property("kind", "road");
+                        features.push(f);
                     }
                     PathStep::Transit { stop1, stop2, .. } => {
-                        features.push(Feature::from(Geometry::from(&graph.mercator.to_wgs84(
+                        let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(
                             &LineString::new(vec![
                                 graph.gtfs.stops[stop1].point.into(),
                                 graph.gtfs.stops[stop2].point.into(),
                             ]),
-                        ))));
+                        )));
+                        f.set_property("kind", "transit");
+                        features.push(f);
                     }
                 }
                 at = *prev_i;
