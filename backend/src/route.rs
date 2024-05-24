@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use anyhow::{bail, Result};
 use fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
-use geojson::GeoJson;
+use geojson::{Feature, GeoJson, Geometry};
 use serde::{Deserialize, Serialize};
 use utils::{deserialize_nodemap, NodeMap};
 
@@ -76,7 +76,9 @@ impl Router {
             let i1 = self.node_map.translate_id(pair[0]);
             let i2 = self.node_map.translate_id(pair[1]);
             let road = graph.find_edge(i1, i2);
-            features.push(road.to_gj(&graph.mercator));
+            let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&road.linestring)));
+            f.set_property("kind", "road");
+            features.push(f);
         }
         Ok(serde_json::to_string(&GeoJson::from(features))?)
     }
