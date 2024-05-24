@@ -11,10 +11,54 @@ use super::ids::{orig_ids, IDMapping};
 use super::{GtfsModel, NextStep, Stop, StopID, Trip, TripID};
 use crate::graph::RoadID;
 
+// Move to mod after deciding to store every day
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Day {
+    Monday = 0,
+    Tuesday = 1,
+    Wednesday = 2,
+    Thursday = 3,
+    Friday = 4,
+    Saturday = 5,
+    Sunday = 6,
+}
+
 impl GtfsModel {
     /// Takes a path to a GTFS directory
     pub fn parse(dir_path: &str, mercator: &Mercator) -> Result<GtfsModel> {
-        println!("Scraping stops.txt");
+        info!("Scraping trips.txt");
+        let mut trip_to_service: BTreeMap<orig_ids::TripID, orig_ids::ServiceID> = BTreeMap::new();
+        for rec in
+            csv::Reader::from_reader(File::open(format!("{dir_path}/trips.txt"))?).deserialize()
+        {
+            let rec: TripRow = rec?;
+            trip_to_service.insert(rec.trip_id, rec.service_id);
+        }
+
+        info!("Scraping calendar.txt");
+        let mut service_to_days: BTreeMap<orig_ids::ServiceID, Vec<Day>> = BTreeMap::new();
+        for rec in
+            csv::Reader::from_reader(File::open(format!("{dir_path}/calendar.txt"))?).deserialize()
+        {
+            let rec: CalendarRow = rec?;
+            let mut days = Vec::new();
+            for (day, include) in [
+                (Day::Monday, rec.monday),
+                (Day::Tuesday, rec.tuesday),
+                (Day::Wednesday, rec.wednesday),
+                (Day::Thursday, rec.thursday),
+                (Day::Friday, rec.friday),
+                (Day::Saturday, rec.saturday),
+                (Day::Sunday, rec.sunday),
+            ] {
+                if include == 1 {
+                    days.push(day);
+                }
+            }
+            service_to_days.insert(rec.service_id, days);
+        }
+
+        info!("Scraping stops.txt");
         let mut stop_ids: IDMapping<orig_ids::StopID, StopID> = IDMapping::new();
         let mut stops: Vec<Stop> = Vec::new();
         for rec in
@@ -39,7 +83,7 @@ impl GtfsModel {
             });
         }
 
-        println!("Scraping stop_times.txt");
+        info!("Scraping stop_times.txt");
         let mut trips_table: BTreeMap<orig_ids::TripID, Trip> = BTreeMap::new();
         for rec in csv::Reader::from_reader(File::open(format!("{dir_path}/stop_times.txt"))?)
             .deserialize()
@@ -54,6 +98,18 @@ impl GtfsModel {
             let Some(stop_id) = stop_ids.get(&rec.stop_id) else {
                 continue;
             };
+
+            // Which days does this stop occur on?
+            let service = &trip_to_service[&rec.trip_id];
+            let Some(days) = service_to_days.get(service) else {
+                warn!("Don't know what days service {service:?} is on");
+                continue;
+            };
+
+            // TODO For now, only keep Monday
+            if !days.contains(&Day::Monday) {
+                continue;
+            }
 
             trips_table
                 .entry(rec.trip_id)
@@ -88,6 +144,24 @@ impl GtfsModel {
 
         Ok(GtfsModel { stops, trips })
     }
+}
+
+#[derive(Deserialize)]
+struct TripRow {
+    trip_id: orig_ids::TripID,
+    service_id: orig_ids::ServiceID,
+}
+
+#[derive(Deserialize)]
+struct CalendarRow {
+    service_id: orig_ids::ServiceID,
+    monday: usize,
+    tuesday: usize,
+    wednesday: usize,
+    thursday: usize,
+    friday: usize,
+    saturday: usize,
+    sunday: usize,
 }
 
 #[derive(Deserialize)]
