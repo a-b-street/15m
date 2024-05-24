@@ -33,7 +33,7 @@ pub struct Stop {
 }
 
 /// `trip` arrives at some `Stop` at `time`. Then it reaches `stop2` at `time2`
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct NextStep {
     pub time1: NaiveTime,
     pub trip: TripID,
@@ -57,7 +57,7 @@ impl GtfsModel {
 
     /// Starting from a stop at some time, find all the next trips going somewhere, waiting up to
     /// max_wait.
-    pub fn trips_from(&self, stop1: StopID, time: NaiveTime, max_wait: Duration) -> Vec<NextStep> {
+    pub fn trips_from(&self, stop1: StopID, time: NaiveTime, max_wait: Duration) -> Vec<&NextStep> {
         // TODO Binary search
         let mut results = Vec::new();
         for next_step in &self.stops[stop1.0].next_steps {
@@ -67,7 +67,7 @@ impl GtfsModel {
             }
 
             if next_step.time1 > time {
-                results.push(next_step.clone());
+                results.push(next_step);
             }
         }
         results

@@ -100,7 +100,7 @@ pub fn route(graph: &Graph, start: IntersectionID, end: IntersectionID) -> Resul
                                 current.value,
                                 PathStep::Transit {
                                     stop1: *stop1,
-                                    trip: next_step.trip.clone(),
+                                    trip: next_step.trip,
                                     stop2: next_step.stop2,
                                 },
                             ));
