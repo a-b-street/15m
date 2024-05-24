@@ -99,7 +99,6 @@ impl Graph {
 
                     access,
                     max_speed,
-                    tags: e.osm_tags,
                     amenities: EnumMap::default(),
                     stops: Vec::new(),
                 }

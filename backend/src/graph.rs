@@ -4,7 +4,7 @@ use geo::{LineString, Point, Polygon};
 use geojson::{Feature, GeoJson, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
-use utils::{Mercator, Tags};
+use utils::Mercator;
 
 use crate::amenity::Amenity;
 use crate::gtfs::{GtfsModel, StopID};
@@ -61,7 +61,6 @@ pub struct Road {
     // For performance
     pub length_meters: f64,
     pub linestring: LineString,
-    pub tags: Tags,
 
     // A simplified view of who can access a road. All might be None (buses, trains ignored)
     pub access: EnumMap<Mode, Direction>,
@@ -151,9 +150,6 @@ impl Road {
         f.set_property("way", self.way.to_string());
         f.set_property("node1", self.node1.to_string());
         f.set_property("node2", self.node2.to_string());
-        for (k, v) in &self.tags.0 {
-            f.set_property(k, v.to_string());
-        }
         f.set_property("access_car", format!("{:?}", self.access[Mode::Car]));
         f.set_property(
             "access_bicycle",
