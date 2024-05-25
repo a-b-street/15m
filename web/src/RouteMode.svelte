@@ -89,7 +89,7 @@
             <li>Walk</li>
           {:else}
             <li>
-              Take transit (trip {props.trip}) for {props.num_stops} stops
+              Take {props.route} for {props.num_stops} stops
             </li>
           {/if}
         {/each}

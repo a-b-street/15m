@@ -199,9 +199,11 @@ fn render_path(
 
         if let Some(trip) = trip_id {
             f.set_property("kind", "transit");
-            // TODO Plumb a route name or something
-            // TODO Plumb points showing stop times? maybe for both cases
             f.set_property("trip", trip.0);
+            f.set_property(
+                "route",
+                graph.gtfs.routes[graph.gtfs.trips[trip.0].route.0].describe(),
+            );
             f.set_property("num_stops", num_stops);
         } else {
             f.set_property("kind", "road");

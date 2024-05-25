@@ -15,6 +15,9 @@ pub mod orig_ids {
 
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
     pub struct ServiceID(String);
+
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+    pub struct RouteID(String);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -23,12 +26,20 @@ pub struct StopID(pub usize);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct TripID(pub usize);
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct RouteID(pub usize);
+
 impl CheapID for StopID {
     fn new(x: usize) -> Self {
         Self(x)
     }
 }
 impl CheapID for TripID {
+    fn new(x: usize) -> Self {
+        Self(x)
+    }
+}
+impl CheapID for RouteID {
     fn new(x: usize) -> Self {
         Self(x)
     }
@@ -59,7 +70,22 @@ impl<K: Clone + std::fmt::Debug + Ord, V: CheapID> IDMapping<K, V> {
         Ok(cheap)
     }
 
+    pub fn insert_idempotent(&mut self, orig: &K) -> V {
+        match self.orig_to_cheap.get(orig) {
+            Some(x) => *x,
+            None => {
+                let v = V::new(self.orig_to_cheap.len());
+                self.orig_to_cheap.insert(orig.clone(), v);
+                v
+            }
+        }
+    }
+
     pub fn get(&self, orig: &K) -> Option<V> {
         self.orig_to_cheap.get(orig).cloned()
+    }
+
+    pub fn borrow(&self) -> &BTreeMap<K, V> {
+        &self.orig_to_cheap
     }
 }

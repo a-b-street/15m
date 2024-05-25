@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use utils::Mercator;
 
 use self::ids::orig_ids;
-pub use self::ids::{StopID, TripID};
+pub use self::ids::{RouteID, StopID, TripID};
 use crate::graph::RoadID;
 
 mod ids;
@@ -20,6 +20,7 @@ pub struct GtfsModel {
     // Indexed by StopID and TripID
     pub stops: Vec<Stop>,
     pub trips: Vec<Trip>,
+    pub routes: Vec<Route>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -45,6 +46,15 @@ pub struct NextStep {
 pub struct Trip {
     // (stop, arrival time) in order
     pub stop_sequence: Vec<(StopID, NaiveTime)>,
+    pub route: RouteID,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Route {
+    pub orig_id: orig_ids::RouteID,
+    pub short_name: Option<String>,
+    pub long_name: Option<String>,
+    pub description: Option<String>,
 }
 
 impl GtfsModel {
@@ -52,6 +62,7 @@ impl GtfsModel {
         Self {
             stops: Vec::new(),
             trips: Vec::new(),
+            routes: Vec::new(),
         }
     }
 
@@ -83,5 +94,16 @@ impl Stop {
             serde_json::to_value(&self.next_steps).unwrap(),
         );
         f
+    }
+}
+
+impl Route {
+    pub fn describe(&self) -> String {
+        self.description
+            .as_ref()
+            .or(self.long_name.as_ref())
+            .or(self.short_name.as_ref())
+            .map(|x| x.to_string())
+            .unwrap_or_else(|| format!("{:?}", self.orig_id))
     }
 }

@@ -8,7 +8,7 @@ use serde::Deserialize;
 use utils::Mercator;
 
 use super::ids::{orig_ids, IDMapping};
-use super::{GtfsModel, NextStep, Stop, StopID, Trip, TripID};
+use super::{GtfsModel, NextStep, Route, RouteID, Stop, StopID, Trip, TripID};
 use crate::graph::RoadID;
 
 // Move to mod after deciding to store every day
@@ -28,11 +28,13 @@ impl GtfsModel {
     pub fn parse(dir_path: &str, mercator: &Mercator) -> Result<GtfsModel> {
         info!("Scraping trips.txt");
         let mut trip_to_service: BTreeMap<orig_ids::TripID, orig_ids::ServiceID> = BTreeMap::new();
+        let mut trip_to_route: BTreeMap<orig_ids::TripID, orig_ids::RouteID> = BTreeMap::new();
         for rec in
             csv::Reader::from_reader(File::open(format!("{dir_path}/trips.txt"))?).deserialize()
         {
             let rec: TripRow = rec?;
-            trip_to_service.insert(rec.trip_id, rec.service_id);
+            trip_to_service.insert(rec.trip_id.clone(), rec.service_id);
+            trip_to_route.insert(rec.trip_id, rec.route_id);
         }
 
         info!("Scraping calendar.txt");
@@ -56,6 +58,23 @@ impl GtfsModel {
                 }
             }
             service_to_days.insert(rec.service_id, days);
+        }
+
+        info!("Scraping routes.txt");
+        let mut routes_table: BTreeMap<orig_ids::RouteID, Route> = BTreeMap::new();
+        for rec in
+            csv::Reader::from_reader(File::open(format!("{dir_path}/routes.txt"))?).deserialize()
+        {
+            let rec: RouteRow = rec?;
+            routes_table.insert(
+                rec.route_id.clone(),
+                Route {
+                    orig_id: rec.route_id,
+                    short_name: rec.route_short_name,
+                    long_name: rec.route_long_name,
+                    description: rec.route_desc,
+                },
+            );
         }
 
         info!("Scraping stops.txt");
@@ -85,6 +104,7 @@ impl GtfsModel {
 
         info!("Scraping stop_times.txt");
         let mut trips_table: BTreeMap<orig_ids::TripID, Trip> = BTreeMap::new();
+        let mut route_ids: IDMapping<orig_ids::RouteID, RouteID> = IDMapping::new();
         for rec in csv::Reader::from_reader(File::open(format!("{dir_path}/stop_times.txt"))?)
             .deserialize()
         {
@@ -112,16 +132,25 @@ impl GtfsModel {
             }
 
             trips_table
-                .entry(rec.trip_id)
+                .entry(rec.trip_id.clone())
                 .or_insert_with(|| Trip {
                     stop_sequence: Vec::new(),
+                    route: route_ids.insert_idempotent(&trip_to_route[&rec.trip_id]),
                 })
                 .stop_sequence
                 .push((stop_id, arrival_time));
         }
 
-        // Produce a compact Trips vec
+        // Produce compact vectors of used things
         let trips: Vec<Trip> = trips_table.into_values().collect();
+
+        let mut routes: Vec<Route> = route_ids
+            .borrow()
+            .keys()
+            .map(|orig_id| routes_table.remove(orig_id).unwrap())
+            .collect();
+        // TODO Sorting is a bit silly; we could fill this out directly in order
+        routes.sort_by_key(|r| route_ids.get(&r.orig_id));
 
         // Precompute the next steps from each stop
         for (idx, trip) in trips.iter().enumerate() {
@@ -142,7 +171,11 @@ impl GtfsModel {
             stop.next_steps.sort_by_key(|x| x.time1);
         }
 
-        Ok(GtfsModel { stops, trips })
+        Ok(GtfsModel {
+            stops,
+            trips,
+            routes,
+        })
     }
 }
 
@@ -150,6 +183,7 @@ impl GtfsModel {
 struct TripRow {
     trip_id: orig_ids::TripID,
     service_id: orig_ids::ServiceID,
+    route_id: orig_ids::RouteID,
 }
 
 #[derive(Deserialize)]
@@ -177,4 +211,12 @@ struct StopTimeRow {
     trip_id: orig_ids::TripID,
     stop_id: orig_ids::StopID,
     arrival_time: String,
+}
+
+#[derive(Deserialize)]
+struct RouteRow {
+    route_id: orig_ids::RouteID,
+    route_short_name: Option<String>,
+    route_long_name: Option<String>,
+    route_desc: Option<String>,
 }
