@@ -40,38 +40,7 @@ pub fn route(
 
     while let Some(current) = queue.pop() {
         if current.value == end {
-            timer.step("render");
-            // Found the path
-            // TODO Ideally glue together one LineString
-            let mut features = Vec::new();
-            let mut at = current.value;
-            loop {
-                if at == start {
-                    timer.done();
-                    return Ok(serde_json::to_string(&GeoJson::from(features))?);
-                }
-                let (prev_i, step) = &backrefs[&at];
-                match step {
-                    PathStep::Road(r) => {
-                        let mut f = Feature::from(Geometry::from(
-                            &graph.mercator.to_wgs84(&graph.roads[r.0].linestring),
-                        ));
-                        f.set_property("kind", "road");
-                        features.push(f);
-                    }
-                    PathStep::Transit { stop1, stop2, .. } => {
-                        let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(
-                            &LineString::new(vec![
-                                graph.gtfs.stops[stop1.0].point.into(),
-                                graph.gtfs.stops[stop2.0].point.into(),
-                            ]),
-                        )));
-                        f.set_property("kind", "transit");
-                        features.push(f);
-                    }
-                }
-                at = *prev_i;
-            }
+            return render_path(backrefs, graph, start, end, timer);
         }
 
         for r in &graph.intersections[current.value.0].roads {
@@ -81,12 +50,24 @@ pub fn route(
             let total_cost = current.cost + cost(road, Mode::Foot);
             if road.src_i == current.value && road.allows_forwards(Mode::Foot) {
                 if let Entry::Vacant(entry) = backrefs.entry(road.dst_i) {
-                    entry.insert((current.value, PathStep::Road(*r)));
+                    entry.insert((
+                        current.value,
+                        PathStep::Road {
+                            road: *r,
+                            forwards: true,
+                        },
+                    ));
                     queue.push(PriorityQueueItem::new(total_cost, road.dst_i));
                 }
             } else if road.dst_i == current.value && road.allows_backwards(Mode::Foot) {
                 if let Entry::Vacant(entry) = backrefs.entry(road.src_i) {
-                    entry.insert((current.value, PathStep::Road(*r)));
+                    entry.insert((
+                        current.value,
+                        PathStep::Road {
+                            road: *r,
+                            forwards: false,
+                        },
+                    ));
                     queue.push(PriorityQueueItem::new(total_cost, road.src_i));
                 }
             }
@@ -124,11 +105,87 @@ pub fn route(
     bail!("No path found");
 }
 
+#[derive(Debug)]
 enum PathStep {
-    Road(RoadID),
+    Road {
+        road: RoadID,
+        forwards: bool,
+    },
     Transit {
         stop1: StopID,
         trip: TripID,
         stop2: StopID,
     },
+}
+
+fn render_path(
+    backrefs: HashMap<IntersectionID, (IntersectionID, PathStep)>,
+    graph: &Graph,
+    start: IntersectionID,
+    end: IntersectionID,
+    mut timer: Timer,
+) -> Result<String> {
+    timer.step("render");
+
+    // Just get PathSteps in order first
+    let mut steps = Vec::new();
+    let mut at = end;
+    loop {
+        if at == start {
+            break;
+        }
+        let (prev_i, step) = &backrefs[&at];
+        steps.push(step);
+        at = *prev_i;
+    }
+    steps.reverse();
+
+    // Assemble PathSteps into features. Group road and transit steps together
+    let mut features = Vec::new();
+    for chunk in steps.chunk_by(|a, b| match (a, b) {
+        (PathStep::Road { .. }, PathStep::Road { .. }) => true,
+        (PathStep::Transit { trip: trip1, .. }, PathStep::Transit { trip: trip2, .. }) => {
+            trip1 == trip2
+        }
+        _ => false,
+    }) {
+        let mut pts = Vec::new();
+        let mut num_stops = 0;
+        let mut trip_id = None;
+        for step in chunk {
+            match step {
+                PathStep::Road { road, forwards } => {
+                    let road = &graph.roads[road.0];
+                    if *forwards {
+                        pts.extend(road.linestring.0.clone());
+                    } else {
+                        let mut rev = road.linestring.0.clone();
+                        rev.reverse();
+                        pts.extend(rev);
+                    }
+                }
+                PathStep::Transit { stop1, stop2, trip } => {
+                    trip_id = Some(trip);
+                    num_stops += 1;
+                    pts.push(graph.gtfs.stops[stop1.0].point.into());
+                    pts.push(graph.gtfs.stops[stop2.0].point.into());
+                }
+            }
+        }
+        pts.dedup();
+        let mut f = Feature::from(Geometry::from(
+            &graph.mercator.to_wgs84(&LineString::new(pts)),
+        ));
+        if let Some(trip) = trip_id {
+            f.set_property("kind", "transit");
+            // TODO Plumb a route name or something
+            // TODO Plumb points showing stop times? maybe for both cases
+            f.set_property("trip", trip.0);
+            f.set_property("num_stops", num_stops);
+        } else {
+            f.set_property("kind", "road");
+        }
+        features.push(f);
+    }
+    Ok(serde_json::to_string(&GeoJson::from(features))?)
 }
