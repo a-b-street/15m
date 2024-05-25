@@ -66,7 +66,7 @@ impl GtfsModel {
                 break;
             }
 
-            if next_step.time1 > time {
+            if next_step.time1 >= time {
                 results.push(next_step);
             }
         }
