@@ -3,12 +3,18 @@ import { writable, type Writable } from "svelte/store";
 import type { ExpressionSpecification } from "maplibre-gl";
 import * as Comlink from "comlink";
 import { type Backend } from "./worker";
+import type { FeatureCollection } from "geojson";
 
 export let maptilerApiKey = "MZEJTanw3WpxRvt7qDfo";
 
-export type Mode = "title" | "debug" | "isochrone" | "route";
+export type Mode =
+  | { kind: "title" }
+  | { kind: "debug" }
+  | { kind: "isochrone" }
+  | { kind: "route" }
+  | { kind: "debug-route"; gj: FeatureCollection };
 
-export let mode: Writable<Mode> = writable("title");
+export let mode: Writable<Mode> = writable({ kind: "title" });
 export let map: Writable<Map | null> = writable(null);
 export let showAbout: Writable<boolean> = writable(true);
 

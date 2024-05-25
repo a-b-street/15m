@@ -13,6 +13,7 @@
   import DebugMode from "./DebugMode.svelte";
   import IsochroneMode from "./IsochroneMode.svelte";
   import RouteMode from "./RouteMode.svelte";
+  import DebugRouteMode from "./DebugRouteMode.svelte";
   import {
     map as mapStore,
     mode,
@@ -60,7 +61,7 @@
     if (ready) {
       console.log("New map model loaded");
       await zoomToFit();
-      $mode = "isochrone";
+      $mode = { kind: "isochrone" };
     }
   }
   $: gotModel($isLoaded);
@@ -82,7 +83,7 @@
     <h1>15-minute neighbourhood tool</h1>
     <div bind:this={sidebarDiv} />
 
-    {#if $mode != "title"}
+    {#if $mode.kind != "title"}
       <hr />
       <div><button on:click={zoomToFit}>Zoom to fit</button></div>
     {/if}
@@ -97,7 +98,7 @@
       <Geocoder {map} apiKey={maptilerApiKey} />
       <div bind:this={mapDiv} />
 
-      {#if $mode == "title"}
+      {#if $mode.kind == "title"}
         <TitleMode />
       {/if}
       {#if $isLoaded}
@@ -106,12 +107,14 @@
             <FillLayer paint={{ "fill-color": "black", "fill-opacity": 0.3 }} />
           </GeoJSON>
         {/await}
-        {#if $mode == "debug"}
+        {#if $mode.kind == "debug"}
           <DebugMode />
-        {:else if $mode == "isochrone"}
+        {:else if $mode.kind == "isochrone"}
           <IsochroneMode />
-        {:else if $mode == "route"}
+        {:else if $mode.kind == "route"}
           <RouteMode />
+        {:else if $mode.kind == "debug-route"}
+          <DebugRouteMode gj={$mode.gj} />
         {/if}
       {/if}
     </MapLibre>

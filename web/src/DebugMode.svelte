@@ -24,8 +24,12 @@
     <div slot="sidebar">
       <h2>Debug mode</h2>
       <div>
-        <button on:click={() => ($mode = "title")}>Change study area</button>
-        <button on:click={() => ($mode = "isochrone")}>Isochrones</button>
+        <button on:click={() => ($mode = { kind: "title" })}
+          >Change study area</button
+        >
+        <button on:click={() => ($mode = { kind: "isochrone" })}
+          >Isochrones</button
+        >
       </div>
       <p>Hover to see a segment's properties, and click to open OSM</p>
 

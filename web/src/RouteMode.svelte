@@ -46,6 +46,7 @@
           start,
           end: [end.lng, end.lat],
           mode,
+          debugSearch: false,
         });
         err = "";
       } catch (error: any) {
@@ -64,14 +65,32 @@
   function lerp(pct: number, a: number, b: number): number {
     return a + pct * (b - a);
   }
+
+  async function debugRoute() {
+    try {
+      let debugGj = await $backend!.route({
+        start: start!,
+        end: [end!.lng, end!.lat],
+        mode: travelMode,
+        debugSearch: true,
+      });
+      $mode = { kind: "debug-route", gj: debugGj };
+    } catch (error: any) {
+      err = error.toString();
+    }
+  }
 </script>
 
 <SplitComponent>
   <div slot="sidebar">
     <h2>Route mode</h2>
     <div>
-      <button on:click={() => ($mode = "title")}>Change study area</button>
-      <button on:click={() => ($mode = "isochrone")}>Isochrone mode</button>
+      <button on:click={() => ($mode = { kind: "title" })}
+        >Change study area</button
+      >
+      <button on:click={() => ($mode = { kind: "isochrone" })}
+        >Isochrone mode</button
+      >
     </div>
     <PickTravelMode bind:travelMode />
     <p>
@@ -94,6 +113,8 @@
           {/if}
         {/each}
       </ol>
+
+      <button on:click={debugRoute}>Watch how this route was found</button>
     {/if}
   </div>
   <div slot="map">

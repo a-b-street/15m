@@ -62,6 +62,7 @@
           start,
           end: hoveredAmenity.geometry.coordinates,
           mode: travelMode,
+          debugSearch: false,
         });
         err = "";
       } catch (err: any) {
@@ -86,9 +87,11 @@
   <div slot="sidebar">
     <h2>Isochrone mode</h2>
     <div>
-      <button on:click={() => ($mode = "title")}>Change study area</button>
-      <button on:click={() => ($mode = "route")}>Route</button>
-      <button on:click={() => ($mode = "debug")}>Debug OSM</button>
+      <button on:click={() => ($mode = { kind: "title" })}
+        >Change study area</button
+      >
+      <button on:click={() => ($mode = { kind: "route" })}>Route</button>
+      <button on:click={() => ($mode = { kind: "debug" })}>Debug OSM</button>
     </div>
 
     <p>

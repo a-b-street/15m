@@ -17,6 +17,9 @@ pub fn route(
     graph: &Graph,
     start: IntersectionID,
     end: IntersectionID,
+    // TODO Parameterizing this function gets messy, but splitting into two separate doesn't seem
+    // like a good idea yet
+    debug_search: bool,
     mut timer: Timer,
 ) -> Result<String> {
     // TODO We'll need a start time too (and a day of the week)
@@ -35,13 +38,23 @@ pub fn route(
 
     let mut backrefs: HashMap<IntersectionID, Backreference> = HashMap::new();
 
+    // If we're debugging the search process, just remember the order of visited nodes
+    let mut search_record: Vec<IntersectionID> = Vec::new();
+
     timer.step("dijkstra");
     let mut queue: BinaryHeap<PriorityQueueItem<NaiveTime, IntersectionID>> = BinaryHeap::new();
     queue.push(PriorityQueueItem::new(start_time, start));
 
     while let Some(current) = queue.pop() {
         if current.value == end {
-            return render_path(backrefs, graph, start, end, timer);
+            if debug_search {
+                return render_debug(search_record, backrefs, graph, timer);
+            } else {
+                return render_path(backrefs, graph, start, end, timer);
+            }
+        }
+        if debug_search {
+            search_record.push(current.value);
         }
 
         for r in &graph.intersections[current.value.0].roads {
@@ -210,5 +223,47 @@ fn render_path(
         }
         features.push(f);
     }
+    timer.done();
     Ok(serde_json::to_string(&GeoJson::from(features))?)
+}
+
+fn render_debug(
+    search_record: Vec<IntersectionID>,
+    mut backrefs: HashMap<IntersectionID, Backreference>,
+    graph: &Graph,
+    mut timer: Timer,
+) -> Result<String> {
+    timer.step("render");
+    // Create a FeatureCollection with the nodes searched, in order. Pairs of linestrings (a step
+    // to get somewhere) and points (for the intersection)
+    let mut features = Vec::new();
+    // Skip the first node, because it'll have no backreference
+    for i in search_record.into_iter().skip(1) {
+        let backref = backrefs.remove(&i).unwrap();
+        match backref.step {
+            PathStep::Road { road, .. } => {
+                features.push(Feature::from(Geometry::from(
+                    &graph.mercator.to_wgs84(&graph.roads[road.0].linestring),
+                )));
+            }
+            PathStep::Transit { stop1, stop2, .. } => {
+                features.push(Feature::from(Geometry::from(&graph.mercator.to_wgs84(
+                    &LineString::new(vec![
+                        graph.gtfs.stops[stop1.0].point.into(),
+                        graph.gtfs.stops[stop2.0].point.into(),
+                    ]),
+                ))));
+            }
+        }
+
+        let mut f = Feature::from(Geometry::from(
+            &graph.mercator.to_wgs84(&graph.intersections[i.0].point),
+        ));
+        f.set_property("time", backref.time2.to_string());
+        features.push(f);
+    }
+
+    let json = serde_json::to_string(&GeoJson::from(features))?;
+    timer.done();
+    Ok(json)
 }

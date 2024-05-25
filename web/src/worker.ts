@@ -87,6 +87,7 @@ export class Backend {
     start: { lng: number; lat: number };
     end: Position;
     mode: TravelMode;
+    debugSearch: boolean;
   }): FeatureCollection {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
@@ -99,6 +100,7 @@ export class Backend {
         x2: req.end[0],
         y2: req.end[1],
         mode: req.mode,
+        debug_search: req.debugSearch,
       }),
     );
   }

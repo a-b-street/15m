@@ -128,8 +128,14 @@ impl MapModel {
             .data;
 
         if req.mode == "transit" {
-            transit_route::route(&self.graph, start, end, Timer::new("route request", None))
-                .map_err(err_to_js)
+            transit_route::route(
+                &self.graph,
+                start,
+                end,
+                req.debug_search,
+                Timer::new("route request", None),
+            )
+            .map_err(err_to_js)
         } else {
             self.graph.router[mode]
                 .route(&self.graph, start, end)
@@ -153,6 +159,8 @@ pub struct RouteRequest {
     x2: f64,
     y2: f64,
     mode: String,
+    // TODO Only works for transit
+    debug_search: bool,
 }
 
 fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {
