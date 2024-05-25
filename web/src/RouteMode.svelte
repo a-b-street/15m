@@ -1,10 +1,17 @@
 <script lang="ts">
   import type { MapMouseEvent } from "maplibre-gl";
-  import { MapEvents, GeoJSON, LineLayer, Marker } from "svelte-maplibre";
+  import {
+    MapEvents,
+    GeoJSON,
+    LineLayer,
+    Marker,
+    hoverStateFilter,
+  } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/two_column_layout";
   import { mode, backend, type TravelMode } from "./stores";
   import PickTravelMode from "./PickTravelMode.svelte";
-  import { constructMatchExpression } from "svelte-utils/map";
+  import { Popup, constructMatchExpression } from "svelte-utils/map";
+  import { notNull, PropertiesTable } from "svelte-utils";
   import { onMount } from "svelte";
   import type { FeatureCollection } from "geojson";
 
@@ -71,8 +78,22 @@
       Move the <b>A</b> and <b>B</b> pins to find a route. (Hint: right-click to
       set the first pin somewhere.)
     </p>
+
     {#if err}
       <p>{err}</p>
+    {:else if gj}
+      <ol>
+        {#each gj.features as f}
+          {@const props = notNull(f.properties)}
+          {#if props.kind == "road"}
+            <li>Walk</li>
+          {:else}
+            <li>
+              Take transit (trip {props.trip}) for {props.num_stops} stops
+            </li>
+          {/if}
+        {/each}
+      </ol>
     {/if}
   </div>
   <div slot="map">
@@ -86,7 +107,7 @@
     {/if}
 
     {#if gj}
-      <GeoJSON data={gj}>
+      <GeoJSON data={gj} generateId>
         <LineLayer
           id="route"
           paint={{
@@ -96,9 +117,14 @@
               { road: "cyan", transit: "purple" },
               "red",
             ),
-            "line-opacity": 0.5,
+            "line-opacity": hoverStateFilter(0.5, 1.0),
           }}
-        />
+          manageHoverState
+        >
+          <Popup openOn="hover" let:props>
+            <PropertiesTable properties={props} />
+          </Popup>
+        </LineLayer>
       </GeoJSON>
     {/if}
   </div>

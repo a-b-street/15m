@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use anyhow::{bail, Result};
 use fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
 use geo::LineString;
-use geojson::{Feature, Geometry};
+use geojson::{Feature, GeoJson, Geometry};
 use serde::{Deserialize, Serialize};
 use utils::{deserialize_nodemap, NodeMap};
 
@@ -91,6 +91,6 @@ impl Router {
             &graph.mercator.to_wgs84(&LineString::new(pts)),
         ));
         f.set_property("kind", "road");
-        Ok(serde_json::to_string(&f)?)
+        Ok(serde_json::to_string(&GeoJson::from(vec![f]))?)
     }
 }

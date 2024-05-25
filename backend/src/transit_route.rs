@@ -32,7 +32,8 @@ pub fn route(
     //
     // or rethink the nodes and edges in the graph. nodes are pathsteps -- a road in some direction
     // or a transit thing. an edge is a turn or a transition to/from transit
-    let mut backrefs: HashMap<IntersectionID, (IntersectionID, PathStep)> = HashMap::new();
+
+    let mut backrefs: HashMap<IntersectionID, Backreference> = HashMap::new();
 
     timer.step("dijkstra");
     let mut queue: BinaryHeap<PriorityQueueItem<NaiveTime, IntersectionID>> = BinaryHeap::new();
@@ -50,24 +51,28 @@ pub fn route(
             let total_cost = current.cost + cost(road, Mode::Foot);
             if road.src_i == current.value && road.allows_forwards(Mode::Foot) {
                 if let Entry::Vacant(entry) = backrefs.entry(road.dst_i) {
-                    entry.insert((
-                        current.value,
-                        PathStep::Road {
+                    entry.insert(Backreference {
+                        src_i: current.value,
+                        step: PathStep::Road {
                             road: *r,
                             forwards: true,
                         },
-                    ));
+                        time1: current.cost,
+                        time2: total_cost,
+                    });
                     queue.push(PriorityQueueItem::new(total_cost, road.dst_i));
                 }
             } else if road.dst_i == current.value && road.allows_backwards(Mode::Foot) {
                 if let Entry::Vacant(entry) = backrefs.entry(road.src_i) {
-                    entry.insert((
-                        current.value,
-                        PathStep::Road {
+                    entry.insert(Backreference {
+                        src_i: current.value,
+                        step: PathStep::Road {
                             road: *r,
                             forwards: false,
                         },
-                    ));
+                        time1: current.cost,
+                        time2: total_cost,
+                    });
                     queue.push(PriorityQueueItem::new(total_cost, road.src_i));
                 }
             }
@@ -86,14 +91,16 @@ pub fn route(
                     let stop2_road = &graph.roads[graph.gtfs.stops[next_step.stop2.0].road.0];
                     for i in [stop2_road.src_i, stop2_road.dst_i] {
                         if let Entry::Vacant(entry) = backrefs.entry(i) {
-                            entry.insert((
-                                current.value,
-                                PathStep::Transit {
+                            entry.insert(Backreference {
+                                src_i: current.value,
+                                step: PathStep::Transit {
                                     stop1: *stop1,
                                     trip: next_step.trip,
                                     stop2: next_step.stop2,
                                 },
-                            ));
+                                time1: next_step.time1,
+                                time2: next_step.time2,
+                            });
                             queue.push(PriorityQueueItem::new(next_step.time2, i));
                         }
                     }
@@ -105,7 +112,17 @@ pub fn route(
     bail!("No path found");
 }
 
-#[derive(Debug)]
+// How'd we get somewhere?
+struct Backreference {
+    // Where were we at the beginning of this step?
+    src_i: IntersectionID,
+    step: PathStep,
+    // When'd we start this step?
+    time1: NaiveTime,
+    // When'd we finish?
+    time2: NaiveTime,
+}
+
 enum PathStep {
     Road {
         road: RoadID,
@@ -119,7 +136,7 @@ enum PathStep {
 }
 
 fn render_path(
-    backrefs: HashMap<IntersectionID, (IntersectionID, PathStep)>,
+    mut backrefs: HashMap<IntersectionID, Backreference>,
     graph: &Graph,
     start: IntersectionID,
     end: IntersectionID,
@@ -127,22 +144,22 @@ fn render_path(
 ) -> Result<String> {
     timer.step("render");
 
-    // Just get PathSteps in order first
-    let mut steps = Vec::new();
+    // Just get PathSteps in order first (Step, time1, time2)
+    let mut steps: Vec<(PathStep, NaiveTime, NaiveTime)> = Vec::new();
     let mut at = end;
     loop {
         if at == start {
             break;
         }
-        let (prev_i, step) = &backrefs[&at];
-        steps.push(step);
-        at = *prev_i;
+        let backref = backrefs.remove(&at).unwrap();
+        steps.push((backref.step, backref.time1, backref.time2));
+        at = backref.src_i;
     }
     steps.reverse();
 
     // Assemble PathSteps into features. Group road and transit steps together
     let mut features = Vec::new();
-    for chunk in steps.chunk_by(|a, b| match (a, b) {
+    for chunk in steps.chunk_by(|a, b| match (&a.0, &b.0) {
         (PathStep::Road { .. }, PathStep::Road { .. }) => true,
         (PathStep::Transit { trip: trip1, .. }, PathStep::Transit { trip: trip2, .. }) => {
             trip1 == trip2
@@ -152,7 +169,7 @@ fn render_path(
         let mut pts = Vec::new();
         let mut num_stops = 0;
         let mut trip_id = None;
-        for step in chunk {
+        for (step, _, _) in chunk {
             match step {
                 PathStep::Road { road, forwards } => {
                     let road = &graph.roads[road.0];
@@ -173,9 +190,13 @@ fn render_path(
             }
         }
         pts.dedup();
+
         let mut f = Feature::from(Geometry::from(
             &graph.mercator.to_wgs84(&LineString::new(pts)),
         ));
+        f.set_property("time1", chunk[0].1.to_string());
+        f.set_property("time2", chunk.last().unwrap().2.to_string());
+
         if let Some(trip) = trip_id {
             f.set_property("kind", "transit");
             // TODO Plumb a route name or something
