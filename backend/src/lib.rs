@@ -84,7 +84,7 @@ impl MapModel {
             "car" => Mode::Car,
             "bicycle" => Mode::Bicycle,
             "foot" => Mode::Foot,
-            // TODO Unimplemented
+            // Plumbed separately
             "transit" => Mode::Foot,
             // TODO error plumbing
             x => panic!("bad input {x}"),
@@ -94,6 +94,7 @@ impl MapModel {
             start,
             mode,
             req.contours,
+            req.mode == "transit",
             Timer::new("isochrone request", None),
         )
         .map_err(err_to_js)

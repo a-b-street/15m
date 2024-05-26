@@ -43,6 +43,7 @@ pub enum Direction {
     None,
 }
 
+// TODO Justify why PublicTransit isn't captured here
 #[derive(Clone, Copy, Enum, Debug, Serialize, Deserialize)]
 pub enum Mode {
     Car,
