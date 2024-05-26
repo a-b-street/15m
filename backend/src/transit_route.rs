@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 use chrono::NaiveTime;
-use geo::LineString;
+use geo::{EuclideanDistance, LineString};
 use geojson::{Feature, GeoJson, Geometry};
 use utils::PriorityQueueItem;
 
@@ -20,6 +20,7 @@ pub fn route(
     // TODO Parameterizing this function gets messy, but splitting into two separate doesn't seem
     // like a good idea yet
     debug_search: bool,
+    use_heuristic: bool,
     mut timer: Timer,
 ) -> Result<String> {
     // TODO We'll need a start time too (and a day of the week)
@@ -28,7 +29,18 @@ pub fn route(
         bail!("start = end");
     }
 
-    // Dijkstra implementation just for walking
+    let end_pt = graph.intersections[end.0].point;
+    // TODO Share constant properly
+    // TODO Think through if this is admissible and/or consistent
+    let heuristic = |i: IntersectionID| {
+        if use_heuristic {
+            Duration::from_secs_f64(
+                graph.intersections[i.0].point.euclidean_distance(&end_pt) / 1.34112,
+            )
+        } else {
+            Duration::ZERO
+        }
+    };
 
     // TODO stops are associated with roads, so the steps using transit are going to look a little
     // weird / be a little ambiguous
@@ -42,11 +54,18 @@ pub fn route(
     let mut search_record: Vec<IntersectionID> = Vec::new();
 
     timer.step("dijkstra");
-    let mut queue: BinaryHeap<PriorityQueueItem<NaiveTime, IntersectionID>> = BinaryHeap::new();
-    queue.push(PriorityQueueItem::new(start_time, start));
+    // Store the actual cost/time to reach somewhere as the item. Include a heuristic
+    let mut queue: BinaryHeap<PriorityQueueItem<NaiveTime, (IntersectionID, NaiveTime)>> =
+        BinaryHeap::new();
+    queue.push(PriorityQueueItem::new(
+        start_time + heuristic(start),
+        (start, start_time),
+    ));
 
     while let Some(current) = queue.pop() {
-        if current.value == end {
+        // Don't use current.cost, since it might include a heuristic
+        let (current_i, current_time) = current.value;
+        if current_i == end {
             if debug_search {
                 return render_debug(search_record, backrefs, graph, timer);
             } else {
@@ -54,39 +73,45 @@ pub fn route(
             }
         }
         if debug_search {
-            search_record.push(current.value);
+            search_record.push(current_i);
         }
 
-        for r in &graph.intersections[current.value.0].roads {
+        for r in &graph.intersections[current_i.0].roads {
             let road = &graph.roads[r.0];
 
             // Handle walking to the other end of the road
-            let total_cost = current.cost + cost(road, Mode::Foot);
-            if road.src_i == current.value && road.allows_forwards(Mode::Foot) {
+            let total_cost = current_time + cost(road, Mode::Foot);
+            if road.src_i == current_i && road.allows_forwards(Mode::Foot) {
                 if let Entry::Vacant(entry) = backrefs.entry(road.dst_i) {
                     entry.insert(Backreference {
-                        src_i: current.value,
+                        src_i: current_i,
                         step: PathStep::Road {
                             road: *r,
                             forwards: true,
                         },
-                        time1: current.cost,
+                        time1: current_time,
                         time2: total_cost,
                     });
-                    queue.push(PriorityQueueItem::new(total_cost, road.dst_i));
+                    queue.push(PriorityQueueItem::new(
+                        total_cost + heuristic(road.dst_i),
+                        (road.dst_i, total_cost),
+                    ));
                 }
-            } else if road.dst_i == current.value && road.allows_backwards(Mode::Foot) {
+            } else if road.dst_i == current_i && road.allows_backwards(Mode::Foot) {
                 if let Entry::Vacant(entry) = backrefs.entry(road.src_i) {
                     entry.insert(Backreference {
-                        src_i: current.value,
+                        src_i: current_i,
                         step: PathStep::Road {
                             road: *r,
                             forwards: false,
                         },
-                        time1: current.cost,
+                        time1: current_time,
                         time2: total_cost,
                     });
-                    queue.push(PriorityQueueItem::new(total_cost, road.src_i));
+                    queue.push(PriorityQueueItem::new(
+                        total_cost + heuristic(road.src_i),
+                        (road.src_i, total_cost),
+                    ));
                 }
             }
 
@@ -97,7 +122,7 @@ pub fn route(
                 for next_step in
                     graph
                         .gtfs
-                        .trips_from(*stop1, current.cost, Duration::from_secs(30 * 60))
+                        .trips_from(*stop1, current_time, Duration::from_secs(30 * 60))
                 {
                     // TODO Here's the awkwardness -- arrive at both the intersections for that
                     // road
@@ -105,7 +130,7 @@ pub fn route(
                     for i in [stop2_road.src_i, stop2_road.dst_i] {
                         if let Entry::Vacant(entry) = backrefs.entry(i) {
                             entry.insert(Backreference {
-                                src_i: current.value,
+                                src_i: current_i,
                                 step: PathStep::Transit {
                                     stop1: *stop1,
                                     trip: next_step.trip,
@@ -114,7 +139,10 @@ pub fn route(
                                 time1: next_step.time1,
                                 time2: next_step.time2,
                             });
-                            queue.push(PriorityQueueItem::new(next_step.time2, i));
+                            queue.push(PriorityQueueItem::new(
+                                next_step.time2 + heuristic(i),
+                                (i, next_step.time2),
+                            ));
                         }
                     }
                 }

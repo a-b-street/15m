@@ -63,6 +63,7 @@
           end: hoveredAmenity.geometry.coordinates,
           mode: travelMode,
           debugSearch: false,
+          useHeuristic: false,
         });
         err = "";
       } catch (err: any) {

@@ -133,6 +133,7 @@ impl MapModel {
                 start,
                 end,
                 req.debug_search,
+                req.use_heuristic,
                 Timer::new("route request", None),
             )
             .map_err(err_to_js)
@@ -161,6 +162,7 @@ pub struct RouteRequest {
     mode: String,
     // TODO Only works for transit
     debug_search: bool,
+    use_heuristic: bool,
 }
 
 fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {

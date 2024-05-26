@@ -88,6 +88,7 @@ export class Backend {
     end: Position;
     mode: TravelMode;
     debugSearch: boolean;
+    useHeuristic: boolean;
   }): FeatureCollection {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
@@ -101,6 +102,7 @@ export class Backend {
         y2: req.end[1],
         mode: req.mode,
         debug_search: req.debugSearch,
+        use_heuristic: req.useHeuristic,
       }),
     );
   }

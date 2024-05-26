@@ -16,6 +16,7 @@
   import type { FeatureCollection } from "geojson";
 
   let travelMode: TravelMode = "foot";
+  let useHeuristic = true;
 
   let start: { lng: number; lat: number } | null = null;
   let end: { lng: number; lat: number } | null = null;
@@ -39,6 +40,7 @@
     _x: { lng: number; lat: number } | null,
     _y: { lng: number; lat: number } | null,
     mode: TravelMode,
+    _z: boolean,
   ) {
     if (start && end) {
       try {
@@ -47,6 +49,7 @@
           end: [end.lng, end.lat],
           mode,
           debugSearch: false,
+          useHeuristic,
         });
         err = "";
       } catch (error: any) {
@@ -55,7 +58,7 @@
       }
     }
   }
-  $: updateRoute(start, end, travelMode);
+  $: updateRoute(start, end, travelMode, useHeuristic);
 
   function onRightClick(e: CustomEvent<MapMouseEvent>) {
     // Move the first marker, for convenience
@@ -73,6 +76,7 @@
         end: [end!.lng, end!.lat],
         mode: travelMode,
         debugSearch: true,
+        useHeuristic,
       });
       $mode = {
         kind: "debug-route",
@@ -99,6 +103,10 @@
       >
     </div>
     <PickTravelMode bind:travelMode />
+    <label>
+      <input type="checkbox" bind:checked={useHeuristic} />
+      Use heuristic
+    </label>
     <p>
       Move the <b>A</b> and <b>B</b> pins to find a route. (Hint: right-click to
       set the first pin somewhere.)
