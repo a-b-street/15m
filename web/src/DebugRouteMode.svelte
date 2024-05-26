@@ -15,10 +15,6 @@
   let numNodes = debugGj.features.length / 2;
 
   let showSteps = 1;
-  $: display = {
-    type: "FeatureCollection" as const,
-    features: debugGj.features.slice(0, 2 * showSteps),
-  };
 
   function onKeyDown(e: KeyboardEvent) {
     if (e.key == "ArrowLeft" && showSteps > 1) {
@@ -54,7 +50,7 @@
 
     <p>
       Search is currently at {notNull(
-        display.features[display.features.length - 1].properties,
+        debugGj.features[showSteps * 2 - 1].properties,
       ).time}
     </p>
   </div>
@@ -76,11 +72,12 @@
       />
     </GeoJSON>
 
-    <GeoJSON data={display} generateId>
+    <GeoJSON data={debugGj} generateId>
       <CircleLayer
         paint={{
           "circle-radius": 5,
           "circle-color": "black",
+          "circle-opacity": ["case", ["<=", ["id"], 2 * showSteps], 1, 0],
         }}
       />
 
@@ -92,6 +89,7 @@
             { road: "black", transit: "orange" },
             "red",
           ),
+          "line-opacity": ["case", ["<=", ["id"], 2 * showSteps], 1, 0],
         }}
       />
     </GeoJSON>
