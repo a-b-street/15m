@@ -242,17 +242,21 @@ fn render_debug(
         let backref = backrefs.remove(&i).unwrap();
         match backref.step {
             PathStep::Road { road, .. } => {
-                features.push(Feature::from(Geometry::from(
+                let mut f = Feature::from(Geometry::from(
                     &graph.mercator.to_wgs84(&graph.roads[road.0].linestring),
-                )));
+                ));
+                f.set_property("kind", "road");
+                features.push(f);
             }
             PathStep::Transit { stop1, stop2, .. } => {
-                features.push(Feature::from(Geometry::from(&graph.mercator.to_wgs84(
+                let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(
                     &LineString::new(vec![
                         graph.gtfs.stops[stop1.0].point.into(),
                         graph.gtfs.stops[stop2.0].point.into(),
                     ]),
-                ))));
+                )));
+                f.set_property("kind", "transit");
+                features.push(f);
             }
         }
 

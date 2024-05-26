@@ -114,7 +114,12 @@
         {:else if $mode.kind == "route"}
           <RouteMode />
         {:else if $mode.kind == "debug-route"}
-          <DebugRouteMode gj={$mode.gj} />
+          <DebugRouteMode
+            debugGj={$mode.debugGj}
+            start={$mode.start}
+            end={$mode.end}
+            routeGj={$mode.routeGj}
+          />
         {/if}
       {/if}
     </MapLibre>

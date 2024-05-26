@@ -12,7 +12,13 @@ export type Mode =
   | { kind: "debug" }
   | { kind: "isochrone" }
   | { kind: "route" }
-  | { kind: "debug-route"; gj: FeatureCollection };
+  | {
+      kind: "debug-route";
+      debugGj: FeatureCollection;
+      start: { lng: number; lat: number };
+      end: { lng: number; lat: number };
+      routeGj: FeatureCollection;
+    };
 
 export let mode: Writable<Mode> = writable({ kind: "title" });
 export let map: Writable<Map | null> = writable(null);

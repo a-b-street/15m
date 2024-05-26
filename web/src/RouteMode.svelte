@@ -74,7 +74,13 @@
         mode: travelMode,
         debugSearch: true,
       });
-      $mode = { kind: "debug-route", gj: debugGj };
+      $mode = {
+        kind: "debug-route",
+        debugGj,
+        start: start!,
+        end: end!,
+        routeGj: gj!,
+      };
     } catch (error: any) {
       err = error.toString();
     }
