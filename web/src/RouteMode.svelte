@@ -17,6 +17,7 @@
 
   let travelMode: TravelMode = "foot";
   let useHeuristic = true;
+  let startTime = "07:00";
 
   let start: { lng: number; lat: number } | null = null;
   let end: { lng: number; lat: number } | null = null;
@@ -41,6 +42,7 @@
     _y: { lng: number; lat: number } | null,
     mode: TravelMode,
     _z: boolean,
+    _t: string,
   ) {
     if (start && end) {
       try {
@@ -50,6 +52,7 @@
           mode,
           debugSearch: false,
           useHeuristic,
+          startTime,
         });
         err = "";
       } catch (error: any) {
@@ -58,7 +61,7 @@
       }
     }
   }
-  $: updateRoute(start, end, travelMode, useHeuristic);
+  $: updateRoute(start, end, travelMode, useHeuristic, startTime);
 
   function onRightClick(e: CustomEvent<MapMouseEvent>) {
     // Move the first marker, for convenience
@@ -77,6 +80,7 @@
         mode: travelMode,
         debugSearch: true,
         useHeuristic,
+        startTime,
       });
       $mode = {
         kind: "debug-route",
@@ -102,11 +106,19 @@
         >Isochrone mode</button
       >
     </div>
+
     <PickTravelMode bind:travelMode />
+
     <label>
       <input type="checkbox" bind:checked={useHeuristic} />
-      Use heuristic
+      Use heuristic (PT only)
     </label>
+
+    <label>
+      Start time (PT only)
+      <input type="time" bind:value={startTime} />
+    </label>
+
     <p>
       Move the <b>A</b> and <b>B</b> pins to find a route. (Hint: right-click to
       set the first pin somewhere.)
@@ -119,10 +131,15 @@
         {#each gj.features as f}
           {@const props = notNull(f.properties)}
           {#if props.kind == "road"}
-            <li>Walk</li>
+            {#if props.time1}
+              <li>[{props.time1} - {props.time2}] Walk</li>
+            {:else}
+              <li>Walk / cycle / drive</li>
+            {/if}
           {:else}
             <li>
-              Take {props.route} for {props.num_stops} stops
+              [{props.time1} - {props.time2}] Take {props.route} for {props.num_stops}
+              stops
             </li>
           {/if}
         {/each}

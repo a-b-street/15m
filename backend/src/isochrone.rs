@@ -16,13 +16,21 @@ pub fn calculate(
     mode: Mode,
     contours: bool,
     public_transit: bool,
+    start_time: NaiveTime,
     mut timer: Timer,
 ) -> Result<String> {
     // 15 minutes
     let limit = Duration::from_secs(15 * 60);
 
     timer.step("get_costs");
-    let cost_per_road = get_costs(graph, req, mode, public_transit, limit);
+    let cost_per_road = get_costs(
+        graph,
+        req,
+        mode,
+        public_transit,
+        start_time,
+        start_time + limit,
+    );
     timer.push("render to GJ");
 
     // Show cost per road
@@ -58,12 +66,9 @@ fn get_costs(
     req: Coord,
     mode: Mode,
     public_transit: bool,
-    limit: Duration,
+    start_time: NaiveTime,
+    end_time: NaiveTime,
 ) -> HashMap<RoadID, Duration> {
-    // TODO plumb in
-    let start_time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
-    let end_time = start_time + limit;
-
     let start = graph.closest_intersection[mode]
         .nearest_neighbor(&[req.x, req.y])
         .unwrap()

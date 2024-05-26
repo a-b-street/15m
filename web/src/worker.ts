@@ -67,6 +67,7 @@ export class Backend {
     start: { lng: number; lat: number };
     mode: TravelMode;
     contours: boolean;
+    startTime: string;
   }): FeatureCollection {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
@@ -78,6 +79,7 @@ export class Backend {
         y: req.start.lat,
         mode: req.mode,
         contours: req.contours,
+        start_time: req.startTime,
       }),
     );
   }
@@ -89,6 +91,7 @@ export class Backend {
     mode: TravelMode;
     debugSearch: boolean;
     useHeuristic: boolean;
+    startTime: string;
   }): FeatureCollection {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
@@ -103,6 +106,7 @@ export class Backend {
         mode: req.mode,
         debug_search: req.debugSearch,
         use_heuristic: req.useHeuristic,
+        start_time: req.startTime,
       }),
     );
   }

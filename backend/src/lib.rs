@@ -5,6 +5,7 @@ extern crate log;
 
 use std::sync::Once;
 
+use chrono::NaiveTime;
 use geo::Coord;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
@@ -95,6 +96,7 @@ impl MapModel {
             mode,
             req.contours,
             req.mode == "transit",
+            NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?,
             Timer::new("isochrone request", None),
         )
         .map_err(err_to_js)
@@ -135,6 +137,7 @@ impl MapModel {
                 end,
                 req.debug_search,
                 req.use_heuristic,
+                NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?,
                 Timer::new("route request", None),
             )
             .map_err(err_to_js)
@@ -152,6 +155,7 @@ pub struct IsochroneRequest {
     y: f64,
     mode: String,
     contours: bool,
+    start_time: String,
 }
 
 #[derive(Deserialize)]
@@ -164,6 +168,7 @@ pub struct RouteRequest {
     // TODO Only works for transit
     debug_search: bool,
     use_heuristic: bool,
+    start_time: String,
 }
 
 fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {

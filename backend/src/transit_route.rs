@@ -21,10 +21,9 @@ pub fn route(
     // like a good idea yet
     debug_search: bool,
     use_heuristic: bool,
+    start_time: NaiveTime,
     mut timer: Timer,
 ) -> Result<String> {
-    // TODO We'll need a start time too (and a day of the week)
-    let start_time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
     if start == end {
         bail!("start = end");
     }

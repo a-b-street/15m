@@ -13,6 +13,7 @@
   import { onMount } from "svelte";
 
   let travelMode: TravelMode = "foot";
+  let startTime = "07:00";
 
   let start: { lng: number; lat: number } | null = null;
   onMount(async () => {
@@ -35,6 +36,7 @@
     _x: { lng: number; lat: number } | null,
     _y: TravelMode,
     _z: boolean,
+    _t: string,
   ) {
     if (start) {
       try {
@@ -42,6 +44,7 @@
           start,
           mode: travelMode,
           contours,
+          startTime,
         });
         err = "";
       } catch (err: any) {
@@ -50,11 +53,12 @@
       }
     }
   }
-  $: updateIsochrone(start, travelMode, contours);
+  $: updateIsochrone(start, travelMode, contours, startTime);
 
   async function updateRoute(
     x: { lng: number; lat: number } | null,
     _y: Feature<Point> | null,
+    _t: string,
   ) {
     if (start && hoveredAmenity) {
       try {
@@ -64,6 +68,7 @@
           mode: travelMode,
           debugSearch: false,
           useHeuristic: false,
+          startTime,
         });
         err = "";
       } catch (err: any) {
@@ -74,7 +79,7 @@
       routeGj = null;
     }
   }
-  $: updateRoute(start, hoveredAmenity);
+  $: updateRoute(start, hoveredAmenity, startTime);
 
   function lerp(pct: number, a: number, b: number): number {
     return a + pct * (b - a);
@@ -101,6 +106,11 @@
     </p>
 
     <PickTravelMode bind:travelMode />
+
+    <label>
+      Start time (PT only)
+      <input type="time" bind:value={startTime} />
+    </label>
 
     <label><input type="checkbox" bind:checked={contours} />Contours</label>
 
