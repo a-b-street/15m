@@ -19,6 +19,7 @@ mod graph;
 mod gtfs;
 mod isochrone;
 mod route;
+mod score_cycle_parking;
 mod scrape;
 mod timer;
 mod transit_route;
@@ -146,6 +147,11 @@ impl MapModel {
                 .route(&self.graph, start, end)
                 .map_err(err_to_js)
         }
+    }
+
+    #[wasm_bindgen(js_name = score)]
+    pub fn score(&self) -> Result<String, JsValue> {
+        score_cycle_parking::calculate(&self.graph).map_err(err_to_js)
     }
 }
 

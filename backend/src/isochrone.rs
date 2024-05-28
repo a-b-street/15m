@@ -61,7 +61,7 @@ pub fn calculate(
     Ok(x)
 }
 
-fn get_costs(
+pub fn get_costs(
     graph: &Graph,
     req: Coord,
     mode: Mode,

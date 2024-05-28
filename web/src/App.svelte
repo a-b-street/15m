@@ -14,6 +14,7 @@
   import IsochroneMode from "./IsochroneMode.svelte";
   import RouteMode from "./RouteMode.svelte";
   import DebugRouteMode from "./DebugRouteMode.svelte";
+  import ScoreMode from "./ScoreMode.svelte";
   import {
     map as mapStore,
     mode,
@@ -113,6 +114,8 @@
           <IsochroneMode />
         {:else if $mode.kind == "route"}
           <RouteMode />
+        {:else if $mode.kind == "score"}
+          <ScoreMode />
         {:else if $mode.kind == "debug-route"}
           <DebugRouteMode
             debugGj={$mode.debugGj}

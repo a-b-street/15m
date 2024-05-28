@@ -58,7 +58,6 @@ impl Amenity {
             vec![
                 "atm",
                 "bench",
-                "bicycle_parking",
                 "bicycle_rental",
                 "bicycle_repair_station",
                 "car_rental",

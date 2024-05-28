@@ -1,7 +1,13 @@
 import * as Comlink from "comlink";
 import init, { MapModel } from "backend";
 import type { TravelMode } from "./stores";
-import type { Position, Feature, Polygon, FeatureCollection } from "geojson";
+import type {
+  Position,
+  Feature,
+  Point,
+  Polygon,
+  FeatureCollection,
+} from "geojson";
 
 export class Backend {
   inner: MapModel | null;
@@ -109,6 +115,14 @@ export class Backend {
         start_time: req.startTime,
       }),
     );
+  }
+
+  score(): FeatureCollection<Point, { cost: number }> {
+    if (!this.inner) {
+      throw new Error("Backend used without a file loaded");
+    }
+
+    return JSON.parse(this.inner.score());
   }
 }
 

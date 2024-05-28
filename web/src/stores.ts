@@ -12,6 +12,7 @@ export type Mode =
   | { kind: "debug" }
   | { kind: "isochrone" }
   | { kind: "route" }
+  | { kind: "score" }
   | {
       kind: "debug-route";
       debugGj: FeatureCollection;

@@ -97,6 +97,7 @@
         >Change study area</button
       >
       <button on:click={() => ($mode = { kind: "route" })}>Route</button>
+      <button on:click={() => ($mode = { kind: "score" })}>Score</button>
       <button on:click={() => ($mode = { kind: "debug" })}>Debug OSM</button>
     </div>
 
