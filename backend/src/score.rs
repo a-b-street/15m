@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -6,7 +6,8 @@ use chrono::NaiveTime;
 
 use crate::graph::{Graph, Mode};
 
-// Return GeoJSON points for each POI, with a score to the nearest cycle parking
+// Return GeoJSON points for each POI, with info about that POI, a score to the nearest cycle
+// parking, and the location of that parking
 pub fn calculate(graph: &Graph) -> Result<String> {
     let poi_kinds = ["cafe", "pub", "restaurant", "bank", "nightclub"];
     let limit = Duration::from_secs(10 * 60);
@@ -14,13 +15,14 @@ pub fn calculate(graph: &Graph) -> Result<String> {
     let start_time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
     let end_time = start_time + limit;
 
-    let mut cycle_parking_roads = HashSet::new();
+    // Per road, store one arbitrary point of parking
+    let mut cycle_parking_roads = HashMap::new();
     for road in &graph.roads {
-        if road.amenities[Mode::Foot]
+        if let Some(a) = road.amenities[Mode::Foot]
             .iter()
-            .any(|a| graph.amenities[a.0].kind == "bicycle_parking")
+            .find(|a| graph.amenities[a.0].kind == "bicycle_parking")
         {
-            cycle_parking_roads.insert(road.id);
+            cycle_parking_roads.insert(road.id, graph.amenities[a.0].point);
         }
     }
 
@@ -38,16 +40,29 @@ pub fn calculate(graph: &Graph) -> Result<String> {
             start_time,
             end_time,
         );
-        if let Some(cost) = costs
+        if let Some((r, cost)) = costs
             .into_iter()
-            .filter(|(r, _)| cycle_parking_roads.contains(r))
-            .map(|(_, cost)| cost)
-            .min()
+            .filter(|(r, _)| cycle_parking_roads.contains_key(r))
+            .min_by_key(|(_, cost)| *cost)
         {
             let mut f = geojson::Feature::from(geojson::Geometry::from(
                 &graph.mercator.to_wgs84(&amenity.point),
             ));
+            f.set_property(
+                "poi",
+                format!(
+                    "{} ({})",
+                    amenity
+                        .name
+                        .clone()
+                        .unwrap_or_else(|| "unnamed".to_string()),
+                    amenity.kind
+                ),
+            );
             f.set_property("cost", cost.as_secs());
+            let pt = graph.mercator.to_wgs84(&cycle_parking_roads[&r]);
+            f.set_property("closest_lon", pt.x());
+            f.set_property("closest_lat", pt.y());
             features.push(f);
         }
     }

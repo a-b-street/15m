@@ -1,23 +1,52 @@
 <script lang="ts">
   import { NavBar } from "./common";
-  import type { FeatureCollection, Point } from "geojson";
+  import type { Feature, FeatureCollection, Point } from "geojson";
   import { colorScale } from "./colors";
-  import { GeoJSON, CircleLayer } from "svelte-maplibre";
+  import { GeoJSON, CircleLayer, LineLayer } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { backend } from "./stores";
+  import { backend, type ScoreProps } from "./stores";
   import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp } from "svelte-utils/map";
   import { onMount } from "svelte";
 
-  let gj: FeatureCollection<Point, { cost: number }> | null = null;
+  let gj: FeatureCollection<Point, ScoreProps> | null = null;
   onMount(async () => {
     gj = await $backend!.score();
-    console.log(gj);
   });
+  let routeGj: FeatureCollection | null = null;
 
   let limits = Array.from(Array(6).keys()).map(
     (i) => ((60 * 10) / (6 - 1)) * i,
   );
+
+  let hoveredAmenity: Feature<Point, ScoreProps> | null;
+
+  async function updateRoute(_x: Feature<Point, ScoreProps> | null) {
+    if (hoveredAmenity) {
+      try {
+        routeGj = await $backend!.route({
+          start: {
+            lng: hoveredAmenity.geometry.coordinates[0],
+            lat: hoveredAmenity.geometry.coordinates[1],
+          },
+          end: [
+            hoveredAmenity.properties.closest_lon,
+            hoveredAmenity.properties.closest_lat,
+          ],
+          mode: "foot",
+          debugSearch: false,
+          useHeuristic: false,
+          startTime: "07:00",
+        });
+      } catch (err) {
+        console.log(`No route: ${err}`);
+        routeGj = null;
+      }
+    } else {
+      routeGj = null;
+    }
+  }
+  $: updateRoute(hoveredAmenity);
 </script>
 
 <SplitComponent>
@@ -42,15 +71,29 @@
       <GeoJSON data={gj}>
         <CircleLayer
           paint={{
-            "circle-radius": 5,
+            "circle-radius": 15,
             "circle-color": makeColorRamp(["get", "cost"], limits, colorScale),
           }}
+          manageHoverState
+          bind:hovered={hoveredAmenity}
           eventsIfTopMost
         >
           <Popup openOn="hover" let:props>
-            {props.cost} seconds to the nearest parking
+            From {props.poi}, it's {props.cost} seconds to the nearest parking
           </Popup>
         </CircleLayer>
+      </GeoJSON>
+    {/if}
+
+    {#if routeGj}
+      <GeoJSON data={routeGj}>
+        <LineLayer
+          id="route"
+          paint={{
+            "line-width": 10,
+            "line-color": "red",
+          }}
+        />
       </GeoJSON>
     {/if}
   </div>

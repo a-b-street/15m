@@ -144,3 +144,9 @@
     </MapLibre>
   </div>
 </Layout>
+
+<style>
+  :global(.maplibregl-popup-content) {
+    background-color: var(--pico-background-color);
+  }
+</style>

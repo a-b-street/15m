@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import init, { MapModel } from "backend";
-import type { TravelMode } from "./stores";
+import type { TravelMode, ScoreProps } from "./stores";
 import type {
   Position,
   Feature,
@@ -117,7 +117,7 @@ export class Backend {
     );
   }
 
-  score(): FeatureCollection<Point, { cost: number }> {
+  score(): FeatureCollection<Point, ScoreProps> {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
     }
