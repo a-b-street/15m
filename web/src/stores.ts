@@ -33,7 +33,12 @@ export function filterForMode(travelMode: TravelMode): ExpressionSpecification {
 
 export let travelMode: Writable<TravelMode> = writable("foot");
 export let startTime: Writable<string> = writable("07:00");
+
 // Only used in RouteMode
+export let routeA: Writable<{ lng: number; lat: number } | null> =
+  writable(null);
+export let routeB: Writable<{ lng: number; lat: number } | null> =
+  writable(null);
 export let useHeuristic = writable(true);
 
 // TODO Does this need to be a store?

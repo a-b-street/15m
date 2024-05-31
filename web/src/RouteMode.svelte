@@ -16,70 +16,50 @@
     type TravelMode,
     startTime,
     useHeuristic,
+    routeA,
+    routeB,
   } from "./stores";
   import { Popup, constructMatchExpression } from "svelte-utils/map";
   import { notNull, PropertiesTable } from "svelte-utils";
-  import { onMount } from "svelte";
   import type { FeatureCollection } from "geojson";
-
-  let start: { lng: number; lat: number } | null = null;
-  let end: { lng: number; lat: number } | null = null;
-  onMount(async () => {
-    // TODO Maybe need to do this when the file changes
-    let bbox = await $backend!.getBounds();
-    start = {
-      lng: lerp(0.4, bbox[0], bbox[2]),
-      lat: lerp(0.4, bbox[1], bbox[3]),
-    };
-    end = {
-      lng: lerp(0.6, bbox[0], bbox[2]),
-      lat: lerp(0.6, bbox[1], bbox[3]),
-    };
-  });
 
   let gj: FeatureCollection | null = null;
   let err = "";
 
   async function updateRoute(
-    _x: { lng: number; lat: number } | null,
-    _y: { lng: number; lat: number } | null,
+    start: { lng: number; lat: number },
+    end: { lng: number; lat: number },
     mode: TravelMode,
     _z: boolean,
     _t: string,
   ) {
-    if (start && end) {
-      try {
-        gj = await $backend!.route({
-          start,
-          end: [end.lng, end.lat],
-          mode,
-          debugSearch: false,
-          useHeuristic: $useHeuristic,
-          startTime: $startTime,
-        });
-        err = "";
-      } catch (error: any) {
-        gj = null;
-        err = error.toString();
-      }
+    try {
+      gj = await $backend!.route({
+        start,
+        end: [end.lng, end.lat],
+        mode,
+        debugSearch: false,
+        useHeuristic: $useHeuristic,
+        startTime: $startTime,
+      });
+      err = "";
+    } catch (error: any) {
+      gj = null;
+      err = error.toString();
     }
   }
-  $: updateRoute(start, end, $travelMode, $useHeuristic, $startTime);
+  $: updateRoute($routeA!, $routeB!, $travelMode, $useHeuristic, $startTime);
 
   function onRightClick(e: CustomEvent<MapMouseEvent>) {
     // Move the first marker, for convenience
-    start = e.detail.lngLat;
-  }
-
-  function lerp(pct: number, a: number, b: number): number {
-    return a + pct * (b - a);
+    $routeA = e.detail.lngLat;
   }
 
   async function debugRoute() {
     try {
       let debugGj = await $backend!.route({
-        start: start!,
-        end: [end!.lng, end!.lat],
+        start: $routeA!,
+        end: [$routeB!.lng, $routeB!.lat],
         mode: $travelMode,
         debugSearch: true,
         useHeuristic: $useHeuristic,
@@ -88,8 +68,8 @@
       $mode = {
         kind: "debug-route",
         debugGj,
-        start: start!,
-        end: end!,
+        start: $routeA!,
+        end: $routeB!,
         routeGj: gj!,
       };
     } catch (error: any) {
@@ -155,12 +135,8 @@
   <div slot="map">
     <MapEvents on:contextmenu={onRightClick} />
 
-    {#if start}
-      <Marker bind:lngLat={start} draggable><span class="dot">A</span></Marker>
-    {/if}
-    {#if end}
-      <Marker bind:lngLat={end} draggable><span class="dot">B</span></Marker>
-    {/if}
+    <Marker bind:lngLat={$routeA} draggable><span class="dot">A</span></Marker>
+    <Marker bind:lngLat={$routeB} draggable><span class="dot">B</span></Marker>
 
     {#if gj}
       <GeoJSON data={gj} generateId>

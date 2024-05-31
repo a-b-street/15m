@@ -25,6 +25,8 @@
     maptilerApiKey,
     isLoaded,
     showAbout,
+    routeA,
+    routeB,
   } from "./stores";
   import TitleMode from "./title/TitleMode.svelte";
   import workerWrapper from "./worker?worker";
@@ -65,11 +67,26 @@
   async function gotModel(ready: boolean) {
     if (ready) {
       console.log("New map model loaded");
+
+      let bbox = await $backend!.getBounds();
+      $routeA = {
+        lng: lerp(0.4, bbox[0], bbox[2]),
+        lat: lerp(0.4, bbox[1], bbox[3]),
+      };
+      $routeB = {
+        lng: lerp(0.6, bbox[0], bbox[2]),
+        lat: lerp(0.6, bbox[1], bbox[3]),
+      };
+
       await zoomToFit();
       $mode = { kind: "isochrone" };
     }
   }
   $: gotModel($isLoaded);
+
+  function lerp(pct: number, a: number, b: number): number {
+    return a + pct * (b - a);
+  }
 
   let topDiv: HTMLSpanElement;
   let sidebarDiv: HTMLDivElement;

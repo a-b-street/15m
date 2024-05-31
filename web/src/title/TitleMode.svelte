@@ -1,7 +1,7 @@
 <script lang="ts">
   import { PolygonToolLayer } from "maplibre-draw-polygon";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { map, backend, isLoaded } from "../stores";
+  import { map, backend, isLoaded, routeA, routeB } from "../stores";
   import MapLoader from "./MapLoader.svelte";
   import { onMount } from "svelte";
 
@@ -9,6 +9,8 @@
   onMount(async () => {
     $isLoaded = false;
     await $backend!.unset();
+    $routeA = null;
+    $routeB = null;
   });
 </script>
 
