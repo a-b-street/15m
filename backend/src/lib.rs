@@ -150,8 +150,8 @@ impl MapModel {
     }
 
     #[wasm_bindgen(js_name = score)]
-    pub fn score(&self) -> Result<String, JsValue> {
-        score::calculate(&self.graph).map_err(err_to_js)
+    pub fn score(&self, progress_cb: Option<js_sys::Function>) -> Result<String, JsValue> {
+        score::calculate(&self.graph, Timer::new("score", progress_cb)).map_err(err_to_js)
     }
 }
 

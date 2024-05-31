@@ -117,12 +117,14 @@ export class Backend {
     );
   }
 
-  score(): FeatureCollection<Point, ScoreProps> {
+  score(
+    progressCb: (msg: string) => void,
+  ): FeatureCollection<Point, ScoreProps> {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
     }
 
-    return JSON.parse(this.inner.score());
+    return JSON.parse(this.inner.score(progressCb));
   }
 }
 

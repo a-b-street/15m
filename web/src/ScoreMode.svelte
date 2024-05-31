@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { NavBar } from "./common";
+  import * as Comlink from "comlink";
+  import { Loading, NavBar } from "./common";
   import type { Feature, FeatureCollection, Point } from "geojson";
   import { colorScale } from "./colors";
   import { GeoJSON, CircleLayer, LineLayer } from "svelte-maplibre";
@@ -9,10 +10,18 @@
   import { Popup, makeColorRamp } from "svelte-utils/map";
   import { onMount } from "svelte";
 
+  let loading: string[] = [];
+
   let gj: FeatureCollection<Point, ScoreProps> | null = null;
   onMount(async () => {
-    gj = await $backend!.score();
+    loading = ["Calculating scores"];
+    gj = await $backend!.score(Comlink.proxy(progressCb));
+    loading = [];
   });
+  function progressCb(msg: string) {
+    loading = [...loading, msg];
+  }
+
   let routeGj: FeatureCollection | null = null;
 
   let limits = Array.from(Array(6).keys()).map(
@@ -48,6 +57,10 @@
   }
   $: updateRoute(hoveredAmenity);
 </script>
+
+{#if gj == null}
+  <Loading {loading} />
+{/if}
 
 <SplitComponent>
   <div slot="top"><NavBar /></div>

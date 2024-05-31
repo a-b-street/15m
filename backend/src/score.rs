@@ -5,10 +5,11 @@ use anyhow::Result;
 use chrono::NaiveTime;
 
 use crate::graph::{Graph, Mode};
+use crate::timer::Timer;
 
 // Return GeoJSON points for each POI, with info about that POI, a score to the nearest cycle
 // parking, and the location of that parking
-pub fn calculate(graph: &Graph) -> Result<String> {
+pub fn calculate(graph: &Graph, mut timer: Timer) -> Result<String> {
     let poi_kinds = ["cafe", "pub", "restaurant", "bank", "nightclub"];
     let limit = Duration::from_secs(10 * 60);
     // Exact time doesn't matter
@@ -16,6 +17,7 @@ pub fn calculate(graph: &Graph) -> Result<String> {
     let end_time = start_time + limit;
 
     // Per road, store one arbitrary point of parking
+    timer.step("look for targets (cycle parking)");
     let mut cycle_parking_roads = HashMap::new();
     for road in &graph.roads {
         if let Some(a) = road.amenities[Mode::Foot]
@@ -26,6 +28,10 @@ pub fn calculate(graph: &Graph) -> Result<String> {
         }
     }
 
+    timer.step(format!(
+        "calculate for amenities (up to {})",
+        graph.amenities.len()
+    ));
     let mut features = Vec::new();
     for amenity in &graph.amenities {
         if !poi_kinds.contains(&amenity.kind.as_str()) {
@@ -67,5 +73,7 @@ pub fn calculate(graph: &Graph) -> Result<String> {
         }
     }
     let gj = geojson::GeoJson::from(features);
-    Ok(serde_json::to_string(&gj)?)
+    let out = serde_json::to_string(&gj)?;
+    timer.done();
+    Ok(out)
 }

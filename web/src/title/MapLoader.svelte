@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { OverpassSelector } from "svelte-utils/overpass";
   import { map, backend, isLoaded } from "../stores";
-  import Loading from "./Loading.svelte";
+  import { Loading } from "../common";
 
   let example = "";
   let loading: string[] = [];
