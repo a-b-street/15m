@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { NavBar } from "./common";
+  import {
+    StopsLayer,
+    PickTravelMode,
+    AmenityList,
+    AmenityLayer,
+    NavBar,
+  } from "./common";
   import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
-  import PickTravelMode from "./PickTravelMode.svelte";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import AmenityList from "./AmenityList.svelte";
-  import AmenityLayer from "./AmenityLayer.svelte";
-  import StopsLayer from "./StopsLayer.svelte";
   import { PropertiesTable, notNull } from "svelte-utils";
   import { Popup } from "svelte-utils/map";
   import { backend, type TravelMode, filterForMode } from "./stores";

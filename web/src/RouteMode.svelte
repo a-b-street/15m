@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { NavBar } from "./common";
+  import { PickTravelMode, NavBar } from "./common";
   import type { MapMouseEvent } from "maplibre-gl";
   import {
     MapEvents,
@@ -10,7 +10,6 @@
   } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { mode, backend, type TravelMode } from "./stores";
-  import PickTravelMode from "./PickTravelMode.svelte";
   import { Popup, constructMatchExpression } from "svelte-utils/map";
   import { notNull, PropertiesTable } from "svelte-utils";
   import { onMount } from "svelte";

@@ -1,14 +1,11 @@
 <script lang="ts">
-  import { NavBar } from "./common";
+  import { AmenityLayer, AmenityList, PickTravelMode, NavBar } from "./common";
   import type { Feature, Point } from "geojson";
-  import AmenityLayer from "./AmenityLayer.svelte";
-  import AmenityList from "./AmenityList.svelte";
   import { colorScale } from "./colors";
   import type { FeatureCollection } from "geojson";
   import { GeoJSON, FillLayer, LineLayer, Marker } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { backend, type TravelMode } from "./stores";
-  import PickTravelMode from "./PickTravelMode.svelte";
   import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
   import { onMount } from "svelte";
