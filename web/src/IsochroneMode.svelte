@@ -1,12 +1,13 @@
 <script lang="ts">
+  import { NavBar } from "./common";
   import type { Feature, Point } from "geojson";
   import AmenityLayer from "./AmenityLayer.svelte";
   import AmenityList from "./AmenityList.svelte";
   import { colorScale } from "./colors";
   import type { FeatureCollection } from "geojson";
   import { GeoJSON, FillLayer, LineLayer, Marker } from "svelte-maplibre";
-  import { SplitComponent } from "svelte-utils/two_column_layout";
-  import { mode, backend, type TravelMode } from "./stores";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import { backend, type TravelMode } from "./stores";
   import PickTravelMode from "./PickTravelMode.svelte";
   import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
@@ -90,16 +91,9 @@
 </script>
 
 <SplitComponent>
+  <div slot="top"><NavBar /></div>
   <div slot="sidebar">
     <h2>Isochrone mode</h2>
-    <div>
-      <button on:click={() => ($mode = { kind: "title" })}
-        >Change study area</button
-      >
-      <button on:click={() => ($mode = { kind: "route" })}>Route</button>
-      <button on:click={() => ($mode = { kind: "score" })}>Score</button>
-      <button on:click={() => ($mode = { kind: "debug" })}>Debug OSM</button>
-    </div>
 
     <p>
       Move the pin to calculate an isochrone from that start. The cost is time

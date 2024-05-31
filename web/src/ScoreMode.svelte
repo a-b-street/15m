@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { NavBar } from "./common";
   import type { FeatureCollection, Point } from "geojson";
   import { colorScale } from "./colors";
   import { GeoJSON, CircleLayer } from "svelte-maplibre";
-  import { SplitComponent } from "svelte-utils/two_column_layout";
-  import { mode, backend } from "./stores";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import { backend } from "./stores";
   import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp } from "svelte-utils/map";
   import { onMount } from "svelte";
@@ -20,16 +21,9 @@
 </script>
 
 <SplitComponent>
+  <div slot="top"><NavBar /></div>
   <div slot="sidebar">
     <h2>Score mode</h2>
-    <div>
-      <button on:click={() => ($mode = { kind: "title" })}
-        >Change study area</button
-      >
-      <button on:click={() => ($mode = { kind: "isochrone" })}>Isochrone</button
-      >
-      <button on:click={() => ($mode = { kind: "route" })}>Route</button>
-    </div>
 
     <p>
       This is an early experiment of a mode to show an "access score". Right

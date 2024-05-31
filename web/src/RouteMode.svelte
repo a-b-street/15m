@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { NavBar } from "./common";
   import type { MapMouseEvent } from "maplibre-gl";
   import {
     MapEvents,
@@ -7,7 +8,7 @@
     Marker,
     hoverStateFilter,
   } from "svelte-maplibre";
-  import { SplitComponent } from "svelte-utils/two_column_layout";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { mode, backend, type TravelMode } from "./stores";
   import PickTravelMode from "./PickTravelMode.svelte";
   import { Popup, constructMatchExpression } from "svelte-utils/map";
@@ -96,16 +97,9 @@
 </script>
 
 <SplitComponent>
+  <div slot="top"><NavBar /></div>
   <div slot="sidebar">
     <h2>Route mode</h2>
-    <div>
-      <button on:click={() => ($mode = { kind: "title" })}
-        >Change study area</button
-      >
-      <button on:click={() => ($mode = { kind: "isochrone" })}
-        >Isochrone mode</button
-      >
-    </div>
 
     <PickTravelMode bind:travelMode />
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { GeoJSON, CircleLayer, LineLayer, Marker } from "svelte-maplibre";
-  import { SplitComponent } from "svelte-utils/two_column_layout";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { map, mode } from "./stores";
   import type { FeatureCollection } from "geojson";
   import { onMount, onDestroy } from "svelte";
@@ -42,11 +42,11 @@
 <svelte:window on:keydown={onKeyDown} />
 
 <SplitComponent>
+  <div slot="top">
+    <button on:click={() => ($mode = { kind: "route" })}>Back</button>
+  </div>
   <div slot="sidebar">
     <h2>Debugging a route</h2>
-    <div>
-      <button on:click={() => ($mode = { kind: "route" })}>Back</button>
-    </div>
 
     <p>{numNodes} total nodes searched</p>
 

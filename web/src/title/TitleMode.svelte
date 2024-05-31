@@ -1,6 +1,6 @@
 <script lang="ts">
   import { PolygonToolLayer } from "maplibre-draw-polygon";
-  import { SplitComponent } from "svelte-utils/two_column_layout";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { Modal, notNull } from "svelte-utils";
   import { map, backend, showAbout, isLoaded } from "../stores";
   import MapLoader from "./MapLoader.svelte";
@@ -14,6 +14,7 @@
 </script>
 
 <SplitComponent>
+  <div slot="top">modes</div>
   <div slot="sidebar">
     {#if $showAbout}
       <Modal on:close={() => ($showAbout = false)} let:dialog>

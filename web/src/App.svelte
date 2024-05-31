@@ -9,7 +9,8 @@
     Layout,
     mapContents,
     sidebarContents,
-  } from "svelte-utils/two_column_layout";
+    topContents,
+  } from "svelte-utils/top_bar_layout";
   import DebugMode from "./DebugMode.svelte";
   import IsochroneMode from "./IsochroneMode.svelte";
   import RouteMode from "./RouteMode.svelte";
@@ -67,8 +68,13 @@
   }
   $: gotModel($isLoaded);
 
+  let topDiv: HTMLSpanElement;
   let sidebarDiv: HTMLDivElement;
   let mapDiv: HTMLDivElement;
+  $: if (topDiv && $topContents) {
+    topDiv.innerHTML = "";
+    topDiv.appendChild($topContents);
+  }
   $: if (sidebarDiv && $sidebarContents) {
     sidebarDiv.innerHTML = "";
     sidebarDiv.appendChild($sidebarContents);
@@ -80,6 +86,9 @@
 </script>
 
 <Layout>
+  <div slot="top" style="display: flex">
+    <span bind:this={topDiv} style="width: 100%" />
+  </div>
   <div slot="left">
     <h1>15-minute neighbourhood tool</h1>
     <div bind:this={sidebarDiv} />

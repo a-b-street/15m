@@ -1,13 +1,14 @@
 <script lang="ts">
+  import { NavBar } from "./common";
   import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
   import PickTravelMode from "./PickTravelMode.svelte";
-  import { SplitComponent } from "svelte-utils/two_column_layout";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
   import AmenityList from "./AmenityList.svelte";
   import AmenityLayer from "./AmenityLayer.svelte";
   import StopsLayer from "./StopsLayer.svelte";
   import { PropertiesTable, notNull } from "svelte-utils";
   import { Popup } from "svelte-utils/map";
-  import { mode, backend, type TravelMode, filterForMode } from "./stores";
+  import { backend, type TravelMode, filterForMode } from "./stores";
   import { onMount } from "svelte";
   import type { FeatureCollection } from "geojson";
 
@@ -19,25 +20,20 @@
   });
 </script>
 
-{#if gj}
-  <SplitComponent>
-    <div slot="sidebar">
-      <h2>Debug mode</h2>
-      <div>
-        <button on:click={() => ($mode = { kind: "title" })}
-          >Change study area</button
-        >
-        <button on:click={() => ($mode = { kind: "isochrone" })}
-          >Isochrones</button
-        >
-      </div>
-      <p>Hover to see a segment's properties, and click to open OSM</p>
+<SplitComponent>
+  <div slot="top"><NavBar /></div>
+  <div slot="sidebar">
+    <h2>Debug mode</h2>
+    <p>Hover to see a segment's properties, and click to open OSM</p>
 
-      <PickTravelMode bind:travelMode />
+    <PickTravelMode bind:travelMode />
 
+    {#if gj}
       <AmenityList {gj} />
-    </div>
-    <div slot="map">
+    {/if}
+  </div>
+  <div slot="map">
+    {#if gj}
       <GeoJSON data={gj} generateId>
         <LineLayer
           id="network"
@@ -60,6 +56,6 @@
         <AmenityLayer />
         <StopsLayer />
       </GeoJSON>
-    </div>
-  </SplitComponent>
-{/if}
+    {/if}
+  </div>
+</SplitComponent>
