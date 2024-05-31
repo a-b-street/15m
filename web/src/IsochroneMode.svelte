@@ -5,13 +5,10 @@
   import type { FeatureCollection } from "geojson";
   import { GeoJSON, FillLayer, LineLayer, Marker } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { backend, type TravelMode } from "./stores";
+  import { backend, travelMode, type TravelMode, startTime } from "./stores";
   import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
   import { onMount } from "svelte";
-
-  let travelMode: TravelMode = "foot";
-  let startTime = "07:00";
 
   let start: { lng: number; lat: number } | null = null;
   onMount(async () => {
@@ -40,9 +37,9 @@
       try {
         isochroneGj = await $backend!.isochrone({
           start,
-          mode: travelMode,
+          mode: $travelMode,
           contours,
-          startTime,
+          startTime: $startTime,
         });
         err = "";
       } catch (err: any) {
@@ -51,7 +48,7 @@
       }
     }
   }
-  $: updateIsochrone(start, travelMode, contours, startTime);
+  $: updateIsochrone(start, $travelMode, contours, $startTime);
 
   async function updateRoute(
     x: { lng: number; lat: number } | null,
@@ -63,10 +60,10 @@
         routeGj = await $backend!.route({
           start,
           end: hoveredAmenity.geometry.coordinates,
-          mode: travelMode,
+          mode: $travelMode,
           debugSearch: false,
           useHeuristic: false,
-          startTime,
+          startTime: $startTime,
         });
         err = "";
       } catch (err: any) {
@@ -77,7 +74,7 @@
       routeGj = null;
     }
   }
-  $: updateRoute(start, hoveredAmenity, startTime);
+  $: updateRoute(start, hoveredAmenity, $startTime);
 
   function lerp(pct: number, a: number, b: number): number {
     return a + pct * (b - a);
@@ -97,11 +94,15 @@
       in seconds.
     </p>
 
-    <PickTravelMode bind:travelMode />
+    <PickTravelMode bind:travelMode={$travelMode} />
 
     <label>
       Start time (PT only)
-      <input type="time" bind:value={startTime} />
+      <input
+        type="time"
+        bind:value={$startTime}
+        disabled={$travelMode != "transit"}
+      />
     </label>
 
     <label><input type="checkbox" bind:checked={contours} />Contours</label>

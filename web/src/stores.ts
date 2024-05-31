@@ -31,6 +31,11 @@ export function filterForMode(travelMode: TravelMode): ExpressionSpecification {
   return ["!=", ["get", `access_${travelMode}`], "None"];
 }
 
+export let travelMode: Writable<TravelMode> = writable("foot");
+export let startTime: Writable<string> = writable("07:00");
+// Only used in RouteMode
+export let useHeuristic = writable(true);
+
 // TODO Does this need to be a store?
 export let backend: Writable<Comlink.Remote<Backend> | null> = writable(null);
 // Indicates the backend is ready and a file is loaded

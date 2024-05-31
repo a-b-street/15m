@@ -9,15 +9,18 @@
     hoverStateFilter,
   } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { mode, backend, type TravelMode } from "./stores";
+  import {
+    mode,
+    backend,
+    travelMode,
+    type TravelMode,
+    startTime,
+    useHeuristic,
+  } from "./stores";
   import { Popup, constructMatchExpression } from "svelte-utils/map";
   import { notNull, PropertiesTable } from "svelte-utils";
   import { onMount } from "svelte";
   import type { FeatureCollection } from "geojson";
-
-  let travelMode: TravelMode = "foot";
-  let useHeuristic = true;
-  let startTime = "07:00";
 
   let start: { lng: number; lat: number } | null = null;
   let end: { lng: number; lat: number } | null = null;
@@ -51,8 +54,8 @@
           end: [end.lng, end.lat],
           mode,
           debugSearch: false,
-          useHeuristic,
-          startTime,
+          useHeuristic: $useHeuristic,
+          startTime: $startTime,
         });
         err = "";
       } catch (error: any) {
@@ -61,7 +64,7 @@
       }
     }
   }
-  $: updateRoute(start, end, travelMode, useHeuristic, startTime);
+  $: updateRoute(start, end, $travelMode, $useHeuristic, $startTime);
 
   function onRightClick(e: CustomEvent<MapMouseEvent>) {
     // Move the first marker, for convenience
@@ -77,10 +80,10 @@
       let debugGj = await $backend!.route({
         start: start!,
         end: [end!.lng, end!.lat],
-        mode: travelMode,
+        mode: $travelMode,
         debugSearch: true,
-        useHeuristic,
-        startTime,
+        useHeuristic: $useHeuristic,
+        startTime: $startTime,
       });
       $mode = {
         kind: "debug-route",
@@ -100,16 +103,24 @@
   <div slot="sidebar">
     <h2>Route mode</h2>
 
-    <PickTravelMode bind:travelMode />
+    <PickTravelMode bind:travelMode={$travelMode} />
 
     <label>
-      <input type="checkbox" bind:checked={useHeuristic} />
+      <input
+        type="checkbox"
+        bind:checked={$useHeuristic}
+        disabled={$travelMode != "transit"}
+      />
       Use heuristic (PT only)
     </label>
 
     <label>
       Start time (PT only)
-      <input type="time" bind:value={startTime} />
+      <input
+        type="time"
+        bind:value={$startTime}
+        disabled={$travelMode != "transit"}
+      />
     </label>
 
     <p>
