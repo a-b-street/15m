@@ -120,6 +120,8 @@
     {#if err}
       <p>{err}</p>
     {:else if gj}
+      <button on:click={debugRoute}>Watch how this route was found</button>
+
       <ol>
         {#each gj.features as f}
           {@const props = notNull(f.properties)}
@@ -137,8 +139,6 @@
           {/if}
         {/each}
       </ol>
-
-      <button on:click={debugRoute}>Watch how this route was found</button>
     {/if}
   </div>
   <div slot="map">
