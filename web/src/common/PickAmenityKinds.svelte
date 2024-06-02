@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { Modal, notNull } from "svelte-utils";
 
-  let kinds: { [name: string]: boolean } = {};
+  let kinds: Map<string, { enabled: boolean; num: number }> = new Map();
   let show = false;
 
   export let enabled: string[];
@@ -11,24 +11,35 @@
 
   onMount(async () => {
     let gj = await $backend!.renderDebug();
-    let allKinds: Set<string> = new Set();
     for (let f of gj.features) {
       let kind: string | undefined = f.properties!.amenity_kind;
       if (kind) {
-        allKinds.add(kind);
+        if (kinds.has(kind)) {
+          kinds.get(kind)!.num += 1;
+        } else {
+          kinds.set(kind, { enabled: false, num: 1 });
+        }
       }
     }
 
-    // Make the order work
-    for (let kind of [...allKinds].sort()) {
-      kinds[kind] = false;
-    }
-    kinds = kinds;
+    kinds = sortMap(kinds, (x) => x.num);
   });
 
-  function getEnabled(kinds: { [name: string]: boolean }): string[] {
-    return Object.entries(kinds)
-      .filter((pair) => pair[1])
+  // Descending
+  function sortMap<K, V>(map: Map<K, V>, cmp: (value: V) => number) {
+    let pairs: [K, V][] = [...map.entries()];
+    pairs.sort((a, b) => cmp(b[1]) - cmp(a[1]));
+
+    let result = new Map();
+    for (let [k, v] of pairs) {
+      result.set(k, v);
+    }
+    return result;
+  }
+
+  function getEnabled(_x: any): string[] {
+    return [...kinds.entries()]
+      .filter((pair) => pair[1].enabled)
       .map((pair) => pair[0]);
   }
 </script>
@@ -40,10 +51,10 @@
     <fieldset>
       <legend>Amenities:</legend>
 
-      {#each Object.keys(kinds) as key}
+      {#each kinds.entries() as [key, value]}
         <label>
-          <input type="checkbox" bind:checked={kinds[key]} />
-          {key}
+          <input type="checkbox" bind:checked={value.enabled} />
+          {key} ({value.num})
         </label>
       {/each}
     </fieldset>
