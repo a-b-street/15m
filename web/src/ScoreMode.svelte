@@ -3,11 +3,16 @@
   import { Loading, NavBar, PickAmenityKinds } from "./common";
   import type { Feature, FeatureCollection, Point } from "geojson";
   import { colorScale } from "./colors";
-  import { GeoJSON, CircleLayer, LineLayer } from "svelte-maplibre";
+  import {
+    GeoJSON,
+    CircleLayer,
+    LineLayer,
+    hoverStateFilter,
+  } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { backend, type ScoreProps } from "./stores";
   import { SequentialLegend } from "svelte-utils";
-  import { Popup, makeColorRamp } from "svelte-utils/map";
+  import { makeColorRamp } from "svelte-utils/map";
 
   let loading: string[] = [];
   let poiKinds: string[] = [];
@@ -71,7 +76,15 @@
 {/if}
 
 <SplitComponent>
-  <div slot="top"><NavBar /></div>
+  <div slot="top" style="display: flex; justify-content: space-between;">
+    <NavBar />
+    {#if hoveredAmenity}
+      <span
+        >From {hoveredAmenity.properties.poi}, it's {hoveredAmenity.properties
+          .cost} seconds to the nearest parking</span
+      >
+    {/if}
+  </div>
   <div slot="sidebar">
     <h2>Score mode</h2>
 
@@ -91,20 +104,18 @@
   </div>
   <div slot="map">
     {#if gj}
-      <GeoJSON data={gj}>
+      <GeoJSON data={gj} generateId>
         <CircleLayer
           paint={{
             "circle-radius": 15,
             "circle-color": makeColorRamp(["get", "cost"], limits, colorScale),
+            "circle-stroke-width": hoverStateFilter(1, 3),
+            "circle-stroke-color": "black",
           }}
           manageHoverState
           bind:hovered={hoveredAmenity}
           eventsIfTopMost
-        >
-          <Popup openOn="hover" let:props>
-            From {props.poi}, it's {props.cost} seconds to the nearest parking
-          </Popup>
-        </CircleLayer>
+        />
       </GeoJSON>
     {/if}
 
