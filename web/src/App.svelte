@@ -1,5 +1,6 @@
 <script lang="ts">
   import "@picocss/pico/css/pico.jade.min.css";
+  import cycleParking from "../assets/bicycle_parking.png?url";
   import logoDark from "../assets/logo_dark.svg?url";
   import About from "./About.svelte";
   import { notNull } from "svelte-utils";
@@ -128,6 +129,11 @@
       standardControls
       hash
       bind:map
+      images={[{ id: "cycle_parking", url: cycleParking }]}
+      on:error={(e) => {
+        // @ts-expect-error ErrorEvent isn't exported
+        console.log(e.detail.error);
+      }}
     >
       <Geocoder {map} apiKey={maptilerApiKey} />
       <div bind:this={mapDiv} />

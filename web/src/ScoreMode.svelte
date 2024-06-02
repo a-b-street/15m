@@ -8,14 +8,16 @@
     CircleLayer,
     LineLayer,
     hoverStateFilter,
+    SymbolLayer,
   } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { backend, type ScoreProps } from "./stores";
-  import { SequentialLegend } from "svelte-utils";
+  import { SequentialLegend, notNull } from "svelte-utils";
   import { makeColorRamp } from "svelte-utils/map";
 
   let loading: string[] = [];
   let poiKinds: string[] = [];
+  let showParking = true;
 
   let gj: FeatureCollection<Point, ScoreProps> | null = null;
 
@@ -92,6 +94,11 @@
 
     <SequentialLegend {colorScale} {limits} />
 
+    <label>
+      <input type="checkbox" bind:checked={showParking} />
+      Show parking
+    </label>
+
     <p>
       This is an early experiment of a mode to show an "access score". Right
       now, it's starting from every POI based on the types chosen below and
@@ -100,6 +107,12 @@
       results is poor; the search begins and ends at the nearest intersection,
       and the time to walk doesn't take into account the side of the road or
       walking partly down some road.
+    </p>
+    <p>
+      Parking icon from <a
+        href="https://github.com/gravitystorm/openstreetmap-carto"
+        target="_blank">OpenStreetMap Carto</a
+      >
     </p>
   </div>
   <div slot="map">
@@ -114,7 +127,6 @@
           }}
           manageHoverState
           bind:hovered={hoveredAmenity}
-          eventsIfTopMost
         />
       </GeoJSON>
     {/if}
@@ -130,5 +142,19 @@
         />
       </GeoJSON>
     {/if}
+
+    {#await notNull($backend).renderDebug() then data}
+      <GeoJSON {data}>
+        <SymbolLayer
+          filter={["==", ["get", "amenity_kind"], "bicycle_parking"]}
+          layout={{
+            "icon-image": "cycle_parking",
+            "icon-size": 1.0,
+            "icon-allow-overlap": true,
+            visibility: showParking ? "visible" : "none",
+          }}
+        />
+      </GeoJSON>
+    {/await}
   </div>
 </SplitComponent>
