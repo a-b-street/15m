@@ -16,18 +16,20 @@
   import { makeColorRamp } from "svelte-utils/map";
 
   let loading: string[] = [];
+  let maxSeconds = 600;
   let poiKinds: string[] = [];
   let showParking = true;
 
   let gj: FeatureCollection<Point, ScoreProps> | null = null;
 
-  $: updateScores(poiKinds);
+  $: updateScores(poiKinds, maxSeconds);
 
-  async function updateScores(_x: string[]) {
+  async function updateScores(_x: string[], _y: number) {
     loading = [...loading, "Calculating scores"];
     gj = await $backend!.score(
       {
         poiKinds,
+        maxSeconds,
       },
       Comlink.proxy(progressCb),
     );
@@ -39,8 +41,8 @@
 
   let routeGj: FeatureCollection | null = null;
 
-  let limits = Array.from(Array(6).keys()).map(
-    (i) => ((60 * 10) / (6 - 1)) * i,
+  $: limits = Array.from(Array(6).keys()).map(
+    (i) => (maxSeconds / (6 - 1)) * i,
   );
 
   let hoveredAmenity: Feature<Point, ScoreProps> | null;
@@ -95,18 +97,22 @@
     <SequentialLegend {colorScale} {limits} />
 
     <label>
+      <input type="number" bind:value={maxSeconds} />
+      Max time (seconds)
+    </label>
+
+    <label>
       <input type="checkbox" bind:checked={showParking} />
       Show parking
     </label>
 
     <p>
       This is an early experiment of a mode to show an "access score". Right
-      now, it's starting from every POI based on the types chosen below and
-      walking up to 10 minutes to the nearest bicycle parking. This is a simple
-      way of showing POIs without any nearby parking. Note the granularity of
-      results is poor; the search begins and ends at the nearest intersection,
-      and the time to walk doesn't take into account the side of the road or
-      walking partly down some road.
+      now, it's starting from every POI chosen and walking up to some time to
+      the nearest bicycle parking. This is a simple way of showing POIs without
+      any nearby parking. Note the granularity of results is poor; the search
+      begins and ends at the nearest intersection, and the time to walk doesn't
+      take into account the side of the road or walking partly down some road.
     </p>
     <p>
       Parking icon from <a

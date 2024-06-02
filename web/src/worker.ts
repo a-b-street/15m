@@ -120,6 +120,7 @@ export class Backend {
   score(
     req: {
       poiKinds: string[];
+      maxSeconds: number;
     },
     progressCb: (msg: string) => void,
   ): FeatureCollection<Point, ScoreProps> {
@@ -131,6 +132,7 @@ export class Backend {
       this.inner.score(
         {
           poi_kinds: req.poiKinds,
+          max_seconds: req.maxSeconds,
         },
         progressCb,
       ),

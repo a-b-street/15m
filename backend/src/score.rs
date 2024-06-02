@@ -9,8 +9,12 @@ use crate::timer::Timer;
 
 // Return GeoJSON points for each POI, with info about that POI, a score to the nearest cycle
 // parking, and the location of that parking
-pub fn calculate(graph: &Graph, poi_kinds: HashSet<String>, mut timer: Timer) -> Result<String> {
-    let limit = Duration::from_secs(10 * 60);
+pub fn calculate(
+    graph: &Graph,
+    poi_kinds: HashSet<String>,
+    limit: Duration,
+    mut timer: Timer,
+) -> Result<String> {
     // Exact time doesn't matter
     let start_time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
     let end_time = start_time + limit;
