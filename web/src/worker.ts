@@ -118,13 +118,23 @@ export class Backend {
   }
 
   score(
+    req: {
+      poiKinds: string[];
+    },
     progressCb: (msg: string) => void,
   ): FeatureCollection<Point, ScoreProps> {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
     }
 
-    return JSON.parse(this.inner.score(progressCb));
+    return JSON.parse(
+      this.inner.score(
+        {
+          poi_kinds: req.poiKinds,
+        },
+        progressCb,
+      ),
+    );
   }
 }
 

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use anyhow::Result;
@@ -9,8 +9,7 @@ use crate::timer::Timer;
 
 // Return GeoJSON points for each POI, with info about that POI, a score to the nearest cycle
 // parking, and the location of that parking
-pub fn calculate(graph: &Graph, mut timer: Timer) -> Result<String> {
-    let poi_kinds = ["cafe", "pub", "restaurant", "bank", "nightclub"];
+pub fn calculate(graph: &Graph, poi_kinds: HashSet<String>, mut timer: Timer) -> Result<String> {
     let limit = Duration::from_secs(10 * 60);
     // Exact time doesn't matter
     let start_time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
@@ -34,7 +33,7 @@ pub fn calculate(graph: &Graph, mut timer: Timer) -> Result<String> {
     ));
     let mut features = Vec::new();
     for amenity in &graph.amenities {
-        if !poi_kinds.contains(&amenity.kind.as_str()) {
+        if !poi_kinds.contains(&amenity.kind) {
             continue;
         }
 

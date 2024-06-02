@@ -1,6 +1,6 @@
 <script lang="ts">
   import * as Comlink from "comlink";
-  import { Loading, NavBar } from "./common";
+  import { Loading, NavBar, PickAmenityKinds } from "./common";
   import type { Feature, FeatureCollection, Point } from "geojson";
   import { colorScale } from "./colors";
   import { GeoJSON, CircleLayer, LineLayer } from "svelte-maplibre";
@@ -8,16 +8,24 @@
   import { backend, type ScoreProps } from "./stores";
   import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp } from "svelte-utils/map";
-  import { onMount } from "svelte";
 
   let loading: string[] = [];
+  let poiKinds: string[] = [];
 
   let gj: FeatureCollection<Point, ScoreProps> | null = null;
-  onMount(async () => {
-    loading = ["Calculating scores"];
-    gj = await $backend!.score(Comlink.proxy(progressCb));
+
+  $: updateScores(poiKinds);
+
+  async function updateScores(_x: string[]) {
+    loading = [...loading, "Calculating scores"];
+    gj = await $backend!.score(
+      {
+        poiKinds,
+      },
+      Comlink.proxy(progressCb),
+    );
     loading = [];
-  });
+  }
   function progressCb(msg: string) {
     loading = [...loading, msg];
   }
@@ -67,17 +75,19 @@
   <div slot="sidebar">
     <h2>Score mode</h2>
 
-    <p>
-      This is an early experiment of a mode to show an "access score". Right
-      now, it's starting from every POI of a few fixed types (cafe, pub,
-      restaurant, bank, nightclub) and walking up to one minute to the nearest
-      bicycle parking. This is a simple way of showing POIs without any nearby
-      parking. Note the granularity of results is poor; the search begins and
-      ends at the nearest intersection, and the time to walk doesn't take into
-      account the side of the road or walking partly down some road.
-    </p>
+    <PickAmenityKinds bind:enabled={poiKinds} />
 
     <SequentialLegend {colorScale} {limits} />
+
+    <p>
+      This is an early experiment of a mode to show an "access score". Right
+      now, it's starting from every POI based on the types chosen below and
+      walking up to 10 minutes to the nearest bicycle parking. This is a simple
+      way of showing POIs without any nearby parking. Note the granularity of
+      results is poor; the search begins and ends at the nearest intersection,
+      and the time to walk doesn't take into account the side of the road or
+      walking partly down some road.
+    </p>
   </div>
   <div slot="map">
     {#if gj}

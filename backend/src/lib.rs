@@ -3,6 +3,7 @@ extern crate anyhow;
 #[macro_use]
 extern crate log;
 
+use std::collections::HashSet;
 use std::sync::Once;
 
 use chrono::NaiveTime;
@@ -150,8 +151,15 @@ impl MapModel {
     }
 
     #[wasm_bindgen(js_name = score)]
-    pub fn score(&self, progress_cb: Option<js_sys::Function>) -> Result<String, JsValue> {
-        score::calculate(&self.graph, Timer::new("score", progress_cb)).map_err(err_to_js)
+    pub fn score(
+        &self,
+        input: JsValue,
+        progress_cb: Option<js_sys::Function>,
+    ) -> Result<String, JsValue> {
+        let req: ScoreRequest = serde_wasm_bindgen::from_value(input)?;
+        let poi_kinds: HashSet<String> = req.poi_kinds.into_iter().collect();
+        score::calculate(&self.graph, poi_kinds, Timer::new("score", progress_cb))
+            .map_err(err_to_js)
     }
 }
 
@@ -175,6 +183,11 @@ pub struct RouteRequest {
     debug_search: bool,
     use_heuristic: bool,
     start_time: String,
+}
+
+#[derive(Deserialize)]
+pub struct ScoreRequest {
+    poi_kinds: Vec<String>,
 }
 
 fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {
