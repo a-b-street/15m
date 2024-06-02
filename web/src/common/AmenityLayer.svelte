@@ -3,8 +3,10 @@
   import { PropertiesTable, notNull } from "svelte-utils";
   import { Popup } from "svelte-utils/map";
   import type { Feature, Point } from "geojson";
+  import type { Amenity } from "../stores";
 
-  export let hovered: Feature<Point> | null = null;
+  export let hovered: Feature<Point, Amenity> | null = null;
+  export let popups = false;
 </script>
 
 <CircleLayer
@@ -23,7 +25,9 @@
   eventsIfTopMost
   bind:hovered
 >
-  <Popup openOn="hover" let:props>
-    <PropertiesTable properties={props} />
-  </Popup>
+  {#if popups}
+    <Popup openOn="hover" let:props>
+      <PropertiesTable properties={props} />
+    </Popup>
+  {/if}
 </CircleLayer>

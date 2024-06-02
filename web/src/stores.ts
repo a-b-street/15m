@@ -3,7 +3,7 @@ import { writable, type Writable } from "svelte/store";
 import type { ExpressionSpecification } from "maplibre-gl";
 import * as Comlink from "comlink";
 import { type Backend } from "./worker";
-import type { FeatureCollection } from "geojson";
+import type { Feature, Point, FeatureCollection } from "geojson";
 
 export let maptilerApiKey = "MZEJTanw3WpxRvt7qDfo";
 
@@ -46,9 +46,31 @@ export let backend: Writable<Comlink.Remote<Backend> | null> = writable(null);
 // Indicates the backend is ready and a file is loaded
 export let isLoaded = writable(false);
 
+// ----
+// TODO Move to another file
+
 export interface ScoreProps {
   cost: number;
   poi: string;
   closest_lon: number;
   closest_lat: number;
+}
+
+export interface Amenity {
+  amenity_kind: string;
+  osm_id: string;
+  name?: string;
+  brand?: string;
+  cuisine?: string;
+}
+
+export function describeAmenity(f: Feature<Point, Amenity>): string {
+  let label = f.properties.name || `a ${f.properties.amenity_kind}`;
+  if (f.properties.brand) {
+    label += ` (${f.properties.brand})`;
+  }
+  if (f.properties.cuisine) {
+    label += ` (${f.properties.cuisine})`;
+  }
+  return label;
 }

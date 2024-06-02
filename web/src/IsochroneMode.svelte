@@ -5,7 +5,14 @@
   import type { FeatureCollection } from "geojson";
   import { GeoJSON, FillLayer, LineLayer, Marker } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { backend, travelMode, type TravelMode, startTime } from "./stores";
+  import {
+    backend,
+    travelMode,
+    type TravelMode,
+    startTime,
+    type Amenity,
+    describeAmenity,
+  } from "./stores";
   import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
   import { onMount } from "svelte";
@@ -25,7 +32,7 @@
   let routeGj: FeatureCollection | null = null;
   let err = "";
 
-  let hoveredAmenity: Feature<Point> | null;
+  let hoveredAmenity: Feature<Point, Amenity> | null;
 
   async function updateIsochrone(
     _x: { lng: number; lat: number } | null,
@@ -85,7 +92,15 @@
 </script>
 
 <SplitComponent>
-  <div slot="top"><NavBar /></div>
+  <div slot="top" style="display: flex; justify-content: space-between;">
+    <NavBar />
+    {#if hoveredAmenity}
+      <span
+        >{describeAmenity(hoveredAmenity)} ({hoveredAmenity.properties
+          .amenity_kind})</span
+      >
+    {/if}
+  </div>
   <div slot="sidebar">
     <h2>Isochrone mode</h2>
 
@@ -122,7 +137,7 @@
     {/if}
 
     {#if isochroneGj}
-      <GeoJSON data={isochroneGj}>
+      <GeoJSON data={isochroneGj} generateId>
         <LineLayer
           id="isochrone"
           filter={isLine}

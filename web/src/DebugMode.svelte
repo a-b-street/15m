@@ -53,7 +53,7 @@
           </Popup>
         </LineLayer>
 
-        <AmenityLayer />
+        <AmenityLayer popups />
         <StopsLayer />
       </GeoJSON>
     {/if}

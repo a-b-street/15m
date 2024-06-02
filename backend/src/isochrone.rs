@@ -33,7 +33,7 @@ pub fn calculate(
     );
     timer.push("render to GJ");
 
-    // Show cost per road
+    // Show reached amenities
     let mut features = Vec::new();
     for (r, _) in &cost_per_road {
         for a in &graph.roads[r.0].amenities[mode] {
