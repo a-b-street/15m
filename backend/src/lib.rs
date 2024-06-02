@@ -65,6 +65,12 @@ impl MapModel {
         self.graph.render_debug().map_err(err_to_js)
     }
 
+    /// Returns a GeoJSON string showing all amenities
+    #[wasm_bindgen(js_name = renderAmenities)]
+    pub fn render_amenities(&self) -> Result<String, JsValue> {
+        self.graph.render_amenities().map_err(err_to_js)
+    }
+
     /// Return a polygon covering the world, minus a hole for the boundary, in WGS84
     #[wasm_bindgen(js_name = getInvertedBoundary)]
     pub fn get_inverted_boundary(&self) -> Result<String, JsValue> {

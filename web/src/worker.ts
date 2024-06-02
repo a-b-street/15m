@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import init, { MapModel } from "backend";
-import type { TravelMode, ScoreProps } from "./stores";
+import type { TravelMode, ScoreProps, Amenity } from "./stores";
 import type {
   Position,
   Feature,
@@ -66,6 +66,14 @@ export class Backend {
     }
 
     return JSON.parse(this.inner.renderDebug());
+  }
+
+  renderAmenities(): FeatureCollection<Point, Amenity> {
+    if (!this.inner) {
+      throw new Error("Backend used without a file loaded");
+    }
+
+    return JSON.parse(this.inner.renderAmenities());
   }
 
   isochrone(req: {

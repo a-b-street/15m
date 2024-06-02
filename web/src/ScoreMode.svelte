@@ -149,7 +149,7 @@
       </GeoJSON>
     {/if}
 
-    {#await notNull($backend).renderDebug() then data}
+    {#await notNull($backend).renderAmenities() then data}
       <GeoJSON {data}>
         <SymbolLayer
           filter={["==", ["get", "amenity_kind"], "bicycle_parking"]}

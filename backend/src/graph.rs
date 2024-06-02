@@ -105,6 +105,16 @@ impl Graph {
         Ok(out)
     }
 
+    pub fn render_amenities(&self) -> Result<String> {
+        let mut features = Vec::new();
+        for a in &self.amenities {
+            features.push(a.to_gj(&self.mercator));
+        }
+        let gj = GeoJson::from(features);
+        let out = serde_json::to_string(&gj)?;
+        Ok(out)
+    }
+
     /// Return a polygon covering the world, minus a hole for the boundary, in WGS84
     pub fn get_inverted_boundary(&self) -> Result<String> {
         let (boundary, _) = self.mercator.to_wgs84(&self.boundary_polygon).into_inner();

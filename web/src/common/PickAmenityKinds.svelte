@@ -10,15 +10,13 @@
   $: enabled = getEnabled(kinds);
 
   onMount(async () => {
-    let gj = await $backend!.renderDebug();
+    let gj = await $backend!.renderAmenities();
     for (let f of gj.features) {
-      let kind: string | undefined = f.properties!.amenity_kind;
-      if (kind) {
-        if (kinds.has(kind)) {
-          kinds.get(kind)!.num += 1;
-        } else {
-          kinds.set(kind, { enabled: false, num: 1 });
-        }
+      let kind = f.properties.amenity_kind;
+      if (kinds.has(kind)) {
+        kinds.get(kind)!.num += 1;
+      } else {
+        kinds.set(kind, { enabled: false, num: 1 });
       }
     }
 
