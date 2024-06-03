@@ -30,7 +30,7 @@
   "dependencies": {
     "@picocss/pico": "^2.0.3",
     "comlink": "^4.4.1",
-    "svelte-maplibre": "^0.9.2",
+    "svelte-maplibre": "^0.9.7",
     "svelte-utils": "github:a-b-street/svelte-utils"
   }
 }
