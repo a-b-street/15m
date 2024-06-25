@@ -111,7 +111,9 @@
     {#if err}
       <p>{err}</p>
     {:else if gj}
-      <button on:click={debugRoute}>Watch how this route was found</button>
+      <button on:click={debugRoute} disabled={$travelMode != "transit"}
+        >Watch how this route was found (PT only)</button
+      >
 
       <ol>
         {#each gj.features as f}
