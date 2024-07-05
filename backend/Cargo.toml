@@ -16,8 +16,10 @@ chrono = { version = "0.4.33", default-features = false, features = ["serde"] }
 csv = "1.3.0"
 enum-map = { version = "2.7.3", features = ["serde"] }
 fast_paths = "1.0.0"
+flatgeobuf = "4.2.1"
 geo = "0.28.0"
 geojson = { git = "https://github.com/georust/geojson", features = ["geo-types"] }
+geozero = { version = "0.13.0", default-features = false, features = ["with-geo"] }
 js-sys = "0.3.69"
 log = "0.4.20"
 muv-osm = { git = "https://gitlab.com/LeLuxNet/Muv", features = ["lanes"] }
@@ -29,10 +31,9 @@ serde-wasm-bindgen = "0.6.0"
 simple_logger = { version = "5.0.0", default-features = false }
 utils = { git = "https://github.com/a-b-street/utils", features = ["serde"] }
 wasm-bindgen = "0.2.87"
+wasm-bindgen-futures = "0.4.42"
 web-sys = { version = "0.3.64", features = ["console"] }
 web-time = "1.1.0"
-flatgeobuf = { version = "4.2.1", default-features = false }
-geozero = { version = "0.13.0", default-features = false, features = ["with-geojson"] }
 
 # For local development, build dependencies in release mode once, but otherwise
 # use dev profile and avoid wasm-opt.

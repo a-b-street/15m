@@ -40,9 +40,11 @@ impl MapModel {
     /// If is_osm is true, expect bytes of an osm.pbf or osm.xml string. Otherwise, expect a
     /// bincoded graph
     #[wasm_bindgen(constructor)]
-    pub fn new(
+    // TODO Can constructors be async?
+    pub async fn new(
         input_bytes: &[u8],
         is_osm: bool,
+        gtfs_url: Option<String>,
         progress_cb: Option<js_sys::Function>,
     ) -> Result<MapModel, JsValue> {
         // Panics shouldn't happen, but if they do, console.log them.
@@ -51,8 +53,12 @@ impl MapModel {
             console_log::init_with_level(log::Level::Info).unwrap();
         });
 
+        let gtfs = match gtfs_url {
+            Some(url) => GtfsSource::FGB(url),
+            None => GtfsSource::None,
+        };
         let graph = if is_osm {
-            Graph::new(input_bytes, None, Timer::new("build graph", progress_cb))
+            Graph::new(input_bytes, gtfs, Timer::new("build graph", progress_cb)).await
                 .map_err(err_to_js)?
         } else {
             bincode::deserialize_from(input_bytes).map_err(err_to_js)?
@@ -211,4 +217,10 @@ fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {
 
 fn x_y(c: Coord) -> [f64; 2] {
     [c.x, c.y]
+}
+
+pub enum GtfsSource {
+    Dir(String),
+    FGB(String),
+    None,
 }

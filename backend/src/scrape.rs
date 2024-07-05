@@ -17,6 +17,7 @@ use crate::graph::{
 use crate::gtfs::{GtfsModel, StopID};
 use crate::route::Router;
 use crate::timer::Timer;
+use crate::GtfsSource;
 
 struct ReadAmenities {
     amenities: Vec<Amenity>,
@@ -53,7 +54,7 @@ impl utils::osm2graph::OsmReader for ReadAmenities {
 
 impl Graph {
     /// Call with bytes of an osm.pbf or osm.xml string
-    pub fn new(input_bytes: &[u8], gtfs_dir: Option<&String>, mut timer: Timer) -> Result<Graph> {
+    pub async fn new(input_bytes: &[u8], gtfs_source: GtfsSource, mut timer: Timer) -> Result<Graph> {
         timer.step("parse OSM and split graph");
 
         let mut amenities = ReadAmenities {
@@ -135,10 +136,10 @@ impl Graph {
 
         timer.push("setting up GTFS");
         timer.step("parse");
-        let mut gtfs = if let Some(path) = gtfs_dir {
-            GtfsModel::parse(path, Some(&graph.mercator))?
-        } else {
-            GtfsModel::empty()
+        let mut gtfs = match gtfs_source {
+            GtfsSource::Dir(path) => GtfsModel::parse(&path, Some(&graph.mercator))?,
+            GtfsSource::FGB(url) => GtfsModel::from_fgb(&url, &graph.mercator).await?,
+            GtfsSource::None => GtfsModel::empty(),
         };
         snap_stops(&mut roads, &mut gtfs, &mut timer);
         timer.pop();
