@@ -13,6 +13,7 @@ use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 pub use graph::{Graph, Mode};
+pub use gtfs::GtfsModel;
 pub use timer::Timer;
 
 mod amenity;

@@ -24,8 +24,9 @@ enum Day {
 }
 
 impl GtfsModel {
-    /// Takes a path to a GTFS directory
-    pub fn parse(dir_path: &str, mercator: &Mercator) -> Result<GtfsModel> {
+    /// Takes a path to a GTFS directory. If no Mercator is specified, keeps WGS84 coordinates and
+    /// also doesn't calculate `next_steps`.
+    pub fn parse(dir_path: &str, mercator: Option<&Mercator>) -> Result<GtfsModel> {
         info!("Scraping trips.txt");
         let mut trip_to_service: BTreeMap<orig_ids::TripID, orig_ids::ServiceID> = BTreeMap::new();
         let mut trip_to_route: BTreeMap<orig_ids::TripID, orig_ids::RouteID> = BTreeMap::new();
@@ -87,7 +88,11 @@ impl GtfsModel {
 
             // TODO Move code to utils
             let point = Point::new(rec.stop_lon, rec.stop_lat);
-            if !mercator.wgs84_bounds.contains(&point) {
+            if mercator
+                .as_ref()
+                .map(|m| !m.wgs84_bounds.contains(&point))
+                .unwrap_or(false)
+            {
                 continue;
             }
 
@@ -95,7 +100,10 @@ impl GtfsModel {
             stops.push(Stop {
                 name: rec.stop_name,
                 orig_id: rec.stop_id,
-                point: mercator.to_mercator(&point),
+                point: match mercator {
+                    Some(mercator) => mercator.to_mercator(&point),
+                    None => point,
+                },
                 next_steps: Vec::new(),
                 // Dummy value, fill out later
                 road: RoadID(0),
@@ -152,13 +160,24 @@ impl GtfsModel {
         // TODO Sorting is a bit silly; we could fill this out directly in order
         routes.sort_by_key(|r| route_ids.get(&r.orig_id));
 
-        // Precompute the next steps from each stop
-        for (idx, trip) in trips.iter().enumerate() {
+        let mut model = GtfsModel {
+            stops,
+            trips,
+            routes,
+        };
+        if mercator.is_some() {
+            model.precompute_next_steps();
+        }
+        Ok(model)
+    }
+
+    fn precompute_next_steps(&mut self) {
+        for (idx, trip) in self.trips.iter().enumerate() {
             let trip_id = TripID(idx);
             for pair in trip.stop_sequence.windows(2) {
                 let (stop1, time1) = &pair[0];
                 let (stop2, time2) = &pair[1];
-                stops[stop1.0].next_steps.push(NextStep {
+                self.stops[stop1.0].next_steps.push(NextStep {
                     time1: *time1,
                     trip: trip_id,
                     stop2: *stop2,
@@ -167,15 +186,9 @@ impl GtfsModel {
             }
         }
 
-        for stop in &mut stops {
+        for stop in &mut self.stops {
             stop.next_steps.sort_by_key(|x| x.time1);
         }
-
-        Ok(GtfsModel {
-            stops,
-            trips,
-            routes,
-        })
     }
 }
 
