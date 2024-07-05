@@ -171,7 +171,7 @@ impl GtfsModel {
         Ok(model)
     }
 
-    fn precompute_next_steps(&mut self) {
+    pub(crate) fn precompute_next_steps(&mut self) {
         for (idx, trip) in self.trips.iter().enumerate() {
             let trip_id = TripID(idx);
             for pair in trip.stop_sequence.windows(2) {

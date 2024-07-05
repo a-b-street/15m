@@ -16,11 +16,16 @@ export class Backend {
     this.inner = null;
   }
 
-  async loadOsmFile(osmBytes: Uint8Array, progressCb: (msg: string) => void) {
+  async loadOsmFile(
+    osmBytes: Uint8Array,
+    gtfsUrl: string | undefined,
+    progressCb: (msg: string) => void,
+  ) {
     // TODO Do we need to do this only once?
     await init();
 
-    this.inner = new MapModel(osmBytes, true, progressCb);
+    // TODO Can we await here?
+    this.inner = new MapModel(osmBytes, true, gtfsUrl, progressCb);
   }
 
   async loadGraphFile(graphBytes: Uint8Array) {
@@ -28,7 +33,8 @@ export class Backend {
     await init();
 
     // No progress worth reporting for this
-    this.inner = new MapModel(graphBytes, false, undefined);
+    // TODO Can we await here?
+    this.inner = new MapModel(graphBytes, false, undefined, undefined);
   }
 
   isLoaded(): boolean {

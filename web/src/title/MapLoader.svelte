@@ -59,10 +59,12 @@
   }
 
   async function loadModel(buffer: ArrayBuffer) {
+    let gtfsUrl = useLocalVite ? "/gtfs.fgb" : undefined;
     loading = ["Building map model from OSM input"];
     console.time("load");
     await $backend!.loadOsmFile(
       new Uint8Array(buffer),
+      gtfsUrl,
       Comlink.proxy(progressCb),
     );
     console.timeEnd("load");
