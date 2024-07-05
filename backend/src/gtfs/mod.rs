@@ -10,6 +10,7 @@ use self::ids::orig_ids;
 pub use self::ids::{RouteID, StopID, TripID};
 use crate::graph::RoadID;
 
+mod fgb;
 mod ids;
 mod scrape;
 
@@ -33,6 +34,7 @@ pub struct Stop {
     pub next_steps: Vec<NextStep>,
 }
 
+// TODO Detangle and make it more clear what's serialized and what's derived
 /// `trip` arrives at some `Stop` at `time`. Then it reaches `stop2` at `time2`
 #[derive(Serialize, Deserialize)]
 pub struct NextStep {
@@ -49,7 +51,7 @@ pub struct Trip {
     pub route: RouteID,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Route {
     pub orig_id: orig_ids::RouteID,
     pub short_name: Option<String>,

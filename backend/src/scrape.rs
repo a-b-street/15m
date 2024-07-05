@@ -136,7 +136,7 @@ impl Graph {
         timer.push("setting up GTFS");
         timer.step("parse");
         let mut gtfs = if let Some(path) = gtfs_dir {
-            GtfsModel::parse(path, &graph.mercator)?
+            GtfsModel::parse(path, Some(&graph.mercator))?
         } else {
             GtfsModel::empty()
         };

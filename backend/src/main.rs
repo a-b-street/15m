@@ -14,17 +14,28 @@ fn main() -> Result<()> {
     simple_logger::SimpleLogger::new().init().unwrap();
 
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
-        println!("Usage: osm.pbf [gtfs directory]");
+    if args.len() < 3 || (args[1] != "graph" && args[1] != "fgb") {
+        println!("Usage: one of these:");
+        println!("To make a graph.bin: graph osm.pbf [gtfs_directory]");
+        println!("To make a gtfs.fgb: fgb gtfs_directory");
         std::process::exit(1);
     }
 
-    let timer = Timer::new("build graph", None);
-    let osm_bytes = std::fs::read(&args[1])?;
+    if args[1] == "graph" {
+        let timer = Timer::new("build graph", None);
+        let osm_bytes = std::fs::read(&args[2])?;
 
-    let graph = Graph::new(&osm_bytes, args.get(2), timer)?;
-    let writer = BufWriter::new(File::create("graph.bin")?);
-    bincode::serialize_into(writer, &graph)?;
+        let graph = Graph::new(&osm_bytes, args.get(3), timer)?;
+        let writer = BufWriter::new(File::create("graph.bin")?);
+        bincode::serialize_into(writer, &graph)?;
+    } else if args[1] == "fgb" {
+        let mut timer = Timer::new("build fgb from gtfs", None);
+        timer.step("parse GTFS");
+        let model = backend::GtfsModel::parse(&args[2], None)?;
+        timer.step("turn into FGB");
+        model.to_fgb("gtfs.fgb")?;
+        timer.done();
+    }
 
     Ok(())
 }
