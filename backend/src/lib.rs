@@ -58,7 +58,8 @@ impl MapModel {
             None => GtfsSource::None,
         };
         let graph = if is_osm {
-            Graph::new(input_bytes, gtfs, Timer::new("build graph", progress_cb)).await
+            Graph::new(input_bytes, gtfs, Timer::new("build graph", progress_cb))
+                .await
                 .map_err(err_to_js)?
         } else {
             bincode::deserialize_from(input_bytes).map_err(err_to_js)?

@@ -5,7 +5,8 @@ use std::io::BufWriter;
 use anyhow::Result;
 use chrono::NaiveTime;
 use flatgeobuf::{
-    FeatureProperties, FgbFeature, FgbWriter, GeometryType, GeozeroGeometry, HttpFgbReader,
+    ColumnType, FeatureProperties, FgbCrs, FgbFeature, FgbWriter, FgbWriterOptions, GeometryType,
+    GeozeroGeometry, HttpFgbReader,
 };
 use geo::LineString;
 use geozero::{ColumnValue, PropertyProcessor};
@@ -17,8 +18,21 @@ use crate::graph::RoadID;
 
 impl GtfsModel {
     pub fn to_fgb(&self, filename: &str) -> Result<()> {
-        let mut fgb = FgbWriter::create("gtfs", GeometryType::LineString)?;
-        // TODO Did we not need to add a json or string col?
+        let mut fgb = FgbWriter::create_with_options(
+            "gtfs",
+            GeometryType::LineString,
+            FgbWriterOptions {
+                crs: FgbCrs {
+                    code: 4326,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )?;
+        // TODO JSON?
+        fgb.add_column("data", ColumnType::String, |_, col| {
+            col.nullable = false;
+        });
 
         for (variant, linestring) in group_variants(self) {
             fgb.add_feature_geom(geo::Geometry::LineString(linestring), |feature| {
@@ -51,7 +65,6 @@ impl GtfsModel {
             let geometry = get_linestring(feature)?;
             let variant: RouteVariant =
                 serde_json::from_str(&feature.property::<String>("data").unwrap())?;
-            info!("got {:?} from FGB", geometry);
 
             // Fill out the route
             let route_id = if let Some(idx) = gtfs
