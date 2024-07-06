@@ -8,7 +8,7 @@ use flatgeobuf::{
     ColumnType, FeatureProperties, FgbCrs, FgbFeature, FgbWriter, FgbWriterOptions, GeometryType,
     GeozeroGeometry, HttpFgbReader,
 };
-use geo::LineString;
+use geo::{Contains, LineString};
 use geozero::{ColumnValue, PropertyProcessor};
 use serde::{Deserialize, Serialize};
 use utils::Mercator;
@@ -70,23 +70,21 @@ impl GtfsModel {
             let uncompressed = miniz_oxide::inflate::decompress_to_vec(&compressed).unwrap();
             let variant: RouteVariant = serde_json::from_slice(&uncompressed)?;
 
-            // Fill out the route
-            let route_id = if let Some(idx) = gtfs
-                .routes
-                .iter()
-                .position(|r| r.orig_id == variant.route.orig_id)
-            {
-                RouteID(idx)
-            } else {
-                gtfs.routes.push(variant.route);
-                RouteID(gtfs.routes.len() - 1)
-            };
-
             // Fill out the stops
             let mut stop_ids = Vec::new();
+            // Have a true/false for each entry in the full stop_sequence
+            let mut keep_stops = Vec::new();
             for ((orig_stop_id, stop_name), point) in
                 variant.stop_info.into_iter().zip(geometry.points())
             {
+                // Mimic what scrape.rs does, removing stops outside the bounding box.
+                // TODO Be even more precise -- inside the polygon
+                if !mercator.wgs84_bounds.contains(&point) {
+                    keep_stops.push(false);
+                    continue;
+                }
+                keep_stops.push(true);
+
                 stop_ids.push(
                     if let Some(idx) = gtfs.stops.iter().position(|s| s.orig_id == orig_stop_id) {
                         StopID(idx)
@@ -104,16 +102,40 @@ impl GtfsModel {
                 );
             }
 
+            // If all stops were out of bounds, we got something totally irrelevant from FGB
+            if stop_ids.is_empty() {
+                continue;
+            }
+
+            // Fill out the route
+            let route_id = if let Some(idx) = gtfs
+                .routes
+                .iter()
+                .position(|r| r.orig_id == variant.route.orig_id)
+            {
+                RouteID(idx)
+            } else {
+                gtfs.routes.push(variant.route);
+                RouteID(gtfs.routes.len() - 1)
+            };
+
             // Fill out trips
             for times in variant.trips {
+                // We might've clipped out some stops
+                let clipped_times = times
+                    .into_iter()
+                    .zip(&keep_stops)
+                    .filter(|(_, ok)| **ok)
+                    .map(|(t, _)| t)
+                    .collect::<Vec<_>>();
+                assert_eq!(stop_ids.len(), clipped_times.len());
+
                 gtfs.trips.push(Trip {
-                    stop_sequence: stop_ids.clone().into_iter().zip(times).collect(),
+                    stop_sequence: stop_ids.clone().into_iter().zip(clipped_times).collect(),
                     route: route_id,
                 });
             }
         }
-
-        // TODO Need to clip
 
         gtfs.precompute_next_steps();
 
