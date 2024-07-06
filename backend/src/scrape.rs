@@ -54,7 +54,11 @@ impl utils::osm2graph::OsmReader for ReadAmenities {
 
 impl Graph {
     /// Call with bytes of an osm.pbf or osm.xml string
-    pub async fn new(input_bytes: &[u8], gtfs_source: GtfsSource, mut timer: Timer) -> Result<Graph> {
+    pub async fn new(
+        input_bytes: &[u8],
+        gtfs_source: GtfsSource,
+        mut timer: Timer,
+    ) -> Result<Graph> {
         timer.step("parse OSM and split graph");
 
         let mut amenities = ReadAmenities {

@@ -59,7 +59,8 @@
   }
 
   async function loadModel(buffer: ArrayBuffer) {
-    let gtfsUrl = useLocalVite ? "/gtfs.fgb" : undefined;
+    // TODO Not sure on GH Pages yet; host remotely
+    let gtfsUrl = useLocalVite ? `http://${window.location.host}/15m/gtfs.fgb` : undefined;
     loading = ["Building map model from OSM input"];
     console.time("load");
     await $backend!.loadOsmFile(
