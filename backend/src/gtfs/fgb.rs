@@ -30,18 +30,19 @@ impl GtfsModel {
             },
         )?;
         // TODO JSON?
-        fgb.add_column("data", ColumnType::String, |_, col| {
+        fgb.add_column("data", ColumnType::Binary, |_, col| {
             col.nullable = false;
         });
 
         for (variant, linestring) in group_variants(self) {
             fgb.add_feature_geom(geo::Geometry::LineString(linestring), |feature| {
+                // TODO bincode or something else?
+                let json = serde_json::to_vec(&variant).unwrap();
+                // TODO Play with compression levels
+                let compressed = miniz_oxide::deflate::compress_to_vec(&json, 10);
+
                 feature
-                    .property(
-                        0,
-                        "data",
-                        &ColumnValue::String(&serde_json::to_string(&variant).unwrap()),
-                    )
+                    .property(0, "data", &ColumnValue::Binary(&compressed))
                     .unwrap();
             })?;
         }
@@ -63,8 +64,11 @@ impl GtfsModel {
         while let Some(feature) = fgb.next().await? {
             // TODO Is there some serde magic?
             let geometry = get_linestring(feature)?;
-            let variant: RouteVariant =
-                serde_json::from_str(&feature.property::<String>("data").unwrap())?;
+            let mut data = GetBinaryProperty(None);
+            feature.process_properties(&mut data)?;
+            let compressed = data.0.unwrap();
+            let uncompressed = miniz_oxide::inflate::decompress_to_vec(&compressed).unwrap();
+            let variant: RouteVariant = serde_json::from_slice(&uncompressed)?;
 
             // Fill out the route
             let route_id = if let Some(idx) = gtfs
@@ -172,5 +176,21 @@ fn get_linestring(f: &FgbFeature) -> Result<LineString> {
     match p.take_geometry().unwrap() {
         geo::Geometry::LineString(ls) => Ok(ls),
         _ => bail!("Wrong type in fgb"),
+    }
+}
+
+struct GetBinaryProperty(Option<Vec<u8>>);
+
+impl PropertyProcessor for GetBinaryProperty {
+    fn property(&mut self, _: usize, _: &str, v: &ColumnValue) -> geozero::error::Result<bool> {
+        match v {
+            ColumnValue::Binary(data) => {
+                // TODO Avoid the clone, use lifetimes
+                self.0 = Some(data.to_vec());
+                Ok(false)
+            }
+            // TODO Proper error
+            _ => Ok(true),
+        }
     }
 }
