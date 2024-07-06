@@ -61,7 +61,7 @@
   async function loadModel(buffer: ArrayBuffer) {
     let gtfsUrl = useLocalVite
       ? `http://${window.location.host}/15m/gtfs.fgb`
-      : "https://od2net.org/gtfs.fgb";
+      : "https://assets.od2net.org/severance_pbfs/gtfs.fgb";
     loading = ["Building map model from OSM input"];
     console.time("load");
     await $backend!.loadOsmFile(
