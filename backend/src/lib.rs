@@ -132,20 +132,20 @@ impl MapModel {
             // TODO error plumbing
             x => panic!("bad input {x}"),
         };
-        let start = self.graph.closest_intersection[mode]
-            .nearest_neighbor(&x_y(self.graph.mercator.pt_to_mercator(Coord {
+        let start = self.graph.closest_intersection(
+            self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x1,
                 y: req.y1,
-            })))
-            .unwrap()
-            .data;
-        let end = self.graph.closest_intersection[mode]
-            .nearest_neighbor(&x_y(self.graph.mercator.pt_to_mercator(Coord {
+            }),
+            mode,
+        );
+        let end = self.graph.closest_intersection(
+            self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x2,
                 y: req.y2,
-            })))
-            .unwrap()
-            .data;
+            }),
+            mode,
+        );
 
         if req.mode == "transit" {
             transit_route::route(
@@ -214,10 +214,6 @@ pub struct ScoreRequest {
 
 fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {
     JsValue::from_str(&err.to_string())
-}
-
-fn x_y(c: Coord) -> [f64; 2] {
-    [c.x, c.y]
 }
 
 pub enum GtfsSource {

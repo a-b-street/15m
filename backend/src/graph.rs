@@ -1,6 +1,6 @@
 use anyhow::Result;
 use enum_map::{Enum, EnumMap};
-use geo::{LineString, Point, Polygon};
+use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
 use geojson::{Feature, GeoJson, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ pub struct Graph {
     pub intersections: Vec<Intersection>,
     // All geometry stored in worldspace, including rtrees
     pub mercator: Mercator,
-    pub closest_intersection: EnumMap<Mode, RTree<IntersectionLocation>>,
+    pub closest_road: EnumMap<Mode, RTree<EdgeLocation>>,
     pub router: EnumMap<Mode, Router>,
     pub boundary_polygon: Polygon,
 
@@ -26,7 +26,7 @@ pub struct Graph {
     pub gtfs: GtfsModel,
 }
 
-pub type IntersectionLocation = GeomWithData<[f64; 2], IntersectionID>;
+pub type EdgeLocation = GeomWithData<LineString, RoadID>;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RoadID(pub usize);
@@ -142,6 +142,26 @@ impl Graph {
             }
         }
         panic!("no road from {i1:?} to {i2:?} or vice versa");
+    }
+
+    // Returns the closest road and the fraction along it
+    pub fn snap_to_road(&self, pt: Coord, mode: Mode) -> (&Road, f64) {
+        let r = self.closest_road[mode]
+            .nearest_neighbor(&pt.into())
+            .unwrap()
+            .data;
+        let road = &self.roads[r.0];
+        let fraction = road.linestring.line_locate_point(&pt.into()).unwrap();
+        (road, fraction)
+    }
+
+    pub fn closest_intersection(&self, pt: Coord, mode: Mode) -> IntersectionID {
+        let (road, fraction) = self.snap_to_road(pt, mode);
+        if fraction <= 0.5 {
+            road.src_i
+        } else {
+            road.dst_i
+        }
     }
 }
 

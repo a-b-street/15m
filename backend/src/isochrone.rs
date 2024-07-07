@@ -69,10 +69,7 @@ pub fn get_costs(
     start_time: NaiveTime,
     end_time: NaiveTime,
 ) -> HashMap<RoadID, Duration> {
-    let start = graph.closest_intersection[mode]
-        .nearest_neighbor(&[req.x, req.y])
-        .unwrap()
-        .data;
+    let start = graph.closest_intersection(req, mode);
 
     let mut visited: HashSet<IntersectionID> = HashSet::new();
     let mut cost_per_road: HashMap<RoadID, Duration> = HashMap::new();

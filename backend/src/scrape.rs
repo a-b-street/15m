@@ -2,17 +2,15 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use enum_map::EnumMap;
-use geo::{Coord, EuclideanLength, LineString};
+use geo::{Coord, EuclideanLength};
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::OsmID;
-use rstar::primitives::GeomWithData;
 use rstar::RTree;
 use utils::Tags;
 
 use crate::amenity::Amenity;
 use crate::graph::{
-    AmenityID, Direction, Graph, Intersection, IntersectionID, IntersectionLocation, Mode, Road,
-    RoadID,
+    AmenityID, Direction, EdgeLocation, Graph, Intersection, IntersectionID, Mode, Road, RoadID,
 };
 use crate::gtfs::{GtfsModel, StopID};
 use crate::route::Router;
@@ -86,7 +84,7 @@ impl Graph {
             .collect();
 
         // Add in a bit
-        let mut roads = graph
+        let mut roads: Vec<Road> = graph
             .edges
             .into_iter()
             .map(|e| {
@@ -109,27 +107,24 @@ impl Graph {
                 }
             })
             .collect();
+
+        timer.push("build closest_road");
+        let closest_road = EnumMap::from_fn(|mode| {
+            timer.step(format!("for {mode:?}"));
+            RTree::bulk_load(
+                roads
+                    .iter()
+                    .filter(|r| r.access[mode] != Direction::None)
+                    .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
+                    .collect(),
+            )
+        });
+        timer.pop();
+
         for a in &mut amenities.amenities {
             a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
         }
-
-        snap_amenities(&mut roads, &amenities.amenities, &mut timer);
-
-        timer.push("build closest_intersection");
-        let closest_intersection = EnumMap::from_fn(|mode| {
-            timer.step(format!("for {mode:?}"));
-            let mut points = Vec::new();
-            for i in &intersections {
-                if i.roads
-                    .iter()
-                    .any(|r| roads[r.0].allows_forwards(mode) || roads[r.0].allows_backwards(mode))
-                {
-                    points.push(IntersectionLocation::new(i.point.into(), i.id));
-                }
-            }
-            RTree::bulk_load(points)
-        });
-        timer.pop();
+        snap_amenities(&mut roads, &amenities.amenities, &closest_road, &mut timer);
 
         timer.push("building router");
         let router = EnumMap::from_fn(|mode| {
@@ -145,7 +140,7 @@ impl Graph {
             GtfsSource::FGB(url) => GtfsModel::from_fgb(&url, &graph.mercator).await?,
             GtfsSource::None => GtfsModel::empty(),
         };
-        snap_stops(&mut roads, &mut gtfs, &mut timer);
+        snap_stops(&mut roads, &mut gtfs, &closest_road[Mode::Foot], &mut timer);
         timer.pop();
 
         timer.done();
@@ -154,7 +149,7 @@ impl Graph {
             roads,
             intersections,
             mercator: graph.mercator,
-            closest_intersection,
+            closest_road,
             router,
             boundary_polygon: graph.boundary_polygon,
 
@@ -245,48 +240,31 @@ fn calculate_max_speed(tags: &Tags) -> f64 {
     30.0 * 0.44704
 }
 
-type EdgeLocation = GeomWithData<LineString, RoadID>;
-
-fn snap_amenities(roads: &mut Vec<Road>, amenities: &Vec<Amenity>, timer: &mut Timer) {
-    timer.push("snap amenities");
-    timer.push("build closest_per_mode");
-    let closest_per_mode = EnumMap::from_fn(|mode| {
-        timer.step(format!("for {mode:?}"));
-        RTree::bulk_load(
-            roads
-                .iter()
-                .filter(|r| r.access[mode] != Direction::None)
-                .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
-                .collect(),
-        )
-    });
-    timer.pop();
-    timer.step("find closest roads");
+fn snap_amenities(
+    roads: &mut Vec<Road>,
+    amenities: &Vec<Amenity>,
+    closest_road: &EnumMap<Mode, RTree<EdgeLocation>>,
+    timer: &mut Timer,
+) {
+    timer.step("snap amenities");
     for amenity in amenities {
-        for (mode, closest) in &closest_per_mode {
+        for (mode, closest) in closest_road {
             if let Some(r) = closest.nearest_neighbor(&amenity.point) {
                 roads[r.data.0].amenities[mode].push(amenity.id);
             }
         }
     }
-    timer.pop();
 }
 
-fn snap_stops(roads: &mut Vec<Road>, gtfs: &mut GtfsModel, timer: &mut Timer) {
+fn snap_stops(
+    roads: &mut Vec<Road>,
+    gtfs: &mut GtfsModel,
+    closest_road: &RTree<EdgeLocation>,
+    timer: &mut Timer,
+) {
     if gtfs.stops.is_empty() {
         return;
     }
-
-    // Only care about one mode
-    // TODO Could we reuse from snap_amenities for some perf?
-    timer.step("build closest_road");
-    let closest_road = RTree::bulk_load(
-        roads
-            .iter()
-            .filter(|r| r.access[Mode::Foot] != Direction::None)
-            .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
-            .collect(),
-    );
 
     timer.step("find closest roads per stop");
     // TODO Make an iterator method that returns the IDs too
