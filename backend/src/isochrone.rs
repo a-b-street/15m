@@ -61,6 +61,7 @@ pub fn calculate(
     Ok(x)
 }
 
+// TODO Doesn't account for start/end distance along roads
 pub fn get_costs(
     graph: &Graph,
     req: Coord,
@@ -69,13 +70,13 @@ pub fn get_costs(
     start_time: NaiveTime,
     end_time: NaiveTime,
 ) -> HashMap<RoadID, Duration> {
-    let start = graph.closest_intersection(req, mode);
+    let start = graph.snap_to_road(req, mode);
 
     let mut visited: HashSet<IntersectionID> = HashSet::new();
     let mut cost_per_road: HashMap<RoadID, Duration> = HashMap::new();
     let mut queue: BinaryHeap<PriorityQueueItem<NaiveTime, IntersectionID>> = BinaryHeap::new();
 
-    queue.push(PriorityQueueItem::new(start_time, start));
+    queue.push(PriorityQueueItem::new(start_time, start.intersection));
 
     while let Some(current) = queue.pop() {
         if visited.contains(&current.value) {

@@ -144,23 +144,22 @@ impl Graph {
         panic!("no road from {i1:?} to {i2:?} or vice versa");
     }
 
-    // Returns the closest road and the fraction along it
-    pub fn snap_to_road(&self, pt: Coord, mode: Mode) -> (&Road, f64) {
+    pub fn snap_to_road(&self, pt: Coord, mode: Mode) -> Position {
         let r = self.closest_road[mode]
             .nearest_neighbor(&pt.into())
             .unwrap()
             .data;
         let road = &self.roads[r.0];
-        let fraction = road.linestring.line_locate_point(&pt.into()).unwrap();
-        (road, fraction)
-    }
-
-    pub fn closest_intersection(&self, pt: Coord, mode: Mode) -> IntersectionID {
-        let (road, fraction) = self.snap_to_road(pt, mode);
-        if fraction <= 0.5 {
+        let fraction_along = road.linestring.line_locate_point(&pt.into()).unwrap();
+        let intersection = if fraction_along <= 0.5 {
             road.src_i
         } else {
             road.dst_i
+        };
+        Position {
+            road: road.id,
+            fraction_along,
+            intersection,
         }
     }
 }
@@ -190,4 +189,12 @@ impl Road {
         f.set_property("max_speed_mph", self.max_speed * 2.23694);
         f
     }
+}
+
+/// A position along a road, along with the closer intersection
+#[derive(PartialEq)]
+pub struct Position {
+    pub road: RoadID,
+    pub fraction_along: f64,
+    pub intersection: IntersectionID,
 }

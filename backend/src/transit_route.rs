@@ -9,14 +9,14 @@ use geojson::{Feature, GeoJson, Geometry};
 use utils::PriorityQueueItem;
 
 use crate::costs::cost;
-use crate::graph::{Graph, IntersectionID, Mode, RoadID};
-use crate::gtfs::{StopID, TripID};
+use crate::graph::{Graph, IntersectionID, Mode, Position};
+use crate::route::PathStep;
 use crate::timer::Timer;
 
 pub fn route(
     graph: &Graph,
-    start: IntersectionID,
-    end: IntersectionID,
+    start: Position,
+    end: Position,
     // TODO Parameterizing this function gets messy, but splitting into two separate doesn't seem
     // like a good idea yet
     debug_search: bool,
@@ -27,8 +27,9 @@ pub fn route(
     if start == end {
         bail!("start = end");
     }
+    // TODO Handle start.road == end.road case. Share code somewhere.
 
-    let end_pt = graph.intersections[end.0].point;
+    let end_pt = graph.intersections[end.intersection.0].point;
     // TODO Share constant properly
     // TODO Think through if this is admissible and/or consistent
     let heuristic = |i: IntersectionID| {
@@ -57,14 +58,14 @@ pub fn route(
     let mut queue: BinaryHeap<PriorityQueueItem<NaiveTime, (IntersectionID, NaiveTime)>> =
         BinaryHeap::new();
     queue.push(PriorityQueueItem::new(
-        start_time + heuristic(start),
-        (start, start_time),
+        start_time + heuristic(start.intersection),
+        (start.intersection, start_time),
     ));
 
     while let Some(current) = queue.pop() {
         // Don't use current.cost, since it might include a heuristic
         let (current_i, current_time) = current.value;
-        if current_i == end {
+        if current_i == end.intersection {
             if debug_search {
                 return render_debug(search_record, backrefs, graph, timer);
             } else {
@@ -163,32 +164,20 @@ struct Backreference {
     time2: NaiveTime,
 }
 
-enum PathStep {
-    Road {
-        road: RoadID,
-        forwards: bool,
-    },
-    Transit {
-        stop1: StopID,
-        trip: TripID,
-        stop2: StopID,
-    },
-}
-
 fn render_path(
     mut backrefs: HashMap<IntersectionID, Backreference>,
     graph: &Graph,
-    start: IntersectionID,
-    end: IntersectionID,
+    start: Position,
+    end: Position,
     mut timer: Timer,
 ) -> Result<String> {
     timer.step("render");
 
     // Just get PathSteps in order first (Step, time1, time2)
     let mut steps: Vec<(PathStep, NaiveTime, NaiveTime)> = Vec::new();
-    let mut at = end;
+    let mut at = end.intersection;
     loop {
-        if at == start {
+        if at == start.intersection {
             break;
         }
         let backref = backrefs.remove(&at).unwrap();

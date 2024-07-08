@@ -132,14 +132,14 @@ impl MapModel {
             // TODO error plumbing
             x => panic!("bad input {x}"),
         };
-        let start = self.graph.closest_intersection(
+        let start = self.graph.snap_to_road(
             self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x1,
                 y: req.y1,
             }),
             mode,
         );
-        let end = self.graph.closest_intersection(
+        let end = self.graph.snap_to_road(
             self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x2,
                 y: req.y2,

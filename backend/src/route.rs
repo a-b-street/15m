@@ -2,13 +2,15 @@ use std::cell::RefCell;
 
 use anyhow::{bail, Result};
 use fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
-use geo::LineString;
+use geo::{Coord, LineString};
 use geojson::{Feature, GeoJson, Geometry};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use utils::{deserialize_nodemap, NodeMap};
+use utils::{deserialize_nodemap, LineSplit, NodeMap};
 
 use crate::costs::cost;
-use crate::graph::{Graph, IntersectionID, Mode, Road};
+use crate::graph::{Graph, IntersectionID, Mode, Position, Road, RoadID};
+use crate::gtfs::{StopID, TripID};
 
 #[derive(Serialize, Deserialize)]
 pub struct Router {
@@ -49,40 +51,79 @@ impl Router {
         }
     }
 
-    pub fn route(
-        &self,
-        graph: &Graph,
-        start: IntersectionID,
-        end: IntersectionID,
-    ) -> Result<String> {
+    pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<String> {
         if start == end {
             bail!("start = end");
         }
-        let start = self.node_map.get(start).unwrap();
-        let end = self.node_map.get(end).unwrap();
+        if start.road == end.road {
+            // Just slice the one road
+            let mut slice = graph.roads[start.road.0]
+                .linestring
+                .line_split_twice(start.fraction_along, end.fraction_along)
+                .unwrap()
+                .into_second()
+                .unwrap();
+            if start.fraction_along > end.fraction_along {
+                slice.0.reverse();
+            }
+            let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&slice)));
+            f.set_property("kind", "road");
+            return Ok(serde_json::to_string(&GeoJson::from(vec![f]))?);
+        }
+
+        let start_node = self.node_map.get(start.intersection).unwrap();
+        let end_node = self.node_map.get(end.intersection).unwrap();
 
         let Some(path) = self
             .path_calc
             .borrow_mut()
             // This'll be empty right after loading a serialized Graph
             .get_or_insert_with(|| fast_paths::create_calculator(&self.ch))
-            .calc_path(&self.ch, start, end)
+            .calc_path(&self.ch, start_node, end_node)
         else {
             bail!("No path");
         };
 
-        let mut pts = Vec::new();
-        for pair in path.get_nodes().windows(2) {
+        let mut steps = Vec::new();
+        for (pos, pair) in path.get_nodes().windows(2).with_position() {
             let i1 = self.node_map.translate_id(pair[0]);
             let i2 = self.node_map.translate_id(pair[1]);
             let road = graph.find_edge(i1, i2);
 
-            if road.src_i == i1 {
-                pts.extend(road.linestring.0.clone());
-            } else {
-                let mut rev = road.linestring.0.clone();
-                rev.reverse();
-                pts.extend(rev);
+            if pos == itertools::Position::First && road.id != start.road {
+                steps.push(PathStep::Road {
+                    road: start.road,
+                    // TODO Test carefully.
+                    forwards: start.fraction_along > 0.5,
+                });
+            }
+            steps.push(PathStep::Road {
+                road: road.id,
+                forwards: road.src_i == i1,
+            });
+            if pos == itertools::Position::Last && road.id != end.road {
+                steps.push(PathStep::Road {
+                    road: end.road,
+                    // TODO Test carefully.
+                    forwards: end.fraction_along <= 0.5,
+                });
+            }
+        }
+
+        // TODO Share code with PT?
+        let mut pts = Vec::new();
+        for (pos, step) in steps.into_iter().with_position() {
+            match step {
+                PathStep::Road { road, forwards } => {
+                    pts.extend(slice_road_step(
+                        &graph.roads[road.0].linestring,
+                        forwards,
+                        &start,
+                        &end,
+                        pos,
+                    ));
+                }
+                PathStep::Transit { .. } => unreachable!(),
             }
         }
         pts.dedup();
@@ -93,4 +134,58 @@ impl Router {
         f.set_property("kind", "road");
         Ok(serde_json::to_string(&GeoJson::from(vec![f]))?)
     }
+}
+
+pub enum PathStep {
+    Road {
+        road: RoadID,
+        forwards: bool,
+    },
+    Transit {
+        stop1: StopID,
+        trip: TripID,
+        stop2: StopID,
+    },
+}
+
+fn slice_road_step(
+    linestring: &LineString,
+    forwards: bool,
+    start: &Position,
+    end: &Position,
+    pos: itertools::Position,
+) -> Vec<Coord> {
+    let mut pts = match pos {
+        itertools::Position::First => {
+            let (a, b) = if forwards {
+                (start.fraction_along, 1.0)
+            } else {
+                (0.0, start.fraction_along)
+            };
+            linestring
+                .line_split_twice(a, b)
+                .unwrap()
+                .into_second()
+                .unwrap()
+                .0
+        }
+        itertools::Position::Last => {
+            let (a, b) = if forwards {
+                (0.0, end.fraction_along)
+            } else {
+                (end.fraction_along, 1.0)
+            };
+            linestring
+                .line_split_twice(a, b)
+                .unwrap()
+                .into_second()
+                .unwrap()
+                .0
+        }
+        _ => linestring.0.clone(),
+    };
+    if !forwards {
+        pts.reverse();
+    }
+    pts
 }

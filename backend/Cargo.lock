@@ -108,6 +108,7 @@ dependencies = [
  "geo",
  "geojson",
  "geozero",
+ "itertools 0.13.0",
  "js-sys",
  "log",
  "miniz_oxide",
@@ -377,7 +378,7 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79127ed59a85d7687c409e9978547cffb7dc79675355ed22da6b66fd5f6ead01"
 dependencies = [
- "itertools",
+ "itertools 0.11.0",
  "num-traits",
 ]
 
@@ -864,6 +865,15 @@ name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -1836,11 +1846,12 @@ dependencies = [
 [[package]]
 name = "utils"
 version = "0.1.0"
-source = "git+https://github.com/a-b-street/utils#cd91b66444c073c44cabfb91b658bb0f2c201f2d"
+source = "git+https://github.com/a-b-street/utils#4151ebb843a6c3fb2312f91af2640311efc1b277"
 dependencies = [
  "anyhow",
  "fast_paths",
  "geo",
+ "geo-types",
  "log",
  "osm-reader",
  "serde",
