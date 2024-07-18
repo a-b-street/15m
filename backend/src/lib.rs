@@ -54,7 +54,7 @@ impl MapModel {
         });
 
         let gtfs = match gtfs_url {
-            Some(url) => GtfsSource::FGB(url),
+            Some(url) => GtfsSource::Geomedea(url),
             None => GtfsSource::None,
         };
         let graph = if is_osm {
@@ -218,6 +218,6 @@ fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {
 
 pub enum GtfsSource {
     Dir(String),
-    FGB(String),
+    Geomedea(String),
     None,
 }

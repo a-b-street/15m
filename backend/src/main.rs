@@ -13,13 +13,13 @@ use backend::{Graph, GtfsSource, Timer};
 /// manual testing for now.
 #[tokio::main]
 async fn main() -> Result<()> {
-    simple_logger::SimpleLogger::new().init().unwrap();
+    simple_logger::init_with_level(log::Level::Info).unwrap();
 
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 || (args[1] != "graph" && args[1] != "fgb") {
+    if args.len() < 3 || (args[1] != "graph" && args[1] != "gmd") {
         println!("Usage: one of these:");
         println!("To make a graph.bin: graph osm.pbf [gtfs_directory]");
-        println!("To make a gtfs.fgb: fgb gtfs_directory");
+        println!("To make a gtfs.gmd: gmd gtfs_directory");
         std::process::exit(1);
     }
 
@@ -34,12 +34,12 @@ async fn main() -> Result<()> {
         let graph = Graph::new(&osm_bytes, gtfs, timer).await?;
         let writer = BufWriter::new(File::create("graph.bin")?);
         bincode::serialize_into(writer, &graph)?;
-    } else if args[1] == "fgb" {
-        let mut timer = Timer::new("build fgb from gtfs", None);
+    } else if args[1] == "gmd" {
+        let mut timer = Timer::new("build geomedea from gtfs", None);
         timer.step("parse GTFS");
         let model = backend::GtfsModel::parse(&args[2], None)?;
-        timer.step("turn into FGB");
-        model.to_fgb("gtfs.fgb")?;
+        timer.step("turn into geomedea");
+        model.to_geomedea("gtfs.gmd")?;
         timer.done();
     }
 
