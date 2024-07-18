@@ -1,15 +1,8 @@
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::BufWriter;
-
-use anyhow::Result;
+use anyhow::{bail, Result};
 use chrono::NaiveTime;
-use flatgeobuf::{
-    ColumnType, FeatureProperties, FgbCrs, FgbFeature, FgbWriter, FgbWriterOptions, GeometryType,
-    GeozeroGeometry, HttpFgbReader,
-};
-use geo::{Contains, LineString};
-use geozero::{ColumnValue, PropertyProcessor};
+use futures_util::StreamExt;
+use geo::{Contains, Coord, LineString};
+use geomedea::{Bounds, Geometry, LngLat, PropertyValue};
 use serde::{Deserialize, Serialize};
 use utils::Mercator;
 
@@ -17,58 +10,71 @@ use super::{orig_ids, GtfsModel, Route, RouteID, Stop, StopID, Trip};
 use crate::graph::RoadID;
 
 impl GtfsModel {
-    pub fn to_fgb(&self, filename: &str) -> Result<()> {
-        let mut fgb = FgbWriter::create_with_options(
-            "gtfs",
-            GeometryType::LineString,
-            FgbWriterOptions {
-                crs: FgbCrs {
-                    code: 4326,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        )?;
-        // TODO JSON?
-        fgb.add_column("data", ColumnType::Binary, |_, col| {
-            col.nullable = false;
-        });
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn to_geomedea(&self, filename: &str) -> Result<()> {
+        use std::fs::File;
+        use std::io::BufWriter;
+
+        use geomedea::{Feature, Geometry, Properties, PropertyValue, Writer};
+
+        let out = BufWriter::new(File::create(filename)?);
+        let mut writer = Writer::new(out, true)?;
 
         for (variant, linestring) in group_variants(self) {
-            fgb.add_feature_geom(geo::Geometry::LineString(linestring), |feature| {
-                // TODO bincode or something else?
-                let json = serde_json::to_vec(&variant).unwrap();
-                // TODO Play with compression levels
-                let compressed = miniz_oxide::deflate::compress_to_vec(&json, 10);
-
-                feature
-                    .property(0, "data", &ColumnValue::Binary(&compressed))
-                    .unwrap();
-            })?;
+            // TODO geozero to this translation better?
+            let geom = Geometry::LineString(geomedea::LineString::new(
+                linestring
+                    .0
+                    .into_iter()
+                    .map(|pt| geomedea::LngLat::degrees(pt.x, pt.y))
+                    .collect(),
+            ));
+            let mut props = Properties::empty();
+            // TODO bincode or something else?
+            props.insert(
+                "data".to_string(),
+                PropertyValue::Bytes(serde_json::to_vec(&variant).unwrap()),
+            );
+            writer.add_feature(&Feature::new(geom, props))?;
         }
 
-        let mut out = BufWriter::new(File::create(filename)?);
-        fgb.write(&mut out)?;
+        writer.finish()?;
         println!("Wrote {filename}");
         Ok(())
     }
 
-    pub async fn from_fgb(url: &str, mercator: &Mercator) -> Result<Self> {
+    pub async fn from_geomedea(url: &str, mercator: &Mercator) -> Result<Self> {
         let bbox = &mercator.wgs84_bounds;
-        let mut fgb = HttpFgbReader::open(url)
-            .await?
-            .select_bbox(bbox.min().x, bbox.min().y, bbox.max().x, bbox.max().y)
+        let mut reader = geomedea::HttpReader::open(url).await?;
+        let mut feature_stream = reader
+            .select_bbox(&Bounds::from_corners(
+                &LngLat::degrees(bbox.min().x, bbox.min().y),
+                &LngLat::degrees(bbox.max().x, bbox.max().y),
+            ))
             .await?;
 
         let mut gtfs = GtfsModel::empty();
-        while let Some(feature) = fgb.next().await? {
-            // TODO Is there some serde magic?
-            let geometry = get_linestring(feature)?;
-            let mut data = GetBinaryProperty(None);
-            feature.process_properties(&mut data)?;
-            let compressed = data.0.unwrap();
-            let uncompressed = miniz_oxide::inflate::decompress_to_vec(&compressed).unwrap();
-            let variant: RouteVariant = serde_json::from_slice(&uncompressed)?;
+        while let Some(feature) = feature_stream.next().await {
+            let feature = feature?;
+
+            let bytes = match feature.property("data").unwrap() {
+                PropertyValue::Bytes(bytes) => bytes,
+                _ => bail!("Wrong PropertyValue for data"),
+            };
+            let variant: RouteVariant = serde_json::from_slice(bytes)?;
+
+            let geometry = match feature.into_inner().0 {
+                Geometry::LineString(ls) => LineString::new(
+                    ls.points()
+                        .into_iter()
+                        .map(|pt| Coord {
+                            x: pt.lng_degrees(),
+                            y: pt.lat_degrees(),
+                        })
+                        .collect(),
+                ),
+                _ => bail!("Wrong Geometry type"),
+            };
 
             // Fill out the stops
             let mut stop_ids = Vec::new();
@@ -102,7 +108,7 @@ impl GtfsModel {
                 );
             }
 
-            // If all stops were out of bounds, we got something totally irrelevant from FGB
+            // If all stops were out of bounds, we got something totally irrelevant
             if stop_ids.is_empty() {
                 continue;
             }
@@ -157,7 +163,10 @@ struct RouteVariant {
 
 // In GTFS, routes contain many trips, each with a stop sequence. But there are really "variants"
 // of stop sequences. We need to group by those.
+#[cfg(not(target_arch = "wasm32"))]
 fn group_variants(gtfs: &GtfsModel) -> Vec<(RouteVariant, LineString)> {
+    use std::collections::BTreeMap;
+
     let mut variants: BTreeMap<Vec<StopID>, (RouteVariant, LineString)> = BTreeMap::new();
 
     for trip in &gtfs.trips {
@@ -190,29 +199,4 @@ fn group_variants(gtfs: &GtfsModel) -> Vec<(RouteVariant, LineString)> {
     }
 
     variants.into_values().collect()
-}
-
-fn get_linestring(f: &FgbFeature) -> Result<LineString> {
-    let mut p = geozero::geo_types::GeoWriter::new();
-    f.process_geom(&mut p)?;
-    match p.take_geometry().unwrap() {
-        geo::Geometry::LineString(ls) => Ok(ls),
-        _ => bail!("Wrong type in fgb"),
-    }
-}
-
-struct GetBinaryProperty(Option<Vec<u8>>);
-
-impl PropertyProcessor for GetBinaryProperty {
-    fn property(&mut self, _: usize, _: &str, v: &ColumnValue) -> geozero::error::Result<bool> {
-        match v {
-            ColumnValue::Binary(data) => {
-                // TODO Avoid the clone, use lifetimes
-                self.0 = Some(data.to_vec());
-                Ok(false)
-            }
-            // TODO Proper error
-            _ => Ok(true),
-        }
-    }
 }

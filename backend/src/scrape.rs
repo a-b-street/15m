@@ -137,7 +137,7 @@ impl Graph {
         timer.step("parse");
         let mut gtfs = match gtfs_source {
             GtfsSource::Dir(path) => GtfsModel::parse(&path, Some(&graph.mercator))?,
-            GtfsSource::FGB(url) => GtfsModel::from_fgb(&url, &graph.mercator).await?,
+            GtfsSource::Geomedea(url) => GtfsModel::from_geomedea(&url, &graph.mercator).await?,
             GtfsSource::None => GtfsModel::empty(),
         };
         snap_stops(&mut roads, &mut gtfs, &closest_road[Mode::Foot], &mut timer);
