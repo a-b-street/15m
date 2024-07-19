@@ -13,8 +13,7 @@ use backend::{Graph, GtfsSource, Timer};
 /// manual testing for now.
 #[tokio::main]
 async fn main() -> Result<()> {
-    // TODO Changed to Debug to check geomedea perf
-    simple_logger::init_with_level(log::Level::Debug).unwrap();
+    simple_logger::init_with_level(log::Level::Info).unwrap();
 
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 || (args[1] != "graph" && args[1] != "gmd") {

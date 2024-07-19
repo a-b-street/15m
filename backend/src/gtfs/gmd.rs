@@ -2,8 +2,7 @@ use anyhow::{bail, Result};
 use chrono::NaiveTime;
 use futures_util::StreamExt;
 use geo::{Contains, Coord, LineString};
-use geomedea::{Bounds, Geometry, LngLat, PropertyValue};
-use serde::{Deserialize, Serialize};
+use geomedea::{Bounds, Geometry, LngLat, Properties, PropertyValue};
 use utils::Mercator;
 
 use super::{orig_ids, GtfsModel, Route, RouteID, Stop, StopID, Trip};
@@ -15,7 +14,7 @@ impl GtfsModel {
         use std::fs::File;
         use std::io::BufWriter;
 
-        use geomedea::{Feature, Geometry, Properties, PropertyValue, Writer};
+        use geomedea::{Feature, Geometry, Writer};
 
         let out = BufWriter::new(File::create(filename)?);
         let mut writer = Writer::new(out, true)?;
@@ -29,12 +28,7 @@ impl GtfsModel {
                     .map(|pt| geomedea::LngLat::degrees(pt.x, pt.y))
                     .collect(),
             ));
-            let mut props = Properties::empty();
-            // TODO bincode or something else?
-            props.insert(
-                "data".to_string(),
-                PropertyValue::Bytes(serde_json::to_vec(&variant).unwrap()),
-            );
+            let props = variant.encode()?;
             writer.add_feature(&Feature::new(geom, props))?;
         }
 
@@ -56,14 +50,11 @@ impl GtfsModel {
         let mut gtfs = GtfsModel::empty();
         while let Some(feature) = feature_stream.next().await {
             let feature = feature?;
+            let (geometry, properties) = feature.into_inner();
 
-            let bytes = match feature.property("data").unwrap() {
-                PropertyValue::Bytes(bytes) => bytes,
-                _ => bail!("Wrong PropertyValue for data"),
-            };
-            let variant: RouteVariant = serde_json::from_slice(bytes)?;
+            let variant = RouteVariant::decode(properties)?;
 
-            let geometry = match feature.into_inner().0 {
+            let linestring = match geometry {
                 Geometry::LineString(ls) => LineString::new(
                     ls.points()
                         .into_iter()
@@ -81,7 +72,7 @@ impl GtfsModel {
             // Have a true/false for each entry in the full stop_sequence
             let mut keep_stops = Vec::new();
             for ((orig_stop_id, stop_name), point) in
-                variant.stop_info.into_iter().zip(geometry.points())
+                variant.stop_info.into_iter().zip(linestring.points())
             {
                 // Mimic what scrape.rs does, removing stops outside the bounding box.
                 // TODO Be even more precise -- inside the polygon
@@ -149,7 +140,6 @@ impl GtfsModel {
     }
 }
 
-#[derive(Serialize, Deserialize)]
 struct RouteVariant {
     // Per stop, (original ID and name)
     pub stop_info: Vec<(orig_ids::StopID, String)>,
@@ -159,6 +149,82 @@ struct RouteVariant {
 
     // Metadata
     pub route: Route,
+}
+
+impl RouteVariant {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn encode(&self) -> Result<Properties> {
+        use chrono::Timelike;
+
+        let mut props = Properties::empty();
+
+        // These two fields aren't usually too big, so just use JSON
+        props.insert(
+            "stop_info".to_string(),
+            PropertyValue::Bytes(serde_json::to_vec(&self.stop_info)?),
+        );
+        props.insert(
+            "route".to_string(),
+            PropertyValue::Bytes(serde_json::to_vec(&self.route)?),
+        );
+
+        // NaiveTime's serde encodes as strings by default! For GTFS arrival times, we don't even
+        // care about subsecond precision.
+        // TODO Some kind of delta encoding here could probably be useful
+        props.insert(
+            "trips".to_string(),
+            PropertyValue::Vec(
+                self.trips
+                    .iter()
+                    .map(|times| {
+                        PropertyValue::Vec(
+                            times
+                                .iter()
+                                .map(|t| PropertyValue::UInt32(t.num_seconds_from_midnight()))
+                                .collect(),
+                        )
+                    })
+                    .collect(),
+            ),
+        );
+
+        Ok(props)
+    }
+
+    fn decode(props: Properties) -> Result<Self> {
+        let stop_info = match props.get("stop_info") {
+            Some(PropertyValue::Bytes(bytes)) => serde_json::from_slice(bytes)?,
+            _ => bail!("stop_info missing or wrong type"),
+        };
+        let route = match props.get("route") {
+            Some(PropertyValue::Bytes(bytes)) => serde_json::from_slice(bytes)?,
+            _ => bail!("route missing or wrong type"),
+        };
+
+        let mut trips = Vec::new();
+        let Some(PropertyValue::Vec(raw_trips)) = props.get("trips") else {
+            bail!("trips missing or wrong type");
+        };
+        for trip in raw_trips {
+            let mut times = Vec::new();
+            let PropertyValue::Vec(raw_times) = trip else {
+                bail!("wrong inner type inside trips");
+            };
+            for t in raw_times {
+                let PropertyValue::UInt32(seconds) = t else {
+                    bail!("wrong inner type inside trips");
+                };
+                times.push(NaiveTime::from_num_seconds_from_midnight_opt(*seconds, 0).unwrap());
+            }
+            trips.push(times);
+        }
+
+        Ok(Self {
+            stop_info,
+            route,
+            trips,
+        })
+    }
 }
 
 // In GTFS, routes contain many trips, each with a stop sequence. But there are really "variants"
