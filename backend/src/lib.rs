@@ -120,10 +120,39 @@ impl MapModel {
         .map_err(err_to_js)
     }
 
-    // mut because of path_calc
     #[wasm_bindgen(js_name = route)]
     pub fn route(&self, input: JsValue) -> Result<String, JsValue> {
         let req: RouteRequest = serde_wasm_bindgen::from_value(input)?;
+        self.route_from_req(&req)
+    }
+
+    #[wasm_bindgen(js_name = score)]
+    pub fn score(
+        &self,
+        input: JsValue,
+        progress_cb: Option<js_sys::Function>,
+    ) -> Result<String, JsValue> {
+        let req: ScoreRequest = serde_wasm_bindgen::from_value(input)?;
+        let poi_kinds: HashSet<String> = req.poi_kinds.into_iter().collect();
+        let limit = Duration::from_secs(req.max_seconds);
+        score::calculate(
+            &self.graph,
+            poi_kinds,
+            limit,
+            Timer::new("score", progress_cb),
+        )
+        .map_err(err_to_js)
+    }
+}
+
+// Non WASM methods
+impl MapModel {
+    pub fn from_graph_bytes(input_bytes: &[u8]) -> Result<MapModel, JsValue> {
+        let graph = bincode::deserialize_from(input_bytes).map_err(err_to_js)?;
+        Ok(MapModel { graph })
+    }
+
+    pub fn route_from_req(&self, req: &RouteRequest) -> Result<String, JsValue> {
         let mode = match req.mode.as_str() {
             "car" => Mode::Car,
             "bicycle" => Mode::Bicycle,
@@ -165,24 +194,6 @@ impl MapModel {
                 .map_err(err_to_js)
         }
     }
-
-    #[wasm_bindgen(js_name = score)]
-    pub fn score(
-        &self,
-        input: JsValue,
-        progress_cb: Option<js_sys::Function>,
-    ) -> Result<String, JsValue> {
-        let req: ScoreRequest = serde_wasm_bindgen::from_value(input)?;
-        let poi_kinds: HashSet<String> = req.poi_kinds.into_iter().collect();
-        let limit = Duration::from_secs(req.max_seconds);
-        score::calculate(
-            &self.graph,
-            poi_kinds,
-            limit,
-            Timer::new("score", progress_cb),
-        )
-        .map_err(err_to_js)
-    }
 }
 
 #[derive(Deserialize)]
@@ -196,15 +207,15 @@ pub struct IsochroneRequest {
 
 #[derive(Deserialize)]
 pub struct RouteRequest {
-    x1: f64,
-    y1: f64,
-    x2: f64,
-    y2: f64,
-    mode: String,
+    pub x1: f64,
+    pub y1: f64,
+    pub x2: f64,
+    pub y2: f64,
+    pub mode: String,
     // TODO Only works for transit
-    debug_search: bool,
-    use_heuristic: bool,
-    start_time: String,
+    pub debug_search: bool,
+    pub use_heuristic: bool,
+    pub start_time: String,
 }
 
 #[derive(Deserialize)]
