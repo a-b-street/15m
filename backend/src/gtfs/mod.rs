@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::time::Duration;
 
 use chrono::NaiveTime;
@@ -69,8 +70,10 @@ impl GtfsModel {
     }
 
     /// Starting from a stop at some time, find all the next trips going somewhere, waiting up to
-    /// max_wait.
+    /// max_wait. Only returns the first trip per route.
     pub fn trips_from(&self, stop1: StopID, time: NaiveTime, max_wait: Duration) -> Vec<&NextStep> {
+        let mut routes_seen = HashSet::new();
+
         // TODO Binary search
         let mut results = Vec::new();
         for next_step in &self.stops[stop1.0].next_steps {
@@ -80,7 +83,10 @@ impl GtfsModel {
             }
 
             if next_step.time1 >= time {
-                results.push(next_step);
+                let route = self.trips[next_step.trip.0].route;
+                if routes_seen.insert(route) {
+                    results.push(next_step);
+                }
             }
         }
         results
