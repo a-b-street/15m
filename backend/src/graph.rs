@@ -192,7 +192,7 @@ impl Road {
 }
 
 /// A position along a road, along with the closer intersection
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Position {
     pub road: RoadID,
     pub fraction_along: f64,

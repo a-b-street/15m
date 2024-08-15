@@ -76,6 +76,25 @@
       err = error.toString();
     }
   }
+
+  async function bufferRoute() {
+    try {
+      let bufferGj = await $backend!.bufferRoute({
+        start: $routeA!,
+        end: [$routeB!.lng, $routeB!.lat],
+        mode: $travelMode,
+        useHeuristic: $useHeuristic,
+        startTime: $startTime,
+        maxSeconds: 5 * 60,
+      });
+      $mode = {
+        kind: "buffer-route",
+        gj: bufferGj,
+      };
+    } catch (error: any) {
+      err = error.toString();
+    }
+  }
 </script>
 
 <SplitComponent>
@@ -114,6 +133,8 @@
       <button on:click={debugRoute} disabled={$travelMode != "transit"}
         >Watch how this route was found (PT only)</button
       >
+
+      <button on:click={bufferRoute}>Buffer 5 mins around this route</button>
 
       <ol>
         {#each gj.features as f}

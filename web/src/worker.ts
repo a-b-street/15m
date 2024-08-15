@@ -131,6 +131,33 @@ export class Backend {
     );
   }
 
+  bufferRoute(req: {
+    // TODO LngLatLike doesn't work?
+    start: { lng: number; lat: number };
+    end: Position;
+    mode: TravelMode;
+    useHeuristic: boolean;
+    startTime: string;
+    maxSeconds: number;
+  }): FeatureCollection {
+    if (!this.inner) {
+      throw new Error("Backend used without a file loaded");
+    }
+
+    return JSON.parse(
+      this.inner.bufferRoute({
+        x1: req.start.lng,
+        y1: req.start.lat,
+        x2: req.end[0],
+        y2: req.end[1],
+        mode: req.mode,
+        use_heuristic: req.useHeuristic,
+        start_time: req.startTime,
+        max_seconds: req.maxSeconds,
+      }),
+    );
+  }
+
   score(
     req: {
       poiKinds: string[];

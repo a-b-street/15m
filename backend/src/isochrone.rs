@@ -25,7 +25,7 @@ pub fn calculate(
     timer.step("get_costs");
     let cost_per_road = get_costs(
         graph,
-        req,
+        vec![graph.snap_to_road(req, mode).intersection],
         mode,
         public_transit,
         start_time,
@@ -64,19 +64,19 @@ pub fn calculate(
 // TODO Doesn't account for start/end distance along roads
 pub fn get_costs(
     graph: &Graph,
-    req: Coord,
+    starts: Vec<IntersectionID>,
     mode: Mode,
     public_transit: bool,
     start_time: NaiveTime,
     end_time: NaiveTime,
 ) -> HashMap<RoadID, Duration> {
-    let start = graph.snap_to_road(req, mode);
-
     let mut visited: HashSet<IntersectionID> = HashSet::new();
     let mut cost_per_road: HashMap<RoadID, Duration> = HashMap::new();
     let mut queue: BinaryHeap<PriorityQueueItem<NaiveTime, IntersectionID>> = BinaryHeap::new();
 
-    queue.push(PriorityQueueItem::new(start_time, start.intersection));
+    for start in starts {
+        queue.push(PriorityQueueItem::new(start_time, start));
+    }
 
     while let Some(current) = queue.pop() {
         if visited.contains(&current.value) {

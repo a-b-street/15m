@@ -51,26 +51,13 @@ impl Router {
         }
     }
 
-    pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<String> {
-        if start == end {
-            bail!("start = end");
-        }
-        if start.road == end.road {
-            // Just slice the one road
-            let mut slice = graph.roads[start.road.0]
-                .linestring
-                .line_split_twice(start.fraction_along, end.fraction_along)
-                .unwrap()
-                .into_second()
-                .unwrap();
-            if start.fraction_along > end.fraction_along {
-                slice.0.reverse();
-            }
-            let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&slice)));
-            f.set_property("kind", "road");
-            return Ok(serde_json::to_string(&GeoJson::from(vec![f]))?);
-        }
-
+    // TODO This doesn't handle start=end cases
+    pub fn route_steps(
+        &self,
+        graph: &Graph,
+        start: Position,
+        end: Position,
+    ) -> Result<Vec<PathStep>> {
         let start_node = self.node_map.get(start.intersection).unwrap();
         let end_node = self.node_map.get(end.intersection).unwrap();
 
@@ -109,6 +96,32 @@ impl Router {
                 });
             }
         }
+
+        Ok(steps)
+    }
+
+    // TODO Rename -- renders to GJ
+    pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<String> {
+        if start == end {
+            bail!("start = end");
+        }
+        if start.road == end.road {
+            // Just slice the one road
+            let mut slice = graph.roads[start.road.0]
+                .linestring
+                .line_split_twice(start.fraction_along, end.fraction_along)
+                .unwrap()
+                .into_second()
+                .unwrap();
+            if start.fraction_along > end.fraction_along {
+                slice.0.reverse();
+            }
+            let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&slice)));
+            f.set_property("kind", "road");
+            return Ok(serde_json::to_string(&GeoJson::from(vec![f]))?);
+        }
+
+        let steps = self.route_steps(graph, start, end)?;
 
         // TODO Share code with PT?
         let mut pts = Vec::new();

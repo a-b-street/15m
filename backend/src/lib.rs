@@ -126,6 +126,91 @@ impl MapModel {
         self.route_from_req(&req)
     }
 
+    #[wasm_bindgen(js_name = bufferRoute)]
+    pub fn buffer_route(&self, input: JsValue) -> Result<String, JsValue> {
+        let req: BufferRouteRequest = serde_wasm_bindgen::from_value(input)?;
+
+        // TODO Duplicating some route_from_req boilerplate
+        let mode = match req.mode.as_str() {
+            "car" => Mode::Car,
+            "bicycle" => Mode::Bicycle,
+            "foot" => Mode::Foot,
+            // For endpoint matching only
+            "transit" => Mode::Foot,
+            // TODO error plumbing
+            x => panic!("bad input {x}"),
+        };
+        let start = self.graph.snap_to_road(
+            self.graph.mercator.pt_to_mercator(Coord {
+                x: req.x1,
+                y: req.y1,
+            }),
+            mode,
+        );
+        let end = self.graph.snap_to_road(
+            self.graph.mercator.pt_to_mercator(Coord {
+                x: req.x2,
+                y: req.y2,
+            }),
+            mode,
+        );
+
+        let steps = if req.mode == "transit" {
+            todo!()
+        } else {
+            self.graph.router[mode]
+                .route_steps(&self.graph, start, end)
+                .map_err(err_to_js)?
+        };
+
+        let mut features = Vec::new();
+        let mut route_roads = HashSet::new();
+        let mut starts = HashSet::new();
+        for step in steps {
+            if let crate::route::PathStep::Road { road, .. } = step {
+                route_roads.insert(road);
+                let road = &self.graph.roads[road.0];
+                starts.insert(road.src_i);
+                starts.insert(road.dst_i);
+
+                // TODO Doesn't handle the exact start/end
+                let mut f = geojson::Feature::from(geojson::Geometry::from(
+                    &self.graph.mercator.to_wgs84(&road.linestring),
+                ));
+                f.set_property("kind", "route");
+                features.push(f);
+            }
+        }
+
+        let public_transit = false; // TODO
+        let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
+        let limit = Duration::from_secs(req.max_seconds);
+        let cost_per_road = crate::isochrone::get_costs(
+            &self.graph,
+            starts.into_iter().collect(),
+            mode,
+            public_transit,
+            start_time,
+            start_time + limit,
+        );
+        for (r, cost) in cost_per_road {
+            if !route_roads.contains(&r) {
+                let mut f = geojson::Feature::from(geojson::Geometry::from(
+                    &self
+                        .graph
+                        .mercator
+                        .to_wgs84(&self.graph.roads[r.0].linestring),
+                ));
+                f.set_property("kind", "buffer");
+                f.set_property("cost_seconds", cost.as_secs());
+                features.push(f);
+            }
+        }
+
+        let gj = geojson::GeoJson::from(features);
+        serde_json::to_string(&gj).map_err(err_to_js)
+    }
+
     #[wasm_bindgen(js_name = score)]
     pub fn score(
         &self,
@@ -216,6 +301,18 @@ pub struct RouteRequest {
     pub debug_search: bool,
     pub use_heuristic: bool,
     pub start_time: String,
+}
+
+#[derive(Deserialize)]
+pub struct BufferRouteRequest {
+    pub x1: f64,
+    pub y1: f64,
+    pub x2: f64,
+    pub y2: f64,
+    pub mode: String,
+    pub use_heuristic: bool,
+    pub start_time: String,
+    pub max_seconds: u64,
 }
 
 #[derive(Deserialize)]

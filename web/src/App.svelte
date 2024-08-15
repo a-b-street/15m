@@ -18,6 +18,7 @@
   import IsochroneMode from "./IsochroneMode.svelte";
   import RouteMode from "./RouteMode.svelte";
   import DebugRouteMode from "./DebugRouteMode.svelte";
+  import BufferRouteMode from "./BufferRouteMode.svelte";
   import ScoreMode from "./ScoreMode.svelte";
   import {
     map as mapStore,
@@ -162,6 +163,8 @@
             end={$mode.end}
             routeGj={$mode.routeGj}
           />
+        {:else if $mode.kind == "buffer-route"}
+          <BufferRouteMode gj={$mode.gj} />
         {/if}
       {/if}
     </MapLibre>

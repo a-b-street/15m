@@ -43,7 +43,11 @@ pub fn calculate(
 
         let costs = crate::isochrone::get_costs(
             graph,
-            amenity.point.into(),
+            vec![
+                graph
+                    .snap_to_road(amenity.point.into(), Mode::Foot)
+                    .intersection,
+            ],
             Mode::Foot,
             false,
             start_time,
