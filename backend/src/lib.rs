@@ -12,7 +12,7 @@ use geo::Coord;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
-pub use graph::{Graph, Mode};
+pub use graph::{Graph, GtfsSource, Mode};
 pub use gtfs::GtfsModel;
 pub use timer::Timer;
 
@@ -40,6 +40,7 @@ impl MapModel {
         input_bytes: &[u8],
         is_osm: bool,
         gtfs_url: Option<String>,
+        population_url: Option<String>,
         progress_cb: Option<js_sys::Function>,
     ) -> Result<MapModel, JsValue> {
         // Panics shouldn't happen, but if they do, console.log them.
@@ -54,9 +55,14 @@ impl MapModel {
             None => graph::GtfsSource::None,
         };
         let graph = if is_osm {
-            Graph::new(input_bytes, gtfs, Timer::new("build graph", progress_cb))
-                .await
-                .map_err(err_to_js)?
+            Graph::new(
+                input_bytes,
+                gtfs,
+                population_url,
+                Timer::new("build graph", progress_cb),
+            )
+            .await
+            .map_err(err_to_js)?
         } else {
             bincode::deserialize_from(input_bytes).map_err(err_to_js)?
         };

@@ -62,11 +62,15 @@
     let gtfsUrl = useLocalVite
       ? `http://${window.location.host}/15m/gtfs.gmd`
       : "https://assets.od2net.org/gtfs.gmd";
+    let populationUrl = useLocalVite
+      ? `http://${window.location.host}/15m/population.fgb`
+      : "https://assets.od2net.org/population.fgb";
     loading = ["Building map model from OSM input"];
     console.time("load");
     await $backend!.loadOsmFile(
       new Uint8Array(buffer),
       gtfsUrl,
+      populationUrl,
       Comlink.proxy(progressCb),
     );
     console.timeEnd("load");
