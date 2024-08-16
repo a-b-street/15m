@@ -186,6 +186,17 @@ impl Graph {
             intersection,
         }
     }
+
+    /// Returns a GeoJSON string
+    pub fn render_zones(&self) -> Result<String> {
+        let mut features = Vec::new();
+        for zone in &self.zones {
+            let mut f = Feature::from(Geometry::from(&self.mercator.to_wgs84(&zone.geom)));
+            f.set_property("population", zone.population);
+            features.push(f);
+        }
+        Ok(serde_json::to_string(&GeoJson::from(features))?)
+    }
 }
 
 impl Road {

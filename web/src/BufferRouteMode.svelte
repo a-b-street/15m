@@ -25,7 +25,7 @@
     <GeoJSON data={gj}>
       <LineLayer
         paint={{
-          "line-width": 20,
+          "line-width": ["case", ["==", ["get", "kind"], "route"], 20, 3],
           "line-color": [
             "case",
             ["==", ["get", "kind"], "route"],

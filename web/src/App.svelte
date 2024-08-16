@@ -29,11 +29,13 @@
     showAbout,
     routeA,
     routeB,
+    showPopulation,
   } from "./stores";
   import TitleMode from "./title/TitleMode.svelte";
   import workerWrapper from "./worker?worker";
   import { type Backend } from "./worker";
   import * as Comlink from "comlink";
+        import { PopulationLayer } from "./common";
 
   onMount(async () => {
     // If you get "import declarations may only appear at top level of a
@@ -165,6 +167,10 @@
           />
         {:else if $mode.kind == "buffer-route"}
           <BufferRouteMode gj={$mode.gj} />
+        {/if}
+
+        {#if $showPopulation}
+                <PopulationLayer />
         {/if}
       {/if}
     </MapLibre>

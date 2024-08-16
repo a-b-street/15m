@@ -28,6 +28,7 @@ export type Mode =
 export let mode: Writable<Mode> = writable({ kind: "title" });
 export let map: Writable<Map | null> = writable(null);
 export let showAbout: Writable<boolean> = writable(true);
+export let showPopulation: Writable<boolean> = writable(false);
 
 export type TravelMode = "car" | "bicycle" | "foot" | "transit";
 
