@@ -39,7 +39,6 @@ export class Backend {
     await init();
 
     // No progress worth reporting for this
-    // TODO Can we await here?
     this.inner = await new MapModel(
       graphBytes,
       false,

@@ -92,14 +92,8 @@
 </script>
 
 <SplitComponent>
-  <div slot="top" style="display: flex; justify-content: space-between;">
+  <div slot="top">
     <NavBar />
-    {#if hoveredAmenity}
-      <span
-        >{describeAmenity(hoveredAmenity)} ({hoveredAmenity.properties
-          .amenity_kind})</span
-      >
-    {/if}
   </div>
   <div slot="sidebar">
     <h2>Isochrone mode</h2>
@@ -108,6 +102,12 @@
       Move the pin to calculate an isochrone from that start. The cost is time
       in seconds.
     </p>
+    {#if hoveredAmenity}
+      <span
+        >{describeAmenity(hoveredAmenity)} ({hoveredAmenity.properties
+          .amenity_kind})</span
+      >
+    {/if}
 
     <PickTravelMode bind:travelMode={$travelMode} />
 

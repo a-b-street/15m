@@ -80,17 +80,18 @@
 {/if}
 
 <SplitComponent>
-  <div slot="top" style="display: flex; justify-content: space-between;">
+  <div slot="top">
     <NavBar />
+  </div>
+  <div slot="sidebar">
+    <h2>Score mode</h2>
+
     {#if hoveredAmenity}
       <span
         >From {hoveredAmenity.properties.poi}, it's {hoveredAmenity.properties
           .cost} seconds to the nearest parking</span
       >
     {/if}
-  </div>
-  <div slot="sidebar">
-    <h2>Score mode</h2>
 
     <PickAmenityKinds bind:enabled={poiKinds} />
 

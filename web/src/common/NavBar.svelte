@@ -38,7 +38,8 @@
       >
     </li>
   </ul>
-</nav>
 
-<label><input type="checkbox" bind:checked={$showPopulation} />Population</label
->
+  <label
+    ><input type="checkbox" bind:checked={$showPopulation} />Population</label
+  >
+</nav>
