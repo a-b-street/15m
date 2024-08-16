@@ -2,17 +2,18 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use enum_map::EnumMap;
-use geo::{Coord, EuclideanLength};
+use flatgeobuf::{FeatureProperties, FgbFeature, GeozeroGeometry, HttpFgbReader};
+use geo::{Coord, EuclideanLength, MultiPolygon};
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::OsmID;
 use rstar::RTree;
-use utils::Tags;
+use utils::{Mercator, Tags};
 
 use super::amenity::Amenity;
 use super::route::Router;
 use crate::graph::{
     AmenityID, Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode,
-    Road, RoadID,
+    Road, RoadID, Zone,
 };
 use crate::gtfs::{GtfsModel, StopID};
 use crate::timer::Timer;
@@ -55,6 +56,7 @@ impl Graph {
     pub async fn new(
         input_bytes: &[u8],
         gtfs_source: GtfsSource,
+        population_url: Option<String>,
         mut timer: Timer,
     ) -> Result<Graph> {
         timer.step("parse OSM and split graph");
@@ -143,6 +145,13 @@ impl Graph {
         snap_stops(&mut roads, &mut gtfs, &closest_road[Mode::Foot], &mut timer);
         timer.pop();
 
+        let zones = if let Some(url) = population_url {
+            timer.step("load population zones");
+            load_zones(url, &graph.mercator).await?
+        } else {
+            Vec::new()
+        };
+
         timer.done();
 
         Ok(Graph {
@@ -155,6 +164,7 @@ impl Graph {
 
             amenities: amenities.amenities,
             gtfs,
+            zones,
         })
     }
 }
@@ -278,5 +288,33 @@ fn snap_stops(
             // TODO Need to get rid of the stop
             error!("{stop_id:?} didn't snap to any road");
         }
+    }
+}
+
+async fn load_zones(url: String, mercator: &Mercator) -> Result<Vec<Zone>> {
+    let bbox = mercator.wgs84_bounds;
+    let mut fgb = HttpFgbReader::open(&url)
+        .await?
+        .select_bbox(bbox.min().x, bbox.min().y, bbox.max().x, bbox.max().y)
+        .await?;
+
+    let mut zones = Vec::new();
+    while let Some(feature) = fgb.next().await? {
+        // TODO Could intersect with boundary_polygon, but some extras nearby won't hurt anything
+        zones.push(Zone {
+            geom: get_multipolygon(feature)?,
+            population: feature.property("population")?,
+        });
+    }
+    Ok(zones)
+}
+
+fn get_multipolygon(f: &FgbFeature) -> Result<MultiPolygon> {
+    let mut p = geozero::geo_types::GeoWriter::new();
+    f.process_geom(&mut p)?;
+    match p.take_geometry().unwrap() {
+        geo::Geometry::Polygon(p) => Ok(MultiPolygon(vec![p])),
+        geo::Geometry::MultiPolygon(mp) => Ok(mp),
+        _ => bail!("Wrong type in fgb"),
     }
 }

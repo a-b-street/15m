@@ -23,6 +23,9 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
+    // TODO Hardcoded for now
+    let population_url = Some("https://assets.od2net.org/population.fgb".to_string());
+
     if args[1] == "graph" {
         let timer = Timer::new("build graph", None);
         let osm_bytes = std::fs::read(&args[2])?;
@@ -31,7 +34,7 @@ async fn main() -> Result<()> {
             None => GtfsSource::None,
         };
 
-        let graph = Graph::new(&osm_bytes, gtfs, timer).await?;
+        let graph = Graph::new(&osm_bytes, gtfs, population_url, timer).await?;
         let writer = BufWriter::new(File::create("graph.bin")?);
         bincode::serialize_into(writer, &graph)?;
     } else if args[1] == "gmd" {

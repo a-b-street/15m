@@ -7,7 +7,7 @@ mod transit_route;
 
 use anyhow::Result;
 use enum_map::{Enum, EnumMap};
-use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
+use geo::{Coord, LineLocatePoint, LineString, MultiPolygon, Point, Polygon};
 use geojson::{Feature, GeoJson, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,8 @@ pub struct Graph {
     pub amenities: Vec<Amenity>,
 
     pub gtfs: GtfsModel,
+
+    pub zones: Vec<Zone>,
 }
 
 pub type EdgeLocation = GeomWithData<LineString, RoadID>;
@@ -237,4 +239,11 @@ pub enum PathStep {
         trip: TripID,
         stop2: StopID,
     },
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Zone {
+    pub geom: MultiPolygon,
+    // TODO Later on, this could be generic or user-supplied
+    pub population: u32,
 }
