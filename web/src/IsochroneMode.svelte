@@ -27,7 +27,7 @@
       lat: lerp(0.5, bbox[1], bbox[3]),
     };
   });
-  let contours = false;
+  let style = "Roads";
 
   let isochroneGj: FeatureCollection | null = null;
   let routeGj: FeatureCollection | null = null;
@@ -38,7 +38,7 @@
   async function updateIsochrone(
     _x: { lng: number; lat: number } | null,
     _y: TravelMode,
-    _z: boolean,
+    _z: string,
     _t: string,
     _im: number,
   ) {
@@ -47,7 +47,7 @@
         isochroneGj = await $backend!.isochrone({
           start,
           mode: $travelMode,
-          contours,
+          style,
           startTime: $startTime,
           maxSeconds: 60 * $isochroneMins,
         });
@@ -58,7 +58,7 @@
       }
     }
   }
-  $: updateIsochrone(start, $travelMode, contours, $startTime, $isochroneMins);
+  $: updateIsochrone(start, $travelMode, style, $startTime, $isochroneMins);
 
   async function updateRoute(
     x: { lng: number; lat: number } | null,
@@ -124,7 +124,14 @@
       />
     </label>
 
-    <label><input type="checkbox" bind:checked={contours} />Contours</label>
+    <label
+      >Draw:
+      <select bind:value={style}>
+        <option value="Roads">Roads</option>
+        <option value="Grid">Grid</option>
+        <option value="Contours">Contours</option>
+      </select>
+    </label>
 
     <label
       >Minutes away

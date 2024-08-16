@@ -110,7 +110,8 @@ impl MapModel {
             &self.graph,
             start,
             mode,
-            req.contours,
+            // TODO Hack
+            serde_json::from_str(&format!("\"{}\"", req.style)).map_err(err_to_js)?,
             req.mode == "transit",
             NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?,
             Duration::from_secs(req.max_seconds),
@@ -228,7 +229,7 @@ pub struct IsochroneRequest {
     x: f64,
     y: f64,
     mode: String,
-    contours: bool,
+    style: String,
     start_time: String,
     max_seconds: u64,
 }

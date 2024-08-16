@@ -105,7 +105,7 @@ export class Backend {
     // TODO LngLatLike doesn't work?
     start: { lng: number; lat: number };
     mode: TravelMode;
-    contours: boolean;
+    style: string;
     startTime: string;
     maxSeconds: number;
   }): FeatureCollection {
@@ -118,7 +118,7 @@ export class Backend {
         x: req.start.lng,
         y: req.start.lat,
         mode: req.mode,
-        contours: req.contours,
+        style: req.style,
         start_time: req.startTime,
         max_seconds: req.maxSeconds,
       }),
