@@ -17,6 +17,7 @@ pub use gtfs::GtfsModel;
 pub use timer::Timer;
 
 mod amenity;
+mod buffer;
 mod costs;
 mod graph;
 mod gtfs;
@@ -146,51 +147,10 @@ impl MapModel {
                 .map_err(err_to_js)?
         };
 
-        let mut features = Vec::new();
-        let mut route_roads = HashSet::new();
-        let mut starts = HashSet::new();
-        for step in steps {
-            if let crate::route::PathStep::Road { road, .. } = step {
-                route_roads.insert(road);
-                let road = &self.graph.roads[road.0];
-                starts.insert(road.src_i);
-                starts.insert(road.dst_i);
-
-                // TODO Doesn't handle the exact start/end
-                let mut f = geojson::Feature::from(geojson::Geometry::from(
-                    &self.graph.mercator.to_wgs84(&road.linestring),
-                ));
-                f.set_property("kind", "route");
-                features.push(f);
-            }
-        }
-
-        let public_transit = false; // TODO
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
-        let cost_per_road = self.graph.get_costs(
-            starts.into_iter().collect(),
-            mode,
-            public_transit,
-            start_time,
-            start_time + limit,
-        );
-        for (r, cost) in cost_per_road {
-            if !route_roads.contains(&r) {
-                let mut f = geojson::Feature::from(geojson::Geometry::from(
-                    &self
-                        .graph
-                        .mercator
-                        .to_wgs84(&self.graph.roads[r.0].linestring),
-                ));
-                f.set_property("kind", "buffer");
-                f.set_property("cost_seconds", cost.as_secs());
-                features.push(f);
-            }
-        }
 
-        let gj = geojson::GeoJson::from(features);
-        serde_json::to_string(&gj).map_err(err_to_js)
+        crate::buffer::buffer_route(&self.graph, mode, steps, start_time, limit).map_err(err_to_js)
     }
 
     #[wasm_bindgen(js_name = score)]
