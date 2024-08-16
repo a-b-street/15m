@@ -21,7 +21,8 @@ $POPGETTER data \
         --geometry-level oa \
         --id 1355501cf6f3b1fa8cf6a100c98f330d51a3382ed2111fef0d2fff446608a428
 mapshaper england_raw.geojson \
-        -each 'population="Residence type: Total; measures: Value", delete GEO_ID' \
+        -rename-fields population='Residence type: Total; measures: Value' \
+        -each 'delete GEO_ID' \
         -proj init=EPSG:27700 crs=wgs84 \
         -o england.geojson
 
@@ -33,7 +34,8 @@ $POPGETTER data \
         --geometry-level statistical_sector \
         --id fcf09809889c1d9715bff5f825b0c6ed4d9286f2e2b4948839accc29c15e98c5
 mapshaper belgium_raw.geojson \
-        -each 'population="TOTAL", delete GEO_ID' \
+        -rename-fields population='TOTAL' \
+        -each 'delete GEO_ID' \
         -proj init=EPSG:3812 crs=wgs84 \
         -o belgium.geojson
 
@@ -46,7 +48,8 @@ $POPGETTER data \
         --geometry-level block_group \
         --id d23e348af6ab03265b4f258178edc6b509651095f81b965c1a62396fe463d0f6
 mapshaper usa_raw.geojson \
-        -each 'population="B01001_E001", delete GEO_ID' \
+        -rename-fields population='B01001_E001' \
+        -each 'delete GEO_ID' \
         -o usa.geojson
 
 # Scotland
