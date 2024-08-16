@@ -25,7 +25,13 @@ export class Backend {
     // TODO Do we need to do this only once?
     await init();
 
-    this.inner = await new MapModel(osmBytes, true, gtfsUrl, populationUrl, progressCb);
+    this.inner = await new MapModel(
+      osmBytes,
+      true,
+      gtfsUrl,
+      populationUrl,
+      progressCb,
+    );
   }
 
   async loadGraphFile(graphBytes: Uint8Array) {
@@ -34,7 +40,13 @@ export class Backend {
 
     // No progress worth reporting for this
     // TODO Can we await here?
-    this.inner = await new MapModel(graphBytes, false, undefined, undefined, undefined);
+    this.inner = await new MapModel(
+      graphBytes,
+      false,
+      undefined,
+      undefined,
+      undefined,
+    );
   }
 
   isLoaded(): boolean {
@@ -80,6 +92,14 @@ export class Backend {
     }
 
     return JSON.parse(this.inner.renderAmenities());
+  }
+
+  renderZones(): FeatureCollection {
+    if (!this.inner) {
+      throw new Error("Backend used without a file loaded");
+    }
+
+    return JSON.parse(this.inner.renderZones());
   }
 
   isochrone(req: {

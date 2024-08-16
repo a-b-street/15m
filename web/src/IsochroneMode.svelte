@@ -26,7 +26,7 @@
       lat: lerp(0.5, bbox[1], bbox[3]),
     };
   });
-  let contours = true;
+  let contours = false;
 
   let isochroneGj: FeatureCollection | null = null;
   let routeGj: FeatureCollection | null = null;
@@ -142,7 +142,7 @@
           id="isochrone"
           filter={isLine}
           paint={{
-            "line-width": 20,
+            "line-width": 2,
             "line-color": makeColorRamp(
               ["get", "cost_seconds"],
               limitsSeconds,

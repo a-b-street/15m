@@ -301,9 +301,12 @@ async fn load_zones(url: String, mercator: &Mercator) -> Result<Vec<Zone>> {
     let mut zones = Vec::new();
     while let Some(feature) = fgb.next().await? {
         // TODO Could intersect with boundary_polygon, but some extras nearby won't hurt anything
+        let mut geom = get_multipolygon(feature)?;
+        mercator.to_mercator_in_place(&mut geom);
         zones.push(Zone {
-            geom: get_multipolygon(feature)?,
-            population: feature.property("population")?,
+            geom,
+            // TODO Re-encode as UInt
+            population: feature.property::<i64>("population")?.try_into()?,
         });
     }
     Ok(zones)

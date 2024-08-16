@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { mode } from "../stores";
+  import { mode, showPopulation } from "../stores";
 </script>
 
 <nav>
@@ -39,3 +39,6 @@
     </li>
   </ul>
 </nav>
+
+<label><input type="checkbox" bind:checked={$showPopulation} />Population</label
+>

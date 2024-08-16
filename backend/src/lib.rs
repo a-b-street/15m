@@ -94,6 +94,11 @@ impl MapModel {
         vec![b.min().x, b.min().y, b.max().x, b.max().y]
     }
 
+    #[wasm_bindgen(js_name = renderZones)]
+    pub fn render_zones(&self) -> Result<String, JsValue> {
+        self.graph.render_zones().map_err(err_to_js)
+    }
+
     #[wasm_bindgen(js_name = isochrone)]
     pub fn isochrone(&self, input: JsValue) -> Result<String, JsValue> {
         let req: IsochroneRequest = serde_wasm_bindgen::from_value(input)?;
