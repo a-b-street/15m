@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use enum_map::EnumMap;
 use flatgeobuf::{FeatureProperties, FgbFeature, GeozeroGeometry, HttpFgbReader};
-use geo::{Coord, EuclideanLength, MultiPolygon};
+use geo::{Area, Coord, EuclideanLength, MultiPolygon};
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::OsmID;
 use rstar::RTree;
@@ -303,10 +303,14 @@ async fn load_zones(url: String, mercator: &Mercator) -> Result<Vec<Zone>> {
         // TODO Could intersect with boundary_polygon, but some extras nearby won't hurt anything
         let mut geom = get_multipolygon(feature)?;
         mercator.to_mercator_in_place(&mut geom);
+        let area_km2 = 1e-6 * geom.unsigned_area();
+        // TODO Re-encode as UInt
+        let population = feature.property::<i64>("population")?.try_into()?;
+
         zones.push(Zone {
             geom,
-            // TODO Re-encode as UInt
-            population: feature.property::<i64>("population")?.try_into()?,
+            population,
+            density: (population as f64) / area_km2,
         });
     }
     Ok(zones)

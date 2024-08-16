@@ -170,7 +170,9 @@
         {/if}
 
         {#if $showPopulation}
-          <PopulationLayer />
+          {#await notNull($backend).renderZones() then gj}
+            <PopulationLayer {gj} />
+          {/await}
         {/if}
       {/if}
     </MapLibre>

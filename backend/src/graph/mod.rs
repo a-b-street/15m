@@ -8,7 +8,7 @@ mod transit_route;
 use anyhow::Result;
 use enum_map::{Enum, EnumMap};
 use geo::{Coord, LineLocatePoint, LineString, MultiPolygon, Point, Polygon};
-use geojson::{Feature, GeoJson, Geometry};
+use geojson::{Feature, FeatureCollection, GeoJson, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
 use utils::Mercator;
@@ -190,12 +190,27 @@ impl Graph {
     /// Returns a GeoJSON string
     pub fn render_zones(&self) -> Result<String> {
         let mut features = Vec::new();
+        let mut max_density: f64 = 0.0;
         for zone in &self.zones {
             let mut f = Feature::from(Geometry::from(&self.mercator.to_wgs84(&zone.geom)));
             f.set_property("population", zone.population);
+            f.set_property("density", zone.density);
             features.push(f);
+
+            max_density = max_density.max(zone.density);
         }
-        Ok(serde_json::to_string(&GeoJson::from(features))?)
+        Ok(serde_json::to_string(&FeatureCollection {
+            features,
+            bbox: None,
+            foreign_members: Some(
+                serde_json::json!({
+                    "max_density": max_density,
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            ),
+        })?)
     }
 }
 
@@ -257,4 +272,6 @@ pub struct Zone {
     pub geom: MultiPolygon,
     // TODO Later on, this could be generic or user-supplied
     pub population: u32,
+    // People per square km
+    pub density: f64,
 }
