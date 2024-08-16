@@ -19,36 +19,61 @@
     routeA,
     routeB,
   } from "./stores";
-  import { Popup, constructMatchExpression } from "svelte-utils/map";
+  import {
+    Popup,
+    constructMatchExpression,
+    makeColorRamp,
+  } from "svelte-utils/map";
   import { notNull, PropertiesTable } from "svelte-utils";
   import type { FeatureCollection } from "geojson";
+  import { colorScale } from "./colors";
 
   let gj: FeatureCollection | null = null;
+  let showBuffer = false;
   let err = "";
 
-  async function updateRoute(
+  async function update(
     start: { lng: number; lat: number },
     end: { lng: number; lat: number },
     mode: TravelMode,
     _z: boolean,
     _t: string,
+    showBuffer: boolean,
   ) {
     try {
-      gj = await $backend!.route({
-        start,
-        end: [end.lng, end.lat],
-        mode,
-        debugSearch: false,
-        useHeuristic: $useHeuristic,
-        startTime: $startTime,
-      });
+      if (showBuffer) {
+        gj = await $backend!.bufferRoute({
+          start: $routeA!,
+          end: [$routeB!.lng, $routeB!.lat],
+          mode: $travelMode,
+          useHeuristic: $useHeuristic,
+          startTime: $startTime,
+          maxSeconds: 5 * 60,
+        });
+      } else {
+        gj = await $backend!.route({
+          start,
+          end: [end.lng, end.lat],
+          mode,
+          debugSearch: false,
+          useHeuristic: $useHeuristic,
+          startTime: $startTime,
+        });
+      }
       err = "";
     } catch (error: any) {
       gj = null;
       err = error.toString();
     }
   }
-  $: updateRoute($routeA!, $routeB!, $travelMode, $useHeuristic, $startTime);
+  $: update(
+    $routeA!,
+    $routeB!,
+    $travelMode,
+    $useHeuristic,
+    $startTime,
+    showBuffer,
+  );
 
   function onRightClick(e: CustomEvent<MapMouseEvent>) {
     // Move the first marker, for convenience
@@ -77,24 +102,8 @@
     }
   }
 
-  async function bufferRoute() {
-    try {
-      let bufferGj = await $backend!.bufferRoute({
-        start: $routeA!,
-        end: [$routeB!.lng, $routeB!.lat],
-        mode: $travelMode,
-        useHeuristic: $useHeuristic,
-        startTime: $startTime,
-        maxSeconds: 5 * 60,
-      });
-      $mode = {
-        kind: "buffer-route",
-        gj: bufferGj,
-      };
-    } catch (error: any) {
-      err = error.toString();
-    }
-  }
+  let limitsMinutes = [0, 1, 2, 3, 4, 5];
+  let limitsSeconds = limitsMinutes.map((x) => x * 60);
 </script>
 
 <SplitComponent>
@@ -122,6 +131,11 @@
       />
     </label>
 
+    <label>
+      <input type="checkbox" bind:checked={showBuffer} />
+      Buffer 5 minutes around route (same mode)
+    </label>
+
     <p>
       Move the <b>A</b> and <b>B</b> pins to find a route. (Hint: right-click to
       set the first pin somewhere.)
@@ -134,25 +148,25 @@
         >Watch how this route was found (PT only)</button
       >
 
-      <button on:click={bufferRoute}>Buffer 5 mins around this route</button>
-
-      <ol>
-        {#each gj.features as f}
-          {@const props = notNull(f.properties)}
-          {#if props.kind == "road"}
-            {#if props.time1}
-              <li>[{props.time1} - {props.time2}] Walk</li>
+      {#if !showBuffer}
+        <ol>
+          {#each gj.features as f}
+            {@const props = notNull(f.properties)}
+            {#if props.kind == "road"}
+              {#if props.time1}
+                <li>[{props.time1} - {props.time2}] Walk</li>
+              {:else}
+                <li>Walk / cycle / drive</li>
+              {/if}
             {:else}
-              <li>Walk / cycle / drive</li>
+              <li>
+                [{props.time1} - {props.time2}] Take {props.route} for {props.num_stops}
+                stops
+              </li>
             {/if}
-          {:else}
-            <li>
-              [{props.time1} - {props.time2}] Take {props.route} for {props.num_stops}
-              stops
-            </li>
-          {/if}
-        {/each}
-      </ol>
+          {/each}
+        </ol>
+      {/if}
     {/if}
   </div>
   <div slot="map">
@@ -163,23 +177,50 @@
 
     {#if gj}
       <GeoJSON data={gj} generateId>
-        <LineLayer
-          id="route"
-          paint={{
-            "line-width": 20,
-            "line-color": constructMatchExpression(
-              ["get", "kind"],
-              { road: "cyan", transit: "purple" },
-              "red",
-            ),
-            "line-opacity": hoverStateFilter(0.5, 1.0),
-          }}
-          manageHoverState
-        >
-          <Popup openOn="hover" let:props>
-            <PropertiesTable properties={props} />
-          </Popup>
-        </LineLayer>
+        {#if showBuffer}
+          <LineLayer
+            paint={{
+              "line-width": ["case", ["==", ["get", "kind"], "route"], 20, 3],
+              "line-color": [
+                "case",
+                ["==", ["get", "kind"], "route"],
+                "red",
+                makeColorRamp(
+                  ["get", "cost_seconds"],
+                  limitsSeconds,
+                  colorScale,
+                ),
+              ],
+              "line-opacity": 0.5,
+            }}
+          >
+            <Popup openOn="hover" let:props>
+              {#if props.kind == "buffer"}
+                {(props.cost_seconds / 60).toFixed(1)} minutes away
+              {:else}
+                part of the route
+              {/if}
+            </Popup>
+          </LineLayer>
+        {:else}
+          <LineLayer
+            id="route"
+            paint={{
+              "line-width": 20,
+              "line-color": constructMatchExpression(
+                ["get", "kind"],
+                { road: "cyan", transit: "purple" },
+                "red",
+              ),
+              "line-opacity": hoverStateFilter(0.5, 1.0),
+            }}
+            manageHoverState
+          >
+            <Popup openOn="hover" let:props>
+              <PropertiesTable properties={props} />
+            </Popup>
+          </LineLayer>
+        {/if}
       </GeoJSON>
     {/if}
   </div>

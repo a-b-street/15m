@@ -19,10 +19,6 @@ export type Mode =
       start: { lng: number; lat: number };
       end: { lng: number; lat: number };
       routeGj: FeatureCollection;
-    }
-  | {
-      kind: "buffer-route";
-      gj: FeatureCollection;
     };
 
 export let mode: Writable<Mode> = writable({ kind: "title" });
