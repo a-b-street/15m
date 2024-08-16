@@ -35,7 +35,7 @@
   import workerWrapper from "./worker?worker";
   import { type Backend } from "./worker";
   import * as Comlink from "comlink";
-        import { PopulationLayer } from "./common";
+  import { PopulationLayer } from "./common";
 
   onMount(async () => {
     // If you get "import declarations may only appear at top level of a
@@ -170,7 +170,7 @@
         {/if}
 
         {#if $showPopulation}
-                <PopulationLayer />
+          <PopulationLayer />
         {/if}
       {/if}
     </MapLibre>
