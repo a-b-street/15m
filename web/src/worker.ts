@@ -107,6 +107,7 @@ export class Backend {
     mode: TravelMode;
     contours: boolean;
     startTime: string;
+    maxSeconds: number;
   }): FeatureCollection {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
@@ -119,6 +120,7 @@ export class Backend {
         mode: req.mode,
         contours: req.contours,
         start_time: req.startTime,
+        max_seconds: req.maxSeconds,
       }),
     );
   }

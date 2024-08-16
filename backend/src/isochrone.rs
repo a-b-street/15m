@@ -16,11 +16,9 @@ pub fn calculate(
     contours: bool,
     public_transit: bool,
     start_time: NaiveTime,
+    limit: Duration,
     mut timer: Timer,
 ) -> Result<String> {
-    // 15 minutes
-    let limit = Duration::from_secs(15 * 60);
-
     timer.step("get_costs");
     let cost_per_road = graph.get_costs(
         vec![graph.snap_to_road(req, mode).intersection],

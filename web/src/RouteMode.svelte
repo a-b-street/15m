@@ -26,7 +26,7 @@
     constructMatchExpression,
     makeColorRamp,
   } from "svelte-utils/map";
-  import { notNull, PropertiesTable } from "svelte-utils";
+  import { notNull, SequentialLegend, PropertiesTable } from "svelte-utils";
   import type { FeatureCollection } from "geojson";
   import { colorScale } from "./colors";
 
@@ -137,9 +137,12 @@
 
     <label>
       <input type="checkbox" bind:checked={$showRouteBuffer} />
-      Buffer around route
+      Buffer around route (minutes)
       <input type="number" bind:value={$bufferMins} min="1" max="30" />
     </label>
+    {#if $showRouteBuffer}
+      <SequentialLegend {colorScale} limits={limits.map((l) => l / 60)} />
+    {/if}
 
     <p>
       Move the <b>A</b> and <b>B</b> pins to find a route. (Hint: right-click to

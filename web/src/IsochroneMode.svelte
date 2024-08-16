@@ -12,6 +12,7 @@
     startTime,
     type Amenity,
     describeAmenity,
+    isochroneMins,
   } from "./stores";
   import { SequentialLegend } from "svelte-utils";
   import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
@@ -39,6 +40,7 @@
     _y: TravelMode,
     _z: boolean,
     _t: string,
+    _im: number,
   ) {
     if (start) {
       try {
@@ -47,6 +49,7 @@
           mode: $travelMode,
           contours,
           startTime: $startTime,
+          maxSeconds: 60 * $isochroneMins,
         });
         err = "";
       } catch (err: any) {
@@ -55,7 +58,7 @@
       }
     }
   }
-  $: updateIsochrone(start, $travelMode, contours, $startTime);
+  $: updateIsochrone(start, $travelMode, contours, $startTime, $isochroneMins);
 
   async function updateRoute(
     x: { lng: number; lat: number } | null,
@@ -87,8 +90,9 @@
     return a + pct * (b - a);
   }
 
-  let limitsMinutes = [0, 3, 6, 9, 12, 15];
-  let limitsSeconds = limitsMinutes.map((x) => x * 60);
+  $: limits = Array.from(Array(6).keys()).map(
+    (i) => (($isochroneMins * 60) / (6 - 1)) * i,
+  );
 </script>
 
 <SplitComponent>
@@ -122,7 +126,11 @@
 
     <label><input type="checkbox" bind:checked={contours} />Contours</label>
 
-    <SequentialLegend {colorScale} limits={limitsMinutes} />
+    <label
+      >Minutes away
+      <input type="number" bind:value={$isochroneMins} min="1" max="30" />
+    </label>
+    <SequentialLegend {colorScale} limits={limits.map((l) => l / 60)} />
     {#if err}
       <p>{err}</p>
     {/if}
@@ -145,7 +153,7 @@
             "line-width": 2,
             "line-color": makeColorRamp(
               ["get", "cost_seconds"],
-              limitsSeconds,
+              limits,
               colorScale,
             ),
             "line-opacity": 0.5,
@@ -163,7 +171,7 @@
           paint={{
             "fill-color": makeColorRamp(
               ["get", "min_seconds"],
-              limitsSeconds,
+              limits,
               colorScale,
             ),
             "fill-opacity": 0.5,

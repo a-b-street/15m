@@ -114,6 +114,7 @@ impl MapModel {
             req.contours,
             req.mode == "transit",
             NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?,
+            Duration::from_secs(req.max_seconds),
             Timer::new("isochrone request", None),
         )
         .map_err(err_to_js)
@@ -230,6 +231,7 @@ pub struct IsochroneRequest {
     mode: String,
     contours: bool,
     start_time: String,
+    max_seconds: u64,
 }
 
 #[derive(Deserialize)]
