@@ -5,6 +5,7 @@
     MapEvents,
     GeoJSON,
     LineLayer,
+    FillLayer,
     Marker,
     hoverStateFilter,
   } from "svelte-maplibre";
@@ -20,6 +21,7 @@
     routeB,
     bufferMins,
     showRouteBuffer,
+    showRouteBufferPopulation,
   } from "./stores";
   import {
     Popup,
@@ -31,6 +33,7 @@
   import { colorScale } from "./colors";
 
   let gj: FeatureCollection | null = null;
+  let totalPopulationInBuffer = 0;
   let err = "";
 
   async function update(
@@ -43,6 +46,7 @@
     _sb: boolean,
   ) {
     try {
+      totalPopulationInBuffer = 0;
       if ($showRouteBuffer) {
         gj = await $backend!.bufferRoute({
           start: $routeA!,
@@ -52,6 +56,7 @@
           startTime: $startTime,
           maxSeconds: $bufferMins * 60,
         });
+        totalPopulationInBuffer = gj.total_population;
       } else {
         gj = await $backend!.route({
           start,
@@ -141,6 +146,10 @@
       <input type="number" bind:value={$bufferMins} min="1" max="30" />
     </label>
     {#if $showRouteBuffer}
+      <label>
+        {totalPopulationInBuffer.toLocaleString()} people live in this buffer. Show:
+        <input type="checkbox" bind:checked={$showRouteBufferPopulation} />
+      </label>
       <SequentialLegend {colorScale} limits={limits.map((l) => l / 60)} />
     {/if}
 
@@ -187,6 +196,7 @@
       <GeoJSON data={gj} generateId>
         {#if $showRouteBuffer}
           <LineLayer
+            filter={["in", ["get", "kind"], ["literal", ["route", "buffer"]]]}
             paint={{
               "line-width": ["case", ["==", ["get", "kind"], "route"], 20, 3],
               "line-color": [
@@ -206,6 +216,36 @@
               {/if}
             </Popup>
           </LineLayer>
+
+          {#if $showRouteBufferPopulation}
+            {#if totalPopulationInBuffer == 0}
+              <FillLayer
+                filter={["==", ["get", "kind"], "hull"]}
+                paint={{
+                  "fill-color": "black",
+                  "fill-opacity": 0.5,
+                }}
+              />
+            {:else}
+              <FillLayer
+                filter={["==", ["get", "kind"], "zone_overlap"]}
+                manageHoverState
+                paint={{
+                  "fill-color": "black",
+                  "fill-opacity": hoverStateFilter(0.2, 0.8),
+                }}
+              >
+                <Popup openOn="hover" let:props
+                  >{props.population.toLocaleString()} people live here (zone overlaps
+                  with buffer {Math.round(props.pct * 100)}%)</Popup
+                >
+              </FillLayer>
+              <LineLayer
+                filter={["==", ["get", "kind"], "zone_overlap"]}
+                paint={{ "line-color": "black", "line-width": 1 }}
+              />
+            {/if}
+          {/if}
         {:else}
           <LineLayer
             id="route"

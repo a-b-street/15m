@@ -194,10 +194,11 @@ impl Graph {
         for zone in &self.zones {
             let mut f = Feature::from(Geometry::from(&self.mercator.to_wgs84(&zone.geom)));
             f.set_property("population", zone.population);
-            f.set_property("density", zone.density);
+            let density = (zone.population as f64) / zone.area_km2;
+            f.set_property("density", density);
             features.push(f);
 
-            max_density = max_density.max(zone.density);
+            max_density = max_density.max(density);
         }
         Ok(serde_json::to_string(&FeatureCollection {
             features,
@@ -272,6 +273,5 @@ pub struct Zone {
     pub geom: MultiPolygon,
     // TODO Later on, this could be generic or user-supplied
     pub population: u32,
-    // People per square km
-    pub density: f64,
+    pub area_km2: f64,
 }

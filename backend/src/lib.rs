@@ -46,8 +46,7 @@ impl MapModel {
         // Panics shouldn't happen, but if they do, console.log them.
         console_error_panic_hook::set_once();
         START.call_once(|| {
-            // TODO Debugging geomedea
-            console_log::init_with_level(log::Level::Debug).unwrap();
+            console_log::init_with_level(log::Level::Info).unwrap();
         });
 
         let gtfs = match gtfs_url {

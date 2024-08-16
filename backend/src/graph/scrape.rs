@@ -310,7 +310,7 @@ async fn load_zones(url: String, mercator: &Mercator) -> Result<Vec<Zone>> {
         zones.push(Zone {
             geom,
             population,
-            density: (population as f64) / area_km2,
+            area_km2,
         });
     }
     Ok(zones)
