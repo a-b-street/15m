@@ -99,15 +99,7 @@ impl MapModel {
             .graph
             .mercator
             .pt_to_mercator(Coord { x: req.x, y: req.y });
-        let mode = match req.mode.as_str() {
-            "car" => Mode::Car,
-            "bicycle" => Mode::Bicycle,
-            "foot" => Mode::Foot,
-            // Plumbed separately
-            "transit" => Mode::Foot,
-            // TODO error plumbing
-            x => panic!("bad input {x}"),
-        };
+        let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
         isochrone::calculate(
             &self.graph,
             start,
@@ -130,16 +122,7 @@ impl MapModel {
     pub fn buffer_route(&self, input: JsValue) -> Result<String, JsValue> {
         let req: BufferRouteRequest = serde_wasm_bindgen::from_value(input)?;
 
-        // TODO Duplicating some route_from_req boilerplate
-        let mode = match req.mode.as_str() {
-            "car" => Mode::Car,
-            "bicycle" => Mode::Bicycle,
-            "foot" => Mode::Foot,
-            // For endpoint matching only
-            "transit" => Mode::Foot,
-            // TODO error plumbing
-            x => panic!("bad input {x}"),
-        };
+        let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
         let start = self.graph.snap_to_road(
             self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x1,
@@ -230,6 +213,7 @@ impl MapModel {
 }
 
 // Non WASM methods
+// TODO Reconsider these. Benchmark should use Graph. MapModel should just be a thin WASM layer.
 impl MapModel {
     pub fn from_graph_bytes(input_bytes: &[u8]) -> Result<MapModel, JsValue> {
         let graph = bincode::deserialize_from(input_bytes).map_err(err_to_js)?;
@@ -237,15 +221,7 @@ impl MapModel {
     }
 
     pub fn route_from_req(&self, req: &RouteRequest) -> Result<String, JsValue> {
-        let mode = match req.mode.as_str() {
-            "car" => Mode::Car,
-            "bicycle" => Mode::Bicycle,
-            "foot" => Mode::Foot,
-            // For endpoint matching only
-            "transit" => Mode::Foot,
-            // TODO error plumbing
-            x => panic!("bad input {x}"),
-        };
+        let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
         let start = self.graph.snap_to_road(
             self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x1,
@@ -282,6 +258,7 @@ impl MapModel {
 
 #[derive(Deserialize)]
 pub struct IsochroneRequest {
+    // TODO Rename lon, lat to be clear?
     x: f64,
     y: f64,
     mode: String,

@@ -51,6 +51,20 @@ pub enum Mode {
     Foot,
 }
 
+impl Mode {
+    /// Parses a string. Treats "transit" as Mode::Foot
+    pub fn parse(x: &str) -> Result<Mode> {
+        match x {
+            "car" => Ok(Mode::Car),
+            "bicycle" => Ok(Mode::Bicycle),
+            "foot" => Ok(Mode::Foot),
+            // Caller special-cases this
+            "transit" => Ok(Mode::Foot),
+            x => bail!("unknown Mode input {x}"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Road {
     pub id: RoadID,
