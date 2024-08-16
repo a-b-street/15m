@@ -41,6 +41,8 @@ export let routeA: Writable<{ lng: number; lat: number } | null> =
 export let routeB: Writable<{ lng: number; lat: number } | null> =
   writable(null);
 export let useHeuristic = writable(true);
+export let showRouteBuffer = writable(false);
+export let bufferMins = writable(5);
 
 // TODO Does this need to be a store?
 export let backend: Writable<Comlink.Remote<Backend> | null> = writable(null);

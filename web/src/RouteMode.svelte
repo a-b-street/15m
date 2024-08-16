@@ -18,6 +18,8 @@
     useHeuristic,
     routeA,
     routeB,
+    bufferMins,
+    showRouteBuffer,
   } from "./stores";
   import {
     Popup,
@@ -29,7 +31,6 @@
   import { colorScale } from "./colors";
 
   let gj: FeatureCollection | null = null;
-  let showBuffer = false;
   let err = "";
 
   async function update(
@@ -38,17 +39,18 @@
     mode: TravelMode,
     _z: boolean,
     _t: string,
-    showBuffer: boolean,
+    _b: number,
+    _sb: boolean,
   ) {
     try {
-      if (showBuffer) {
+      if ($showRouteBuffer) {
         gj = await $backend!.bufferRoute({
           start: $routeA!,
           end: [$routeB!.lng, $routeB!.lat],
           mode: $travelMode,
           useHeuristic: $useHeuristic,
           startTime: $startTime,
-          maxSeconds: 5 * 60,
+          maxSeconds: $bufferMins * 60,
         });
       } else {
         gj = await $backend!.route({
@@ -72,7 +74,8 @@
     $travelMode,
     $useHeuristic,
     $startTime,
-    showBuffer,
+    $bufferMins,
+    $showRouteBuffer,
   );
 
   function onRightClick(e: CustomEvent<MapMouseEvent>) {
@@ -102,8 +105,9 @@
     }
   }
 
-  let limitsMinutes = [0, 1, 2, 3, 4, 5];
-  let limitsSeconds = limitsMinutes.map((x) => x * 60);
+  $: limits = Array.from(Array(6).keys()).map(
+    (i) => (($bufferMins * 60) / (6 - 1)) * i,
+  );
 </script>
 
 <SplitComponent>
@@ -132,8 +136,9 @@
     </label>
 
     <label>
-      <input type="checkbox" bind:checked={showBuffer} />
-      Buffer 5 minutes around route (same mode)
+      <input type="checkbox" bind:checked={$showRouteBuffer} />
+      Buffer around route
+      <input type="number" bind:value={$bufferMins} min="1" max="30" />
     </label>
 
     <p>
@@ -148,7 +153,7 @@
         >Watch how this route was found (PT only)</button
       >
 
-      {#if !showBuffer}
+      {#if !$showRouteBuffer}
         <ol>
           {#each gj.features as f}
             {@const props = notNull(f.properties)}
@@ -177,7 +182,7 @@
 
     {#if gj}
       <GeoJSON data={gj} generateId>
-        {#if showBuffer}
+        {#if $showRouteBuffer}
           <LineLayer
             paint={{
               "line-width": ["case", ["==", ["get", "kind"], "route"], 20, 3],
@@ -185,11 +190,7 @@
                 "case",
                 ["==", ["get", "kind"], "route"],
                 "red",
-                makeColorRamp(
-                  ["get", "cost_seconds"],
-                  limitsSeconds,
-                  colorScale,
-                ),
+                makeColorRamp(["get", "cost_seconds"], limits, colorScale),
               ],
               "line-opacity": 0.5,
             }}
