@@ -1,11 +1,11 @@
 <script lang="ts">
   import { GeoJSON, LineLayer } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { mode } from "./stores";
   import type { FeatureCollection } from "geojson";
   import { makeColorRamp, Popup } from "svelte-utils/map";
   import { SequentialLegend } from "svelte-utils";
   import { colorScale } from "./colors";
+  import { NavBar } from "./common";
 
   export let gj: FeatureCollection;
 
@@ -14,9 +14,7 @@
 </script>
 
 <SplitComponent>
-  <div slot="top">
-    <button on:click={() => ($mode = { kind: "route" })}>Back</button>
-  </div>
+  <div slot="top"><NavBar /></div>
   <div slot="sidebar">
     <h2>Buffer around a route</h2>
     <SequentialLegend {colorScale} limits={limitsMinutes} />
