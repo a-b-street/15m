@@ -40,7 +40,6 @@ impl MapModel {
     /// If is_osm is true, expect bytes of an osm.pbf or osm.xml string. Otherwise, expect a
     /// bincoded graph
     #[wasm_bindgen(constructor)]
-    // TODO Can constructors be async?
     pub async fn new(
         input_bytes: &[u8],
         is_osm: bool,
@@ -86,6 +85,7 @@ impl MapModel {
         self.graph.get_inverted_boundary().map_err(err_to_js)
     }
 
+    /// WGS84
     #[wasm_bindgen(js_name = getBounds)]
     pub fn get_bounds(&self) -> Vec<f64> {
         let b = &self.graph.mercator.wgs84_bounds;
@@ -185,8 +185,7 @@ impl MapModel {
         let public_transit = false; // TODO
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
-        let cost_per_road = crate::isochrone::get_costs(
-            &self.graph,
+        let cost_per_road = self.graph.get_costs(
             starts.into_iter().collect(),
             mode,
             public_transit,
@@ -263,7 +262,7 @@ impl MapModel {
         );
 
         if req.mode == "transit" {
-            transit_route::route(
+            transit_route::route_gj(
                 &self.graph,
                 start,
                 end,
@@ -275,7 +274,7 @@ impl MapModel {
             .map_err(err_to_js)
         } else {
             self.graph.router[mode]
-                .route(&self.graph, start, end)
+                .route_gj(&self.graph, start, end)
                 .map_err(err_to_js)
         }
     }

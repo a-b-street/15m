@@ -13,7 +13,7 @@ use crate::graph::{Graph, IntersectionID, Mode, Position};
 use crate::route::PathStep;
 use crate::timer::Timer;
 
-pub fn route(
+pub fn route_gj(
     graph: &Graph,
     start: Position,
     end: Position,

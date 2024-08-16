@@ -12,6 +12,18 @@ use crate::costs::cost;
 use crate::graph::{Graph, IntersectionID, Mode, Position, Road, RoadID};
 use crate::gtfs::{StopID, TripID};
 
+pub enum PathStep {
+    Road {
+        road: RoadID,
+        forwards: bool,
+    },
+    Transit {
+        stop1: StopID,
+        trip: TripID,
+        stop2: StopID,
+    },
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Router {
     #[serde(deserialize_with = "deserialize_nodemap")]
@@ -100,8 +112,7 @@ impl Router {
         Ok(steps)
     }
 
-    // TODO Rename -- renders to GJ
-    pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<String> {
+    pub fn route_gj(&self, graph: &Graph, start: Position, end: Position) -> Result<String> {
         if start == end {
             bail!("start = end");
         }
@@ -147,18 +158,6 @@ impl Router {
         f.set_property("kind", "road");
         Ok(serde_json::to_string(&GeoJson::from(vec![f]))?)
     }
-}
-
-pub enum PathStep {
-    Road {
-        road: RoadID,
-        forwards: bool,
-    },
-    Transit {
-        stop1: StopID,
-        trip: TripID,
-        stop2: StopID,
-    },
 }
 
 fn slice_road_step(
