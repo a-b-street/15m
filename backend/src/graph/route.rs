@@ -8,21 +8,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use utils::{deserialize_nodemap, LineSplit, NodeMap};
 
-use crate::costs::cost;
-use crate::graph::{Graph, IntersectionID, Mode, Position, Road, RoadID};
-use crate::gtfs::{StopID, TripID};
-
-pub enum PathStep {
-    Road {
-        road: RoadID,
-        forwards: bool,
-    },
-    Transit {
-        stop1: StopID,
-        trip: TripID,
-        stop2: StopID,
-    },
-}
+use super::costs::cost;
+use crate::graph::{Graph, IntersectionID, Mode, PathStep, Position, Road};
 
 #[derive(Serialize, Deserialize)]
 pub struct Router {

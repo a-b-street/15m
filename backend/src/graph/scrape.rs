@@ -8,14 +8,14 @@ use osm_reader::OsmID;
 use rstar::RTree;
 use utils::Tags;
 
-use crate::amenity::Amenity;
+use super::amenity::Amenity;
+use super::route::Router;
 use crate::graph::{
-    AmenityID, Direction, EdgeLocation, Graph, Intersection, IntersectionID, Mode, Road, RoadID,
+    AmenityID, Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode,
+    Road, RoadID,
 };
 use crate::gtfs::{GtfsModel, StopID};
-use crate::route::Router;
 use crate::timer::Timer;
-use crate::GtfsSource;
 
 struct ReadAmenities {
     amenities: Vec<Amenity>,

@@ -5,8 +5,7 @@ use anyhow::Result;
 use chrono::NaiveTime;
 use geojson::{Feature, GeoJson, Geometry};
 
-use crate::route::PathStep;
-use crate::{Graph, Mode};
+use crate::graph::{Graph, Mode, PathStep};
 
 pub fn buffer_route(
     graph: &Graph,
@@ -19,7 +18,7 @@ pub fn buffer_route(
     let mut route_roads = HashSet::new();
     let mut starts = HashSet::new();
     for step in steps {
-        if let crate::route::PathStep::Road { road, .. } = step {
+        if let PathStep::Road { road, .. } = step {
             route_roads.insert(road);
             let road = &graph.roads[road.0];
             starts.insert(road.src_i);

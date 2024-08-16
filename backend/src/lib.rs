@@ -16,17 +16,12 @@ pub use graph::{Graph, Mode};
 pub use gtfs::GtfsModel;
 pub use timer::Timer;
 
-mod amenity;
 mod buffer;
-mod costs;
 mod graph;
 mod gtfs;
 mod isochrone;
-mod route;
 mod score;
-mod scrape;
 mod timer;
-mod transit_route;
 
 static START: Once = Once::new();
 
@@ -55,8 +50,8 @@ impl MapModel {
         });
 
         let gtfs = match gtfs_url {
-            Some(url) => GtfsSource::Geomedea(url),
-            None => GtfsSource::None,
+            Some(url) => graph::GtfsSource::Geomedea(url),
+            None => graph::GtfsSource::None,
         };
         let graph = if is_osm {
             Graph::new(input_bytes, gtfs, Timer::new("build graph", progress_cb))
@@ -198,16 +193,16 @@ impl MapModel {
         );
 
         if req.mode == "transit" {
-            transit_route::route_gj(
-                &self.graph,
-                start,
-                end,
-                req.debug_search,
-                req.use_heuristic,
-                NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?,
-                Timer::new("route request", None),
-            )
-            .map_err(err_to_js)
+            self.graph
+                .transit_route_gj(
+                    start,
+                    end,
+                    req.debug_search,
+                    req.use_heuristic,
+                    NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?,
+                    Timer::new("route request", None),
+                )
+                .map_err(err_to_js)
         } else {
             self.graph.router[mode]
                 .route_gj(&self.graph, start, end)
@@ -259,10 +254,4 @@ pub struct ScoreRequest {
 
 fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {
     JsValue::from_str(&err.to_string())
-}
-
-pub enum GtfsSource {
-    Dir(String),
-    Geomedea(String),
-    None,
 }

@@ -1,3 +1,10 @@
+mod amenity;
+mod costs;
+mod isochrone;
+mod route;
+mod scrape;
+mod transit_route;
+
 use anyhow::Result;
 use enum_map::{Enum, EnumMap};
 use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
@@ -6,9 +13,10 @@ use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
 use utils::Mercator;
 
-use crate::amenity::Amenity;
+use self::amenity::Amenity;
+use self::route::Router;
+use crate::gtfs::TripID;
 use crate::gtfs::{GtfsModel, StopID};
-use crate::route::Router;
 
 #[derive(Serialize, Deserialize)]
 pub struct Graph {
@@ -211,4 +219,22 @@ pub struct Position {
     pub road: RoadID,
     pub fraction_along: f64,
     pub intersection: IntersectionID,
+}
+
+pub enum GtfsSource {
+    Dir(String),
+    Geomedea(String),
+    None,
+}
+
+pub enum PathStep {
+    Road {
+        road: RoadID,
+        forwards: bool,
+    },
+    Transit {
+        stop1: StopID,
+        trip: TripID,
+        stop2: StopID,
+    },
 }
