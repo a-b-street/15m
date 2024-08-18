@@ -180,4 +180,9 @@
   :global(.maplibregl-popup-content) {
     background-color: var(--pico-background-color);
   }
+
+  /* picocss messes up maplibre controls; workaround */
+  :global(.maplibregl-ctrl > button) {
+          margin-bottom: 0px;
+  }
 </style>
