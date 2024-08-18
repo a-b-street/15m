@@ -53,12 +53,34 @@ mapshaper usa_raw.geojson \
         -o usa.geojson
 
 # Scotland
-# TODO
+# TODO 2011, but nothing newer in popgetter?
+$POPGETTER data \
+        --force-run \
+        --output-format geojson \
+        --output-file scotland_raw.geojson \
+        --geometry-level DataZone2011 \
+        --id 8c41b23fb7cba8cda295aaf71b38cdd6ad4127dee7227d14425f38a7cc568908
+mapshaper scotland_raw.geojson \
+        -rename-fields population='All people' \
+        -each 'delete GEO_ID' \
+        -proj init=EPSG:27700 crs=wgs84 \
+        -o scotland.geojson
 
 # Northern Ireland
-# TODO
+$POPGETTER data \
+        --force-run \
+        --output-format geojson \
+        --output-file northern_ireland_raw.geojson \
+        --geometry-level SDZ21 \
+        --id e363646eb8dc11f438075c92955c8cc2db1600b65d0baa943ce012c34472ded5
+mapshaper northern_ireland_raw.geojson \
+        -rename-fields population='Person in a household' \
+        -each 'delete GEO_ID' \
+        -proj init=EPSG:29902 crs=wgs84 \
+        -o northern_ireland.geojson
+
 
 # Merge files. You need to build https://github.com/acteng/will-it-fit/tree/main/data_prep/merge_files
 MERGER=/home/dabreegster/will-it-fit/data_prep/merge_files/target/release/merge_files
-$MERGER england.geojson belgium.geojson usa.geojson
+$MERGER england.geojson belgium.geojson usa.geojson scotland.geojson northern_ireland.geojson
 # Hosting: mv out.fgb ~/cloudflare_sync/population.fgb, sync it
