@@ -35,6 +35,15 @@
   import { type Backend } from "./worker";
   import * as Comlink from "comlink";
   import { PopulationLayer } from "./common";
+  // TODO Indirect dependencies
+  import * as pmtiles from "pmtiles";
+  import maplibregl from "maplibre-gl";
+
+  let offlineMode = false;
+  if (offlineMode) {
+    let protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
+  }
 
   onMount(async () => {
     // If you get "import declarations may only appear at top level of a
@@ -127,7 +136,9 @@
   </div>
   <div slot="main" style="position:relative; width: 100%; height: 100vh;">
     <MapLibre
-      style={`https://api.maptiler.com/maps/dataviz/style.json?key=${maptilerApiKey}`}
+      style={offlineMode
+        ? "http://localhost:5173/offline/light_style.json"
+        : `https://api.maptiler.com/maps/dataviz/style.json?key=${maptilerApiKey}`}
       standardControls
       hash
       bind:map
@@ -137,7 +148,9 @@
         console.log(e.detail.error);
       }}
     >
-      <Geocoder {map} apiKey={maptilerApiKey} />
+      {#if !offlineMode}
+        <Geocoder {map} apiKey={maptilerApiKey} />
+      {/if}
       <div bind:this={mapDiv} />
 
       {#if $mode.kind == "title"}
@@ -183,6 +196,6 @@
 
   /* picocss messes up maplibre controls; workaround */
   :global(.maplibregl-ctrl > button) {
-          margin-bottom: 0px;
+    margin-bottom: 0px;
   }
 </style>
