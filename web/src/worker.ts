@@ -200,6 +200,22 @@ export class Backend {
       ),
     );
   }
+
+  snapRoute(req: {
+    input: FeatureCollection;
+    mode: TravelMode;
+  }): FeatureCollection {
+    if (!this.inner) {
+      throw new Error("Backend used without a file loaded");
+    }
+
+    return JSON.parse(
+      this.inner.snapRoute({
+        input: JSON.stringify(req.input),
+        mode: req.mode,
+      }),
+    );
+  }
 }
 
 Comlink.expose(Backend);

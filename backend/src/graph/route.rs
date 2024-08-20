@@ -99,10 +99,16 @@ impl Router {
         Ok(steps)
     }
 
-    pub fn route_gj(&self, graph: &Graph, start: Position, end: Position) -> Result<String> {
+    pub fn route_linestring(
+        &self,
+        graph: &Graph,
+        start: Position,
+        end: Position,
+    ) -> Result<LineString> {
         if start == end {
             bail!("start = end");
         }
+        // TODO Handle this in slice_road_step
         if start.road == end.road {
             // Just slice the one road
             let mut slice = graph.roads[start.road.0]
@@ -114,9 +120,7 @@ impl Router {
             if start.fraction_along > end.fraction_along {
                 slice.0.reverse();
             }
-            let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&slice)));
-            f.set_property("kind", "road");
-            return Ok(serde_json::to_string(&GeoJson::from(vec![f]))?);
+            return Ok(slice);
         }
 
         let steps = self.route_steps(graph, start, end)?;
@@ -138,10 +142,12 @@ impl Router {
             }
         }
         pts.dedup();
+        Ok(LineString::new(pts))
+    }
 
-        let mut f = Feature::from(Geometry::from(
-            &graph.mercator.to_wgs84(&LineString::new(pts)),
-        ));
+    pub fn route_gj(&self, graph: &Graph, start: Position, end: Position) -> Result<String> {
+        let linestring = self.route_linestring(graph, start, end)?;
+        let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&linestring)));
         f.set_property("kind", "road");
         Ok(serde_json::to_string(&GeoJson::from(vec![f]))?)
     }

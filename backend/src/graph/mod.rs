@@ -3,6 +3,7 @@ mod costs;
 mod isochrone;
 mod route;
 mod scrape;
+mod snap;
 mod transit_route;
 
 use anyhow::Result;

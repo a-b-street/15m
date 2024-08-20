@@ -31,6 +31,7 @@
     showPopulation,
   } from "./stores";
   import TitleMode from "./title/TitleMode.svelte";
+  import UploadRouteMode from "./UploadRouteMode.svelte";
   import workerWrapper from "./worker?worker";
   import { type Backend } from "./worker";
   import * as Comlink from "comlink";
@@ -39,7 +40,7 @@
   import * as pmtiles from "pmtiles";
   import maplibregl from "maplibre-gl";
 
-  let offlineMode = false;
+  let offlineMode = true;
   if (offlineMode) {
     let protocol = new pmtiles.Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
@@ -177,6 +178,8 @@
             end={$mode.end}
             routeGj={$mode.routeGj}
           />
+        {:else if $mode.kind == "upload-route"}
+          <UploadRouteMode />
         {/if}
 
         {#if $showPopulation}

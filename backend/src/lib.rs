@@ -8,7 +8,8 @@ use std::sync::Once;
 use std::time::Duration;
 
 use chrono::NaiveTime;
-use geo::Coord;
+use geo::{Coord, LineString};
+use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
@@ -177,6 +178,31 @@ impl MapModel {
         )
         .map_err(err_to_js)
     }
+
+    #[wasm_bindgen(js_name = snapRoute)]
+    pub fn snap_route(&self, input: JsValue) -> Result<String, JsValue> {
+        let req: SnapRouteRequest = serde_wasm_bindgen::from_value(input)?;
+        let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
+        let mut linestrings = Vec::new();
+        for mut input in
+            geojson::de::deserialize_feature_collection_str_to_vec::<GeoJsonLineString>(&req.input)
+                .map_err(err_to_js)?
+        {
+            self.graph
+                .mercator
+                .to_mercator_in_place(&mut input.geometry);
+            linestrings.push(input.geometry);
+        }
+
+        let mut output = Vec::new();
+        for input in linestrings {
+            let (_, snapped) = self.graph.snap_route(&input, mode).map_err(err_to_js)?;
+            output.push(Feature::from(Geometry::from(
+                &self.graph.mercator.to_wgs84(&snapped),
+            )));
+        }
+        Ok(serde_json::to_string(&GeoJson::from(output)).map_err(err_to_js)?)
+    }
 }
 
 // Non WASM methods
@@ -263,6 +289,18 @@ pub struct BufferRouteRequest {
 pub struct ScoreRequest {
     poi_kinds: Vec<String>,
     max_seconds: u64,
+}
+
+#[derive(Deserialize)]
+struct SnapRouteRequest {
+    input: String,
+    mode: String,
+}
+
+#[derive(Deserialize)]
+struct GeoJsonLineString {
+    #[serde(deserialize_with = "deserialize_geometry")]
+    geometry: LineString,
 }
 
 fn err_to_js<E: std::fmt::Display>(err: E) -> JsValue {

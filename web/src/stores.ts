@@ -19,7 +19,8 @@ export type Mode =
       start: { lng: number; lat: number };
       end: { lng: number; lat: number };
       routeGj: FeatureCollection;
-    };
+    }
+  | { kind: "upload-route" };
 
 export let mode: Writable<Mode> = writable({ kind: "title" });
 export let map: Writable<Map | null> = writable(null);
