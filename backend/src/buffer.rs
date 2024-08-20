@@ -25,7 +25,7 @@ pub fn buffer_route(
             starts.insert(road.src_i);
             starts.insert(road.dst_i);
 
-            // TODO Doesn't handle the exact start/end
+            // TODO Doesn't handle the exact start/end, or gluing things together
             let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&road.linestring)));
             f.set_property("kind", "route");
             features.push(f);

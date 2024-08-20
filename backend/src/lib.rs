@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use chrono::NaiveTime;
 use geo::{Coord, LineString};
-use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
+use geojson::de::deserialize_geometry;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
@@ -179,11 +179,12 @@ impl MapModel {
         .map_err(err_to_js)
     }
 
-    #[wasm_bindgen(js_name = snapRoute)]
-    pub fn snap_route(&self, input: JsValue) -> Result<String, JsValue> {
+    #[wasm_bindgen(js_name = snapAndBufferRoute)]
+    pub fn snap_and_buffer_route(&self, input: JsValue) -> Result<String, JsValue> {
         let req: SnapRouteRequest = serde_wasm_bindgen::from_value(input)?;
         let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
-        let mut linestrings = Vec::new();
+
+        let mut all_steps = Vec::new();
         for mut input in
             geojson::de::deserialize_feature_collection_str_to_vec::<GeoJsonLineString>(&req.input)
                 .map_err(err_to_js)?
@@ -191,17 +192,18 @@ impl MapModel {
             self.graph
                 .mercator
                 .to_mercator_in_place(&mut input.geometry);
-            linestrings.push(input.geometry);
+            let (steps, _) = self
+                .graph
+                .snap_route(&input.geometry, mode)
+                .map_err(err_to_js)?;
+            all_steps.extend(steps);
         }
 
-        let mut output = Vec::new();
-        for input in linestrings {
-            let (_, snapped) = self.graph.snap_route(&input, mode).map_err(err_to_js)?;
-            output.push(Feature::from(Geometry::from(
-                &self.graph.mercator.to_wgs84(&snapped),
-            )));
-        }
-        Ok(serde_json::to_string(&GeoJson::from(output)).map_err(err_to_js)?)
+        let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
+        let limit = Duration::from_secs(req.max_seconds);
+
+        crate::buffer::buffer_route(&self.graph, mode, all_steps, start_time, limit)
+            .map_err(err_to_js)
     }
 }
 
@@ -295,6 +297,8 @@ pub struct ScoreRequest {
 struct SnapRouteRequest {
     input: String,
     mode: String,
+    start_time: String,
+    max_seconds: u64,
 }
 
 #[derive(Deserialize)]

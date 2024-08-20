@@ -201,18 +201,22 @@ export class Backend {
     );
   }
 
-  snapRoute(req: {
+  snapAndBufferRoute(req: {
     input: FeatureCollection;
     mode: TravelMode;
+    startTime: string;
+    maxSeconds: number;
   }): FeatureCollection {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
     }
 
     return JSON.parse(
-      this.inner.snapRoute({
+      this.inner.snapAndBufferRoute({
         input: JSON.stringify(req.input),
         mode: req.mode,
+        start_time: req.startTime,
+        max_seconds: req.maxSeconds,
       }),
     );
   }
