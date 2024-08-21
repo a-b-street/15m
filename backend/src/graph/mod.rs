@@ -35,6 +35,7 @@ pub struct Graph {
     pub gtfs: GtfsModel,
 
     pub zones: Vec<Zone>,
+    pub zone_rtree: RTree<GeomWithData<Polygon, ZoneID>>,
 }
 
 pub type EdgeLocation = GeomWithData<LineString, RoadID>;
@@ -45,6 +46,8 @@ pub struct RoadID(pub usize);
 pub struct IntersectionID(pub usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AmenityID(pub usize);
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct ZoneID(pub usize);
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
@@ -271,6 +274,7 @@ pub enum PathStep {
 
 #[derive(Serialize, Deserialize)]
 pub struct Zone {
+    // TODO Maybe split these upfront, including area and population, and just store in the RTree?
     pub geom: MultiPolygon,
     // TODO Later on, this could be generic or user-supplied
     pub population: u32,

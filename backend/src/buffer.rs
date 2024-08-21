@@ -5,6 +5,7 @@ use anyhow::Result;
 use chrono::NaiveTime;
 use geo::{Area, BooleanOps, ConvexHull, Coord, LineString, MultiPolygon, Polygon};
 use geojson::{Feature, FeatureCollection, Geometry};
+use rstar::RTreeObject;
 
 use crate::graph::{Graph, Mode, PathStep};
 
@@ -61,7 +62,7 @@ pub fn buffer_route(
     f.set_property("kind", "hull");
     features.push(f);
 
-    let total_population = intersect_zones(graph, &mut features, MultiPolygon(vec![hull]));
+    let total_population = intersect_zones(graph, &mut features, hull);
 
     Ok(serde_json::to_string(&FeatureCollection {
         features,
@@ -77,13 +78,22 @@ pub fn buffer_route(
     })?)
 }
 
-fn intersect_zones(graph: &Graph, features: &mut Vec<Feature>, hull: MultiPolygon) -> u32 {
-    let mut total = 0;
+fn intersect_zones(graph: &Graph, features: &mut Vec<Feature>, hull: Polygon) -> u32 {
+    // We might intersect a Zone multiple times if it was a MultiPolygon itself originally
+    let mut ids = HashSet::new();
+    for obj in graph
+        .zone_rtree
+        .locate_in_envelope_intersecting(&hull.envelope())
+    {
+        ids.insert(obj.data);
+    }
+    let hull_mp = MultiPolygon::new(vec![hull]);
 
-    // TODO May want to prune in huge areas
-    for zone in &graph.zones {
+    let mut total = 0;
+    for id in ids {
+        let zone = &graph.zones[id.0];
         // TODO This crashes sometimes and can't be reasonably caught in WASM
-        let hit = hull.intersection(&zone.geom);
+        let hit = hull_mp.intersection(&zone.geom);
         let hit_area_km2 = 1e-6 * hit.unsigned_area();
         let pct = hit_area_km2 / zone.area_km2;
         let population = ((zone.population as f64) * pct) as u32;

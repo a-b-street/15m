@@ -6,14 +6,14 @@ use flatgeobuf::{FeatureProperties, FgbFeature, GeozeroGeometry, HttpFgbReader};
 use geo::{Area, Coord, EuclideanLength, MultiPolygon};
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::OsmID;
-use rstar::RTree;
+use rstar::{primitives::GeomWithData, RTree};
 use utils::{Mercator, Tags};
 
 use super::amenity::Amenity;
 use super::route::Router;
 use crate::graph::{
     AmenityID, Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode,
-    Road, RoadID, Zone,
+    Road, RoadID, Zone, ZoneID,
 };
 use crate::gtfs::{GtfsModel, StopID};
 use crate::timer::Timer;
@@ -151,6 +151,15 @@ impl Graph {
         } else {
             Vec::new()
         };
+        let mut zone_objects = Vec::new();
+        for (idx, zone) in zones.iter().enumerate() {
+            let id = ZoneID(idx);
+            // MultiPolygon isn't supported, so just insert multiple
+            for polygon in &zone.geom {
+                zone_objects.push(GeomWithData::new(polygon.clone(), id));
+            }
+        }
+        let zone_rtree = RTree::bulk_load(zone_objects);
 
         timer.done();
 
@@ -165,6 +174,7 @@ impl Graph {
             amenities: amenities.amenities,
             gtfs,
             zones,
+            zone_rtree,
         })
     }
 }
