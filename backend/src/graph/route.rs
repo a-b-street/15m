@@ -50,13 +50,23 @@ impl Router {
         }
     }
 
-    // TODO This doesn't handle start=end cases
     pub fn route_steps(
         &self,
         graph: &Graph,
         start: Position,
         end: Position,
     ) -> Result<Vec<PathStep>> {
+        if start == end {
+            bail!("start = end");
+        }
+
+        if start.road == end.road {
+            return Ok(vec![PathStep::Road {
+                road: start.road,
+                forwards: start.fraction_along < end.fraction_along,
+            }]);
+        }
+
         let start_node = self.node_map.get(start.intersection).unwrap();
         let end_node = self.node_map.get(end.intersection).unwrap();
 
@@ -105,27 +115,7 @@ impl Router {
         start: Position,
         end: Position,
     ) -> Result<LineString> {
-        if start == end {
-            bail!("start = end");
-        }
-        // TODO Handle this in slice_road_step
-        if start.road == end.road {
-            // Just slice the one road
-            let mut slice = graph.roads[start.road.0]
-                .linestring
-                .line_split_twice(start.fraction_along, end.fraction_along)
-                .unwrap()
-                .into_second()
-                .unwrap();
-            if start.fraction_along > end.fraction_along {
-                slice.0.reverse();
-            }
-            return Ok(slice);
-        }
-
         let steps = self.route_steps(graph, start, end)?;
-
-        // TODO Share code with PT?
         let mut pts = Vec::new();
         for (pos, step) in steps.into_iter().with_position() {
             match step {
@@ -187,7 +177,15 @@ fn slice_road_step(
                 .unwrap()
                 .0
         }
-        _ => linestring.0.clone(),
+        itertools::Position::Middle => linestring.0.clone(),
+        itertools::Position::Only => {
+            linestring
+                .line_split_twice(start.fraction_along, end.fraction_along)
+                .unwrap()
+                .into_second()
+                .unwrap()
+                .0
+        }
     };
     if !forwards {
         pts.reverse();

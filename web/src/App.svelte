@@ -40,7 +40,7 @@
   import * as pmtiles from "pmtiles";
   import maplibregl from "maplibre-gl";
 
-  let offlineMode = false;
+  let offlineMode = new URLSearchParams(window.location.search).has("offline");
   if (offlineMode) {
     let protocol = new pmtiles.Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
