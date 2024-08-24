@@ -7,29 +7,32 @@ use geo::{Area, BooleanOps, ConvexHull, Coord, LineString, MultiPolygon, Polygon
 use geojson::{Feature, FeatureCollection, Geometry};
 use rstar::RTreeObject;
 
-use crate::graph::{Graph, Mode, PathStep};
+use crate::graph::{Graph, Mode, PathStep, Route};
 
 pub fn buffer_route(
     graph: &Graph,
     mode: Mode,
-    steps: Vec<PathStep>,
+    routes: Vec<Route>,
     start_time: NaiveTime,
     limit: Duration,
 ) -> Result<String> {
     let mut features = Vec::new();
     let mut route_roads = HashSet::new();
     let mut starts = HashSet::new();
-    for step in steps {
-        if let PathStep::Road { road, .. } = step {
-            route_roads.insert(road);
-            let road = &graph.roads[road.0];
-            starts.insert(road.src_i);
-            starts.insert(road.dst_i);
+    for route in routes {
+        let mut f = Feature::from(Geometry::from(
+            &graph.mercator.to_wgs84(&route.linestring(graph)),
+        ));
+        f.set_property("kind", "route");
+        features.push(f);
 
-            // TODO Doesn't handle the exact start/end, or gluing things together
-            let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&road.linestring)));
-            f.set_property("kind", "route");
-            features.push(f);
+        for step in route.steps {
+            if let PathStep::Road { road, .. } = step {
+                route_roads.insert(road);
+                let road = &graph.roads[road.0];
+                starts.insert(road.src_i);
+                starts.insert(road.dst_i);
+            }
         }
     }
 

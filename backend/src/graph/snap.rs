@@ -1,28 +1,21 @@
 use anyhow::Result;
 use geo::{EuclideanDistance, EuclideanLength, LineInterpolatePoint, LineString};
 
-use crate::graph::{Graph, Mode, PathStep};
+use crate::graph::{Graph, Mode, Route};
 
 impl Graph {
     /// Given an input LineString (in Mercator), try to snap/map-match it to a given Mode's graph
-    pub fn snap_route(
-        &self,
-        input: &LineString,
-        mode: Mode,
-    ) -> Result<(Vec<PathStep>, LineString)> {
+    pub fn snap_route(&self, input: &LineString, mode: Mode) -> Result<Route> {
         // TODO Simple start: just match the endpoints and find the optimal route, according to
         // that mode's graph.
 
         let start = self.snap_to_road(*input.coords().next().unwrap(), mode);
         let end = self.snap_to_road(*input.coords().last().unwrap(), mode);
-        let steps = self.router[mode].route_steps(self, start, end)?;
+        let route = self.router[mode].route(self, start, end)?;
 
-        // TODO Repeats work until PathStep -> LineString has a proper API
-        let output = self.router[mode].route_linestring(self, start, end)?;
+        score_similarity(input, &route.linestring(self));
 
-        score_similarity(input, &output);
-
-        Ok((steps, output))
+        Ok(route)
     }
 }
 

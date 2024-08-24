@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use utils::Mercator;
 
 use self::amenity::Amenity;
+pub use self::route::Route;
 use self::route::Router;
 use crate::gtfs::TripID;
 use crate::gtfs::{GtfsModel, StopID};

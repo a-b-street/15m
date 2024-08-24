@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use anyhow::{bail, Result};
 use fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
 use geo::{Coord, LineString};
-use geojson::{Feature, GeoJson, Geometry};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use utils::{deserialize_nodemap, LineSplit, NodeMap};
@@ -19,6 +18,12 @@ pub struct Router {
     ch: FastGraph,
     #[serde(skip_serializing, skip_deserializing)]
     path_calc: RefCell<Option<PathCalculator>>,
+}
+
+pub struct Route {
+    pub start: Position,
+    pub end: Position,
+    pub steps: Vec<PathStep>,
 }
 
 impl Router {
@@ -50,21 +55,20 @@ impl Router {
         }
     }
 
-    pub fn route_steps(
-        &self,
-        graph: &Graph,
-        start: Position,
-        end: Position,
-    ) -> Result<Vec<PathStep>> {
+    pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<Route> {
         if start == end {
             bail!("start = end");
         }
 
         if start.road == end.road {
-            return Ok(vec![PathStep::Road {
-                road: start.road,
-                forwards: start.fraction_along < end.fraction_along,
-            }]);
+            return Ok(Route {
+                start,
+                end,
+                steps: vec![PathStep::Road {
+                    road: start.road,
+                    forwards: start.fraction_along < end.fraction_along,
+                }],
+            });
         }
 
         let start_node = self.node_map.get(start.intersection).unwrap();
@@ -106,25 +110,21 @@ impl Router {
             }
         }
 
-        Ok(steps)
+        Ok(Route { start, end, steps })
     }
+}
 
-    pub fn route_linestring(
-        &self,
-        graph: &Graph,
-        start: Position,
-        end: Position,
-    ) -> Result<LineString> {
-        let steps = self.route_steps(graph, start, end)?;
+impl Route {
+    pub fn linestring(&self, graph: &Graph) -> LineString {
         let mut pts = Vec::new();
-        for (pos, step) in steps.into_iter().with_position() {
+        for (pos, step) in self.steps.iter().with_position() {
             match step {
                 PathStep::Road { road, forwards } => {
                     pts.extend(slice_road_step(
                         &graph.roads[road.0].linestring,
-                        forwards,
-                        &start,
-                        &end,
+                        *forwards,
+                        &self.start,
+                        &self.end,
                         pos,
                     ));
                 }
@@ -132,14 +132,7 @@ impl Router {
             }
         }
         pts.dedup();
-        Ok(LineString::new(pts))
-    }
-
-    pub fn route_gj(&self, graph: &Graph, start: Position, end: Position) -> Result<String> {
-        let linestring = self.route_linestring(graph, start, end)?;
-        let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&linestring)));
-        f.set_property("kind", "road");
-        Ok(serde_json::to_string(&GeoJson::from(vec![f]))?)
+        LineString::new(pts)
     }
 }
 

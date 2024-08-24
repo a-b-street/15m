@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use chrono::NaiveTime;
 use geo::{Coord, LineString};
-use geojson::de::deserialize_geometry;
+use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
@@ -147,18 +147,19 @@ impl MapModel {
             mode,
         );
 
-        let steps = if req.mode == "transit" {
+        let route = if req.mode == "transit" {
             todo!()
         } else {
             self.graph.router[mode]
-                .route_steps(&self.graph, start, end)
+                .route(&self.graph, start, end)
                 .map_err(err_to_js)?
         };
 
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
 
-        crate::buffer::buffer_route(&self.graph, mode, steps, start_time, limit).map_err(err_to_js)
+        crate::buffer::buffer_route(&self.graph, mode, vec![route], start_time, limit)
+            .map_err(err_to_js)
     }
 
     #[wasm_bindgen(js_name = score)]
@@ -184,7 +185,7 @@ impl MapModel {
         let req: SnapRouteRequest = serde_wasm_bindgen::from_value(input)?;
         let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
 
-        let mut all_steps = Vec::new();
+        let mut routes = Vec::new();
         for mut input in
             geojson::de::deserialize_feature_collection_str_to_vec::<GeoJsonLineString>(&req.input)
                 .map_err(err_to_js)?
@@ -192,18 +193,17 @@ impl MapModel {
             self.graph
                 .mercator
                 .to_mercator_in_place(&mut input.geometry);
-            let (steps, _) = self
-                .graph
-                .snap_route(&input.geometry, mode)
-                .map_err(err_to_js)?;
-            all_steps.extend(steps);
+            routes.push(
+                self.graph
+                    .snap_route(&input.geometry, mode)
+                    .map_err(err_to_js)?,
+            );
         }
 
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
 
-        crate::buffer::buffer_route(&self.graph, mode, all_steps, start_time, limit)
-            .map_err(err_to_js)
+        crate::buffer::buffer_route(&self.graph, mode, routes, start_time, limit).map_err(err_to_js)
     }
 }
 
@@ -244,9 +244,13 @@ impl MapModel {
                 )
                 .map_err(err_to_js)
         } else {
-            self.graph.router[mode]
-                .route_gj(&self.graph, start, end)
-                .map_err(err_to_js)
+            let linestring = self.graph.router[mode]
+                .route(&self.graph, start, end)
+                .map_err(err_to_js)?
+                .linestring(&self.graph);
+            let mut f = Feature::from(Geometry::from(&self.graph.mercator.to_wgs84(&linestring)));
+            f.set_property("kind", "road");
+            Ok(serde_json::to_string(&GeoJson::from(vec![f])).map_err(err_to_js)?)
         }
     }
 }
