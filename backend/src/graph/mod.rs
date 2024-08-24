@@ -8,8 +8,8 @@ mod transit_route;
 
 use anyhow::Result;
 use enum_map::{Enum, EnumMap};
-use geo::{Coord, LineLocatePoint, LineString, MultiPolygon, Point, Polygon};
-use geojson::{Feature, FeatureCollection, GeoJson, Geometry};
+use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
+use geojson::{Feature, GeoJson, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
 use utils::Mercator;
@@ -34,9 +34,6 @@ pub struct Graph {
     pub amenities: Vec<Amenity>,
 
     pub gtfs: GtfsModel,
-
-    pub zones: Vec<Zone>,
-    pub zone_rtree: RTree<GeomWithData<Polygon, ZoneID>>,
 }
 
 pub type EdgeLocation = GeomWithData<LineString, RoadID>;
@@ -47,8 +44,6 @@ pub struct RoadID(pub usize);
 pub struct IntersectionID(pub usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AmenityID(pub usize);
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct ZoneID(pub usize);
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
@@ -191,33 +186,6 @@ impl Graph {
             intersection,
         }
     }
-
-    /// Returns a GeoJSON string
-    pub fn render_zones(&self) -> Result<String> {
-        let mut features = Vec::new();
-        let mut max_density: f64 = 0.0;
-        for zone in &self.zones {
-            let mut f = Feature::from(Geometry::from(&self.mercator.to_wgs84(&zone.geom)));
-            f.set_property("population", zone.population);
-            let density = (zone.population as f64) / zone.area_km2;
-            f.set_property("density", density);
-            features.push(f);
-
-            max_density = max_density.max(density);
-        }
-        Ok(serde_json::to_string(&FeatureCollection {
-            features,
-            bbox: None,
-            foreign_members: Some(
-                serde_json::json!({
-                    "max_density": max_density,
-                })
-                .as_object()
-                .unwrap()
-                .clone(),
-            ),
-        })?)
-    }
 }
 
 impl Road {
@@ -271,13 +239,4 @@ pub enum PathStep {
         trip: TripID,
         stop2: StopID,
     },
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Zone {
-    // TODO Maybe split these upfront, including area and population, and just store in the RTree?
-    pub geom: MultiPolygon,
-    // TODO Later on, this could be generic or user-supplied
-    pub population: u32,
-    pub area_km2: f64,
 }

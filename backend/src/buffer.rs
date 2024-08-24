@@ -8,9 +8,11 @@ use geojson::{Feature, FeatureCollection, Geometry};
 use rstar::RTreeObject;
 
 use crate::graph::{Graph, Mode, PathStep, Route};
+use crate::Zones;
 
 pub fn buffer_route(
     graph: &Graph,
+    zones: &Zones,
     mode: Mode,
     routes: Vec<Route>,
     start_time: NaiveTime,
@@ -65,7 +67,7 @@ pub fn buffer_route(
     f.set_property("kind", "hull");
     features.push(f);
 
-    let total_population = intersect_zones(graph, &mut features, hull);
+    let total_population = intersect_zones(graph, zones, &mut features, hull);
 
     Ok(serde_json::to_string(&FeatureCollection {
         features,
@@ -81,11 +83,17 @@ pub fn buffer_route(
     })?)
 }
 
-fn intersect_zones(graph: &Graph, features: &mut Vec<Feature>, hull: Polygon) -> u32 {
+// TODO Move to Zones?
+fn intersect_zones(
+    graph: &Graph,
+    zones: &Zones,
+    features: &mut Vec<Feature>,
+    hull: Polygon,
+) -> u32 {
     // We might intersect a Zone multiple times if it was a MultiPolygon itself originally
     let mut ids = HashSet::new();
-    for obj in graph
-        .zone_rtree
+    for obj in zones
+        .rtree
         .locate_in_envelope_intersecting(&hull.envelope())
     {
         ids.insert(obj.data);
@@ -94,7 +102,7 @@ fn intersect_zones(graph: &Graph, features: &mut Vec<Feature>, hull: Polygon) ->
 
     let mut total = 0;
     for id in ids {
-        let zone = &graph.zones[id.0];
+        let zone = &zones.zones[id.0];
         // TODO This crashes sometimes and can't be reasonably caught in WASM
         let hit = hull_mp.intersection(&zone.geom);
         let hit_area_km2 = 1e-6 * hit.unsigned_area();

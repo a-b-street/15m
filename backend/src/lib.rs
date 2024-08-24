@@ -13,6 +13,7 @@ use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
+use crate::zone::Zones;
 pub use graph::{Graph, GtfsSource, Mode};
 pub use gtfs::GtfsModel;
 pub use timer::Timer;
@@ -23,6 +24,7 @@ mod gtfs;
 mod isochrone;
 mod score;
 mod timer;
+mod zone;
 
 static START: Once = Once::new();
 
@@ -30,6 +32,7 @@ static START: Once = Once::new();
 #[wasm_bindgen]
 pub struct MapModel {
     graph: Graph,
+    zones: Zones,
 }
 
 #[wasm_bindgen]
@@ -54,19 +57,22 @@ impl MapModel {
             Some(url) => graph::GtfsSource::Geomedea(url),
             None => graph::GtfsSource::None,
         };
+        let mut timer = Timer::new("build graph", progress_cb);
         let graph = if is_osm {
-            Graph::new(
-                input_bytes,
-                gtfs,
-                population_url,
-                Timer::new("build graph", progress_cb),
-            )
-            .await
-            .map_err(err_to_js)?
+            Graph::new(input_bytes, gtfs, &mut timer)
+                .await
+                .map_err(err_to_js)?
         } else {
             bincode::deserialize_from(input_bytes).map_err(err_to_js)?
         };
-        Ok(MapModel { graph })
+        // TODO Serialize this too
+        let zones = Zones::load(population_url, &graph.mercator, &mut timer)
+            .await
+            .map_err(err_to_js)?;
+
+        timer.done();
+
+        Ok(MapModel { graph, zones })
     }
 
     /// Returns a GeoJSON string. Just shows the full network
@@ -96,7 +102,9 @@ impl MapModel {
 
     #[wasm_bindgen(js_name = renderZones)]
     pub fn render_zones(&self) -> Result<String, JsValue> {
-        self.graph.render_zones().map_err(err_to_js)
+        self.zones
+            .render_zones(&self.graph.mercator)
+            .map_err(err_to_js)
     }
 
     #[wasm_bindgen(js_name = isochrone)]
@@ -158,8 +166,15 @@ impl MapModel {
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
 
-        crate::buffer::buffer_route(&self.graph, mode, vec![route], start_time, limit)
-            .map_err(err_to_js)
+        crate::buffer::buffer_route(
+            &self.graph,
+            &self.zones,
+            mode,
+            vec![route],
+            start_time,
+            limit,
+        )
+        .map_err(err_to_js)
     }
 
     #[wasm_bindgen(js_name = score)]
@@ -203,7 +218,8 @@ impl MapModel {
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
 
-        crate::buffer::buffer_route(&self.graph, mode, routes, start_time, limit).map_err(err_to_js)
+        crate::buffer::buffer_route(&self.graph, &self.zones, mode, routes, start_time, limit)
+            .map_err(err_to_js)
     }
 }
 
@@ -212,7 +228,10 @@ impl MapModel {
 impl MapModel {
     pub fn from_graph_bytes(input_bytes: &[u8]) -> Result<MapModel, JsValue> {
         let graph = bincode::deserialize_from(input_bytes).map_err(err_to_js)?;
-        Ok(MapModel { graph })
+        Ok(MapModel {
+            graph,
+            zones: Zones::empty(),
+        })
     }
 
     pub fn route_from_req(&self, req: &RouteRequest) -> Result<String, JsValue> {

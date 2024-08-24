@@ -2,18 +2,17 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use enum_map::EnumMap;
-use flatgeobuf::{FeatureProperties, FgbFeature, GeozeroGeometry, HttpFgbReader};
-use geo::{Area, Coord, EuclideanLength, MultiPolygon};
+use geo::{Coord, EuclideanLength};
 use muv_osm::{AccessLevel, TMode};
 use osm_reader::OsmID;
-use rstar::{primitives::GeomWithData, RTree};
-use utils::{Mercator, Tags};
+use rstar::RTree;
+use utils::Tags;
 
 use super::amenity::Amenity;
 use super::route::Router;
 use crate::graph::{
     AmenityID, Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode,
-    Road, RoadID, Zone, ZoneID,
+    Road, RoadID,
 };
 use crate::gtfs::{GtfsModel, StopID};
 use crate::timer::Timer;
@@ -56,8 +55,7 @@ impl Graph {
     pub async fn new(
         input_bytes: &[u8],
         gtfs_source: GtfsSource,
-        population_url: Option<String>,
-        mut timer: Timer,
+        timer: &mut Timer,
     ) -> Result<Graph> {
         timer.step("parse OSM and split graph");
 
@@ -126,7 +124,7 @@ impl Graph {
         for a in &mut amenities.amenities {
             a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
         }
-        snap_amenities(&mut roads, &amenities.amenities, &closest_road, &mut timer);
+        snap_amenities(&mut roads, &amenities.amenities, &closest_road, timer);
 
         timer.push("building router");
         let router = EnumMap::from_fn(|mode| {
@@ -142,26 +140,8 @@ impl Graph {
             GtfsSource::Geomedea(url) => GtfsModel::from_geomedea(&url, &graph.mercator).await?,
             GtfsSource::None => GtfsModel::empty(),
         };
-        snap_stops(&mut roads, &mut gtfs, &closest_road[Mode::Foot], &mut timer);
+        snap_stops(&mut roads, &mut gtfs, &closest_road[Mode::Foot], timer);
         timer.pop();
-
-        let zones = if let Some(url) = population_url {
-            timer.step("load population zones");
-            load_zones(url, &graph.mercator).await?
-        } else {
-            Vec::new()
-        };
-        let mut zone_objects = Vec::new();
-        for (idx, zone) in zones.iter().enumerate() {
-            let id = ZoneID(idx);
-            // MultiPolygon isn't supported, so just insert multiple
-            for polygon in &zone.geom {
-                zone_objects.push(GeomWithData::new(polygon.clone(), id));
-            }
-        }
-        let zone_rtree = RTree::bulk_load(zone_objects);
-
-        timer.done();
 
         Ok(Graph {
             roads,
@@ -173,8 +153,6 @@ impl Graph {
 
             amenities: amenities.amenities,
             gtfs,
-            zones,
-            zone_rtree,
         })
     }
 }
@@ -298,40 +276,5 @@ fn snap_stops(
             // TODO Need to get rid of the stop
             error!("{stop_id:?} didn't snap to any road");
         }
-    }
-}
-
-async fn load_zones(url: String, mercator: &Mercator) -> Result<Vec<Zone>> {
-    let bbox = mercator.wgs84_bounds;
-    let mut fgb = HttpFgbReader::open(&url)
-        .await?
-        .select_bbox(bbox.min().x, bbox.min().y, bbox.max().x, bbox.max().y)
-        .await?;
-
-    let mut zones = Vec::new();
-    while let Some(feature) = fgb.next().await? {
-        // TODO Could intersect with boundary_polygon, but some extras nearby won't hurt anything
-        let mut geom = get_multipolygon(feature)?;
-        mercator.to_mercator_in_place(&mut geom);
-        let area_km2 = 1e-6 * geom.unsigned_area();
-        // TODO Re-encode as UInt
-        let population = feature.property::<i64>("population")?.try_into()?;
-
-        zones.push(Zone {
-            geom,
-            population,
-            area_km2,
-        });
-    }
-    Ok(zones)
-}
-
-fn get_multipolygon(f: &FgbFeature) -> Result<MultiPolygon> {
-    let mut p = geozero::geo_types::GeoWriter::new();
-    f.process_geom(&mut p)?;
-    match p.take_geometry().unwrap() {
-        geo::Geometry::Polygon(p) => Ok(MultiPolygon(vec![p])),
-        geo::Geometry::MultiPolygon(mp) => Ok(mp),
-        _ => bail!("Wrong type in fgb"),
     }
 }
