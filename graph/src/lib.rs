@@ -18,7 +18,7 @@ use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
 use geojson::{Feature, FeatureCollection, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
-use utils::Mercator;
+use utils::{Mercator, Tags};
 
 pub use self::route::Route;
 use self::route::Router;
@@ -84,6 +84,7 @@ pub struct Road {
     pub way: osm_reader::WayID,
     pub node1: osm_reader::NodeID,
     pub node2: osm_reader::NodeID,
+    pub osm_tags: Tags,
     // For performance
     pub length_meters: f64,
     pub linestring: LineString,

@@ -24,6 +24,7 @@ impl Graph {
 
         let graph = utils::osm2graph::Graph::new(
             input_bytes,
+            // Don't do any filtering by Mode yet
             |tags| {
                 tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes")
             },
@@ -57,6 +58,7 @@ impl Graph {
                     way: e.osm_way,
                     node1: e.osm_node1,
                     node2: e.osm_node2,
+                    osm_tags: e.osm_tags,
                     length_meters: e.linestring.euclidean_length(),
                     linestring: e.linestring,
 
