@@ -154,8 +154,10 @@ fn slice_road_step(
                 .line_split_twice(a, b)
                 .unwrap()
                 .into_second()
-                .unwrap()
-                .0
+                // TODO Workaround some crashes in Severance Snape, where the first PathStep seems
+                // to start on a road in reverse and immediately go somewhere else
+                .map(|ls| ls.0)
+                .unwrap_or_else(Vec::new)
         }
         itertools::Position::Last => {
             let (a, b) = if forwards {
@@ -167,18 +169,16 @@ fn slice_road_step(
                 .line_split_twice(a, b)
                 .unwrap()
                 .into_second()
-                .unwrap()
-                .0
+                .map(|ls| ls.0)
+                .unwrap_or_else(Vec::new)
         }
         itertools::Position::Middle => linestring.0.clone(),
-        itertools::Position::Only => {
-            linestring
-                .line_split_twice(start.fraction_along, end.fraction_along)
-                .unwrap()
-                .into_second()
-                .unwrap()
-                .0
-        }
+        itertools::Position::Only => linestring
+            .line_split_twice(start.fraction_along, end.fraction_along)
+            .unwrap()
+            .into_second()
+            .map(|ls| ls.0)
+            .unwrap_or_else(Vec::new),
     };
     if !forwards {
         pts.reverse();
