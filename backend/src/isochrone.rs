@@ -9,6 +9,7 @@ use utils::Grid;
 
 use crate::graph::{Graph, Mode};
 use crate::timer::Timer;
+use crate::Amenities;
 
 #[derive(Deserialize)]
 pub enum Style {
@@ -19,6 +20,7 @@ pub enum Style {
 
 pub fn calculate(
     graph: &Graph,
+    amenities: &Amenities,
     req: Coord,
     mode: Mode,
     style: Style,
@@ -40,8 +42,8 @@ pub fn calculate(
     // Show reached amenities
     let mut features = Vec::new();
     for (r, _) in &cost_per_road {
-        for a in &graph.roads[r.0].amenities[mode] {
-            features.push(graph.amenities[a.0].to_gj(&graph.mercator));
+        for a in &amenities.per_road[r.0][mode] {
+            features.push(amenities.amenities[a.0].to_gj(&graph.mercator));
         }
     }
 

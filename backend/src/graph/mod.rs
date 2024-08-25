@@ -1,4 +1,3 @@
-mod amenity;
 mod costs;
 mod isochrone;
 mod route;
@@ -9,12 +8,11 @@ mod transit_route;
 use anyhow::Result;
 use enum_map::{Enum, EnumMap};
 use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
-use geojson::{Feature, GeoJson, Geometry};
+use geojson::{Feature, FeatureCollection, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
 use utils::Mercator;
 
-use self::amenity::Amenity;
 pub use self::route::Route;
 use self::route::Router;
 use crate::gtfs::TripID;
@@ -30,9 +28,6 @@ pub struct Graph {
     pub router: EnumMap<Mode, Router>,
     pub boundary_polygon: Polygon,
 
-    // Unrelated to the transportation graph above. Maybe should be more separate.
-    pub amenities: Vec<Amenity>,
-
     pub gtfs: GtfsModel,
 }
 
@@ -42,8 +37,6 @@ pub type EdgeLocation = GeomWithData<LineString, RoadID>;
 pub struct RoadID(pub usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct IntersectionID(pub usize);
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct AmenityID(pub usize);
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
@@ -90,10 +83,6 @@ pub struct Road {
     // A simplified view of who can access a road. All might be None (buses, trains ignored)
     pub access: EnumMap<Mode, Direction>,
 
-    // These're broken down this way because the 3 graphs look different and could snap to
-    // different roads in each case
-    pub amenities: EnumMap<Mode, Vec<AmenityID>>,
-
     // Meters/second, for cars
     pub max_speed: f64,
 
@@ -110,33 +99,22 @@ pub struct Intersection {
 }
 
 impl Graph {
-    /// Returns a GeoJSON string. Just shows the full network and amenities
-    pub fn render_debug(&self) -> Result<String> {
+    /// Returns GeoJSON with roads and stops
+    pub fn render_debug(&self) -> FeatureCollection {
         let mut features = Vec::new();
 
         for r in &self.roads {
             features.push(r.to_gj(&self.mercator));
         }
-        for a in &self.amenities {
-            features.push(a.to_gj(&self.mercator));
-        }
         for s in &self.gtfs.stops {
             features.push(s.to_gj(&self.mercator));
         }
 
-        let gj = GeoJson::from(features);
-        let out = serde_json::to_string(&gj)?;
-        Ok(out)
-    }
-
-    pub fn render_amenities(&self) -> Result<String> {
-        let mut features = Vec::new();
-        for a in &self.amenities {
-            features.push(a.to_gj(&self.mercator));
+        FeatureCollection {
+            features,
+            bbox: None,
+            foreign_members: None,
         }
-        let gj = GeoJson::from(features);
-        let out = serde_json::to_string(&gj)?;
-        Ok(out)
     }
 
     /// Return a polygon covering the world, minus a hole for the boundary, in WGS84

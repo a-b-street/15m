@@ -4,13 +4,15 @@ use std::time::Duration;
 use anyhow::Result;
 use chrono::NaiveTime;
 
-use crate::graph::{Graph, Mode};
+use crate::graph::{Graph, Mode, RoadID};
 use crate::timer::Timer;
+use crate::Amenities;
 
 // Return GeoJSON points for each POI, with info about that POI, a score to the nearest cycle
 // parking, and the location of that parking
 pub fn calculate(
     graph: &Graph,
+    amenities: &Amenities,
     poi_kinds: HashSet<String>,
     limit: Duration,
     mut timer: Timer,
@@ -22,21 +24,21 @@ pub fn calculate(
     // Per road, store one arbitrary point of parking
     timer.step("look for targets (cycle parking)");
     let mut cycle_parking_roads = HashMap::new();
-    for road in &graph.roads {
-        if let Some(a) = road.amenities[Mode::Foot]
+    for (idx, list) in amenities.per_road.iter().enumerate() {
+        if let Some(a) = list[Mode::Foot]
             .iter()
-            .find(|a| graph.amenities[a.0].kind == "bicycle_parking")
+            .find(|a| amenities.amenities[a.0].kind == "bicycle_parking")
         {
-            cycle_parking_roads.insert(road.id, graph.amenities[a.0].point);
+            cycle_parking_roads.insert(RoadID(idx), amenities.amenities[a.0].point);
         }
     }
 
     timer.step(format!(
         "calculate for amenities (up to {})",
-        graph.amenities.len()
+        amenities.amenities.len()
     ));
     let mut features = Vec::new();
-    for amenity in &graph.amenities {
+    for amenity in &amenities.amenities {
         if !poi_kinds.contains(&amenity.kind) {
             continue;
         }

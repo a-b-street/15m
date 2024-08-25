@@ -1,73 +1,33 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use enum_map::EnumMap;
-use geo::{Coord, EuclideanLength};
+use geo::EuclideanLength;
 use muv_osm::{AccessLevel, TMode};
-use osm_reader::OsmID;
 use rstar::RTree;
 use utils::Tags;
 
-use super::amenity::Amenity;
 use super::route::Router;
 use crate::graph::{
-    AmenityID, Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode,
-    Road, RoadID,
+    Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID,
 };
 use crate::gtfs::{GtfsModel, StopID};
 use crate::timer::Timer;
 
-struct ReadAmenities {
-    amenities: Vec<Amenity>,
-}
-
-impl utils::osm2graph::OsmReader for ReadAmenities {
-    fn node(&mut self, id: osm_reader::NodeID, pt: Coord, tags: Tags) {
-        self.amenities.extend(Amenity::maybe_new(
-            &tags,
-            OsmID::Node(id),
-            pt.into(),
-            AmenityID(self.amenities.len()),
-        ));
-    }
-
-    fn way(
-        &mut self,
-        id: osm_reader::WayID,
-        node_ids: &Vec<osm_reader::NodeID>,
-        node_mapping: &HashMap<osm_reader::NodeID, Coord>,
-        tags: &Tags,
-    ) {
-        self.amenities.extend(Amenity::maybe_new(
-            tags,
-            OsmID::Way(id),
-            // TODO Centroid
-            node_mapping[&node_ids[0]].into(),
-            AmenityID(self.amenities.len()),
-        ));
-    }
-
-    // TODO Are there amenities as relations?
-}
-
 impl Graph {
     /// Call with bytes of an osm.pbf or osm.xml string
-    pub async fn new(
+    pub async fn new<R: utils::osm2graph::OsmReader>(
         input_bytes: &[u8],
         gtfs_source: GtfsSource,
+        reader: &mut R,
         timer: &mut Timer,
     ) -> Result<Graph> {
         timer.step("parse OSM and split graph");
 
-        let mut amenities = ReadAmenities {
-            amenities: Vec::new(),
-        };
         let graph = utils::osm2graph::Graph::new(
             input_bytes,
             |tags| {
                 tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes")
             },
-            &mut amenities,
+            reader,
         )?;
 
         timer.step("calculate road attributes");
@@ -102,7 +62,6 @@ impl Graph {
 
                     access,
                     max_speed,
-                    amenities: EnumMap::default(),
                     stops: Vec::new(),
                 }
             })
@@ -120,11 +79,6 @@ impl Graph {
             )
         });
         timer.pop();
-
-        for a in &mut amenities.amenities {
-            a.point = graph.mercator.pt_to_mercator(a.point.into()).into();
-        }
-        snap_amenities(&mut roads, &amenities.amenities, &closest_road, timer);
 
         timer.push("building router");
         let router = EnumMap::from_fn(|mode| {
@@ -151,7 +105,6 @@ impl Graph {
             router,
             boundary_polygon: graph.boundary_polygon,
 
-            amenities: amenities.amenities,
             gtfs,
         })
     }
@@ -236,22 +189,6 @@ fn calculate_max_speed(tags: &Tags) -> f64 {
     }
     // Arbitrary fallback
     30.0 * 0.44704
-}
-
-fn snap_amenities(
-    roads: &mut Vec<Road>,
-    amenities: &Vec<Amenity>,
-    closest_road: &EnumMap<Mode, RTree<EdgeLocation>>,
-    timer: &mut Timer,
-) {
-    timer.step("snap amenities");
-    for amenity in amenities {
-        for (mode, closest) in closest_road {
-            if let Some(r) = closest.nearest_neighbor(&amenity.point) {
-                roads[r.data.0].amenities[mode].push(amenity.id);
-            }
-        }
-    }
 }
 
 fn snap_stops(

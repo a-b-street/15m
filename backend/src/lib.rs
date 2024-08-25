@@ -13,11 +13,13 @@ use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
+use crate::amenity::Amenities;
 use crate::zone::Zones;
 pub use graph::{Graph, GtfsSource, Mode};
 pub use gtfs::GtfsModel;
 pub use timer::Timer;
 
+mod amenity;
 mod buffer;
 mod graph;
 mod gtfs;
@@ -33,6 +35,7 @@ static START: Once = Once::new();
 pub struct MapModel {
     graph: Graph,
     zones: Zones,
+    amenities: Amenities,
 }
 
 #[wasm_bindgen]
@@ -58,13 +61,15 @@ impl MapModel {
             None => graph::GtfsSource::None,
         };
         let mut timer = Timer::new("build graph", progress_cb);
+        let mut amenities = Amenities::new();
         let graph = if is_osm {
-            Graph::new(input_bytes, gtfs, &mut timer)
+            Graph::new(input_bytes, gtfs, &mut amenities, &mut timer)
                 .await
                 .map_err(err_to_js)?
         } else {
             bincode::deserialize_from(input_bytes).map_err(err_to_js)?
         };
+        amenities.finalize(&graph, &mut timer);
         // TODO Serialize this too
         let zones = Zones::load(population_url, &graph.mercator, &mut timer)
             .await
@@ -72,19 +77,29 @@ impl MapModel {
 
         timer.done();
 
-        Ok(MapModel { graph, zones })
+        Ok(MapModel {
+            graph,
+            zones,
+            amenities,
+        })
     }
 
     /// Returns a GeoJSON string. Just shows the full network
     #[wasm_bindgen(js_name = renderDebug)]
     pub fn render_debug(&self) -> Result<String, JsValue> {
-        self.graph.render_debug().map_err(err_to_js)
+        let mut fc = self.graph.render_debug();
+        for a in &self.amenities.amenities {
+            fc.features.push(a.to_gj(&self.graph.mercator));
+        }
+        serde_json::to_string(&fc).map_err(err_to_js)
     }
 
     /// Returns a GeoJSON string showing all amenities
     #[wasm_bindgen(js_name = renderAmenities)]
     pub fn render_amenities(&self) -> Result<String, JsValue> {
-        self.graph.render_amenities().map_err(err_to_js)
+        self.amenities
+            .render_amenities(&self.graph.mercator)
+            .map_err(err_to_js)
     }
 
     /// Return a polygon covering the world, minus a hole for the boundary, in WGS84
@@ -117,6 +132,7 @@ impl MapModel {
         let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
         isochrone::calculate(
             &self.graph,
+            &self.amenities,
             start,
             mode,
             // TODO Hack
@@ -188,6 +204,7 @@ impl MapModel {
         let limit = Duration::from_secs(req.max_seconds);
         score::calculate(
             &self.graph,
+            &self.amenities,
             poi_kinds,
             limit,
             Timer::new("score", progress_cb),
@@ -228,9 +245,12 @@ impl MapModel {
 impl MapModel {
     pub fn from_graph_bytes(input_bytes: &[u8]) -> Result<MapModel, JsValue> {
         let graph = bincode::deserialize_from(input_bytes).map_err(err_to_js)?;
+        let mut amenities = Amenities::new();
+        amenities.finalize(&graph, &mut Timer::new("deserialize graph", None));
         Ok(MapModel {
             graph,
             zones: Zones::empty(),
+            amenities,
         })
     }
 

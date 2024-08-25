@@ -1,12 +1,22 @@
-use geo::Point;
-use geojson::{Feature, Geometry};
+use std::collections::HashMap;
+
+use anyhow::Result;
+use enum_map::EnumMap;
+use geo::{Coord, Point};
+use geojson::{Feature, GeoJson, Geometry};
 use osm_reader::OsmID;
-use serde::{Deserialize, Serialize};
 use utils::{Mercator, Tags};
 
-use crate::graph::AmenityID;
+use crate::graph::Graph;
+use crate::{Mode, Timer};
 
-#[derive(Serialize, Deserialize)]
+pub struct Amenities {
+    pub amenities: Vec<Amenity>,
+    // Indexed by RoadID. These're broken down this way because the 3 graphs look different and
+    // could snap to different roads in each case
+    pub per_road: Vec<EnumMap<Mode, Vec<AmenityID>>>,
+}
+
 pub struct Amenity {
     pub id: AmenityID,
     pub osm_id: OsmID,
@@ -17,6 +27,45 @@ pub struct Amenity {
     // Supporting details for some cases only
     pub brand: Option<String>,
     pub cuisine: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+pub struct AmenityID(pub usize);
+
+impl Amenities {
+    pub fn new() -> Self {
+        Self {
+            amenities: Vec::new(),
+            per_road: Vec::new(),
+        }
+    }
+
+    pub fn finalize(&mut self, graph: &Graph, timer: &mut Timer) {
+        timer.step("snap amenities");
+        self.per_road = std::iter::repeat_with(EnumMap::default)
+            .take(graph.roads.len())
+            .collect();
+
+        for amenity in &mut self.amenities {
+            amenity.point = graph.mercator.pt_to_mercator(amenity.point.into()).into();
+
+            for (mode, closest) in &graph.closest_road {
+                if let Some(r) = closest.nearest_neighbor(&amenity.point) {
+                    self.per_road[r.data.0][mode].push(amenity.id);
+                }
+            }
+        }
+    }
+
+    pub fn render_amenities(&self, mercator: &Mercator) -> Result<String> {
+        let mut features = Vec::new();
+        for a in &self.amenities {
+            features.push(a.to_gj(mercator));
+        }
+        let gj = GeoJson::from(features);
+        let out = serde_json::to_string(&gj)?;
+        Ok(out)
+    }
 }
 
 impl Amenity {
@@ -91,4 +140,33 @@ impl Amenity {
 
         tags.get("amenity").or_else(|| tags.get("shop")).cloned()
     }
+}
+
+impl utils::osm2graph::OsmReader for Amenities {
+    fn node(&mut self, id: osm_reader::NodeID, pt: Coord, tags: Tags) {
+        self.amenities.extend(Amenity::maybe_new(
+            &tags,
+            OsmID::Node(id),
+            pt.into(),
+            AmenityID(self.amenities.len()),
+        ));
+    }
+
+    fn way(
+        &mut self,
+        id: osm_reader::WayID,
+        node_ids: &Vec<osm_reader::NodeID>,
+        node_mapping: &HashMap<osm_reader::NodeID, Coord>,
+        tags: &Tags,
+    ) {
+        self.amenities.extend(Amenity::maybe_new(
+            tags,
+            OsmID::Way(id),
+            // TODO Centroid
+            node_mapping[&node_ids[0]].into(),
+            AmenityID(self.amenities.len()),
+        ));
+    }
+
+    // TODO Are there amenities as relations?
 }
