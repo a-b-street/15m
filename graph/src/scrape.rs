@@ -5,12 +5,12 @@ use muv_osm::{AccessLevel, TMode};
 use rstar::RTree;
 use utils::Tags;
 
-use super::route::Router;
-use crate::graph::{
-    Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID,
-};
 use crate::gtfs::{GtfsModel, StopID};
-use crate::timer::Timer;
+use crate::route::Router;
+use crate::{
+    Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID,
+    Timer,
+};
 
 impl Graph {
     /// Call with bytes of an osm.pbf or osm.xml string

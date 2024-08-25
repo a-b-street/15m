@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use utils::PriorityQueueItem;
 
-use super::costs::cost;
-use crate::graph::{Graph, IntersectionID, Mode, RoadID};
+use crate::costs::cost;
+use crate::{Graph, IntersectionID, Mode, RoadID};
 
 impl Graph {
     // TODO Doesn't account for start/end distance along roads

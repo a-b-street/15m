@@ -1,8 +1,15 @@
+#[macro_use]
+extern crate anyhow;
+#[macro_use]
+extern crate log;
+
 mod costs;
+mod gtfs;
 mod isochrone;
 mod route;
 mod scrape;
 mod snap;
+mod timer;
 mod transit_route;
 
 use anyhow::Result;
@@ -15,6 +22,7 @@ use utils::Mercator;
 
 pub use self::route::Route;
 use self::route::Router;
+pub use self::timer::Timer;
 use crate::gtfs::TripID;
 use crate::gtfs::{GtfsModel, StopID};
 

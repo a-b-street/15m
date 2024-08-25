@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate anyhow;
-#[macro_use]
-extern crate log;
 
 use std::collections::HashSet;
 use std::sync::Once;
@@ -10,22 +8,17 @@ use std::time::Duration;
 use chrono::NaiveTime;
 use geo::{Coord, LineString};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
+use graph::{Graph, Mode, Timer};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use crate::amenity::Amenities;
 use crate::zone::Zones;
-pub use graph::{Graph, GtfsSource, Mode};
-pub use gtfs::GtfsModel;
-pub use timer::Timer;
 
 mod amenity;
 mod buffer;
-mod graph;
-mod gtfs;
 mod isochrone;
 mod score;
-mod timer;
 mod zone;
 
 static START: Once = Once::new();

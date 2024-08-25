@@ -4,11 +4,9 @@ use anyhow::Result;
 use enum_map::EnumMap;
 use geo::{Coord, Point};
 use geojson::{Feature, GeoJson, Geometry};
+use graph::{Graph, Mode, Timer};
 use osm_reader::OsmID;
 use utils::{Mercator, Tags};
-
-use crate::graph::Graph;
-use crate::{Mode, Timer};
 
 pub struct Amenities {
     pub amenities: Vec<Amenity>,

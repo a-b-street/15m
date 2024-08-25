@@ -1,7 +1,7 @@
 use anyhow::Result;
 use geo::{EuclideanDistance, EuclideanLength, LineInterpolatePoint, LineString};
 
-use crate::graph::{Graph, Mode, Route};
+use crate::{Graph, Mode, Route};
 
 impl Graph {
     /// Given an input LineString (in Mercator), try to snap/map-match it to a given Mode's graph

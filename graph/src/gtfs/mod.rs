@@ -8,7 +8,7 @@ use utils::Mercator;
 
 use self::ids::orig_ids;
 pub use self::ids::{RouteID, StopID, TripID};
-use crate::graph::RoadID;
+use crate::RoadID;
 
 mod gmd;
 mod ids;

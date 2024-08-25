@@ -6,7 +6,7 @@ use geomedea::{Bounds, Geometry, LngLat, Properties, PropertyValue};
 use utils::Mercator;
 
 use super::{orig_ids, GtfsModel, Route, RouteID, Stop, StopID, Trip};
-use crate::graph::RoadID;
+use crate::RoadID;
 
 impl GtfsModel {
     #[cfg(not(target_arch = "wasm32"))]

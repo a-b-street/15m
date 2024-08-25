@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::graph::{Mode, Road};
+use crate::{Mode, Road};
 
 pub fn cost(road: &Road, mode: Mode) -> Duration {
     // TODO Configurable

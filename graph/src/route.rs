@@ -7,8 +7,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use utils::{deserialize_nodemap, LineSplit, NodeMap};
 
-use super::costs::cost;
-use crate::graph::{Graph, IntersectionID, Mode, PathStep, Position, Road};
+use crate::costs::cost;
+use crate::{Graph, IntersectionID, Mode, PathStep, Position, Road};
 
 #[derive(Serialize, Deserialize)]
 pub struct Router {

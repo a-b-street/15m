@@ -3,9 +3,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use chrono::NaiveTime;
+use graph::{Graph, Mode, RoadID, Timer};
 
-use crate::graph::{Graph, Mode, RoadID};
-use crate::timer::Timer;
 use crate::Amenities;
 
 // Return GeoJSON points for each POI, with info about that POI, a score to the nearest cycle

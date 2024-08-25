@@ -9,7 +9,7 @@ use utils::Mercator;
 
 use super::ids::{orig_ids, IDMapping};
 use super::{GtfsModel, NextStep, Route, RouteID, Stop, StopID, Trip, TripID};
-use crate::graph::RoadID;
+use crate::RoadID;
 
 // Move to mod after deciding to store every day
 #[derive(Clone, Copy, Debug, PartialEq)]

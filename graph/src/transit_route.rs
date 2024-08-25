@@ -8,9 +8,8 @@ use geo::{EuclideanDistance, LineString};
 use geojson::{Feature, GeoJson, Geometry};
 use utils::PriorityQueueItem;
 
-use super::costs::cost;
-use crate::graph::{Graph, IntersectionID, Mode, PathStep, Position};
-use crate::timer::Timer;
+use crate::costs::cost;
+use crate::{Graph, IntersectionID, Mode, PathStep, Position, Timer};
 
 impl Graph {
     pub fn transit_route_gj(

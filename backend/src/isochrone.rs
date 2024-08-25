@@ -4,11 +4,10 @@ use anyhow::Result;
 use chrono::NaiveTime;
 use geo::{Coord, Densify, Rect};
 use geojson::{Feature, Geometry};
+use graph::{Graph, Mode, Timer};
 use serde::Deserialize;
 use utils::Grid;
 
-use crate::graph::{Graph, Mode};
-use crate::timer::Timer;
 use crate::Amenities;
 
 #[derive(Deserialize)]

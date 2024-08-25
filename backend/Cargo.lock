@@ -153,19 +153,15 @@ dependencies = [
  "console_log",
  "contour",
  "criterion",
- "csv",
  "enum-map",
- "fast_paths",
  "flatgeobuf",
- "futures-util",
  "geo",
  "geojson",
  "geomedea",
  "geozero",
- "itertools 0.13.0",
+ "graph",
  "js-sys",
  "log",
- "muv-osm",
  "osm-reader",
  "rand",
  "rand_xorshift",
@@ -179,7 +175,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time",
 ]
 
 [[package]]
@@ -820,6 +815,32 @@ name = "gimli"
 version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
+
+[[package]]
+name = "graph"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "csv",
+ "enum-map",
+ "fast_paths",
+ "futures-util",
+ "geo",
+ "geojson",
+ "geomedea",
+ "itertools 0.13.0",
+ "js-sys",
+ "log",
+ "muv-osm",
+ "osm-reader",
+ "rstar",
+ "serde",
+ "serde_json",
+ "utils",
+ "wasm-bindgen",
+ "web-time",
+]
 
 [[package]]
 name = "h2"
