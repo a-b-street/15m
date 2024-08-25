@@ -13,11 +13,14 @@ use crate::{
 };
 
 impl Graph {
-    /// Call with bytes of an osm.pbf or osm.xml string
-    pub async fn new<R: utils::osm2graph::OsmReader>(
+    /// input_bytes: Bytes of an osm.pbf or osm.xml string
+    /// osm_reader: To scrape OSM elements
+    /// modify_roads: Runs before any routing structures are calculated. Use to modify access per mode.
+    pub async fn new<F: FnOnce(&mut Vec<Road>), R: utils::osm2graph::OsmReader>(
         input_bytes: &[u8],
         gtfs_source: GtfsSource,
-        reader: &mut R,
+        osm_reader: &mut R,
+        modify_roads: F,
         timer: &mut Timer,
     ) -> Result<Graph> {
         timer.step("parse OSM and split graph");
@@ -28,7 +31,7 @@ impl Graph {
             |tags| {
                 tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes")
             },
-            reader,
+            osm_reader,
         )?;
 
         timer.step("calculate road attributes");
@@ -68,6 +71,8 @@ impl Graph {
                 }
             })
             .collect();
+
+        modify_roads(&mut roads);
 
         timer.push("build closest_road");
         let closest_road = EnumMap::from_fn(|mode| {

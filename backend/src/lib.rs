@@ -55,8 +55,9 @@ impl MapModel {
         };
         let mut timer = Timer::new("build graph", progress_cb);
         let mut amenities = Amenities::new();
+        let modify_roads = |_roads: &mut Vec<graph::Road>| {};
         let graph = if is_osm {
-            Graph::new(input_bytes, gtfs, &mut amenities, &mut timer)
+            Graph::new(input_bytes, gtfs, &mut amenities, modify_roads, &mut timer)
                 .await
                 .map_err(err_to_js)?
         } else {
