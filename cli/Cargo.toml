@@ -1,0 +1,17 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+clap = { version = "4.5.16", features = ["derive"] }
+fs-err = "2.11.0"
+geo = "0.28.0"
+geojson = "0.24.1"
+# TODO graph deps aren't correct for non-wasm
+geomedea = { git = "https://github.com/michaelkirk/geomedea", features = ["writer"] }
+graph = { path = "../graph" }
+log = "0.4.22"
+serde = "1.0.209"
+simple_logger = "5.0.0"
