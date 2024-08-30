@@ -335,6 +335,7 @@ dependencies = [
  "log",
  "serde",
  "simple_logger",
+ "utils",
 ]
 
 [[package]]

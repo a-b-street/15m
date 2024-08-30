@@ -15,3 +15,4 @@ graph = { path = "../graph" }
 log = "0.4.22"
 serde = "1.0.209"
 simple_logger = "5.0.0"
+utils = { git = "https://github.com/a-b-street/utils" }
