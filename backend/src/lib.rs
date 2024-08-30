@@ -49,17 +49,25 @@ impl MapModel {
             console_log::init_with_level(log::Level::Info).unwrap();
         });
 
-        let gtfs = match gtfs_url {
-            Some(url) => graph::GtfsSource::Geomedea(url),
-            None => graph::GtfsSource::None,
-        };
         let mut timer = Timer::new("build graph", progress_cb);
         let mut amenities = Amenities::new();
         let modify_roads = |_roads: &mut Vec<graph::Road>| {};
         let graph = if is_osm {
-            Graph::new(input_bytes, gtfs, &mut amenities, modify_roads, &mut timer)
+            let mut graph = Graph::new(input_bytes, &mut amenities, modify_roads, &mut timer)
+                .map_err(err_to_js)?;
+
+            graph
+                .setup_gtfs(
+                    match gtfs_url {
+                        Some(url) => graph::GtfsSource::Geomedea(url),
+                        None => graph::GtfsSource::None,
+                    },
+                    &mut timer,
+                )
                 .await
-                .map_err(err_to_js)?
+                .map_err(err_to_js)?;
+
+            graph
         } else {
             bincode::deserialize_from(input_bytes).map_err(err_to_js)?
         };

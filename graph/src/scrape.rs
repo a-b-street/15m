@@ -16,9 +16,8 @@ impl Graph {
     /// input_bytes: Bytes of an osm.pbf or osm.xml string
     /// osm_reader: To scrape OSM elements
     /// modify_roads: Runs before any routing structures are calculated. Use to modify access per mode.
-    pub async fn new<F: FnOnce(&mut Vec<Road>), R: utils::osm2graph::OsmReader>(
+    pub fn new<F: FnOnce(&mut Vec<Road>), R: utils::osm2graph::OsmReader>(
         input_bytes: &[u8],
-        gtfs_source: GtfsSource,
         osm_reader: &mut R,
         modify_roads: F,
         timer: &mut Timer,
@@ -94,16 +93,6 @@ impl Graph {
         });
         timer.pop();
 
-        timer.push("setting up GTFS");
-        timer.step("parse");
-        let mut gtfs = match gtfs_source {
-            GtfsSource::Dir(path) => GtfsModel::parse(&path, Some(&graph.mercator))?,
-            GtfsSource::Geomedea(url) => GtfsModel::from_geomedea(&url, &graph.mercator).await?,
-            GtfsSource::None => GtfsModel::empty(),
-        };
-        snap_stops(&mut roads, &mut gtfs, &closest_road[Mode::Foot], timer);
-        timer.pop();
-
         Ok(Graph {
             roads,
             intersections,
@@ -112,8 +101,26 @@ impl Graph {
             router,
             boundary_polygon: graph.boundary_polygon,
 
-            gtfs,
+            gtfs: GtfsModel::empty(),
         })
+    }
+
+    pub async fn setup_gtfs(&mut self, source: GtfsSource, timer: &mut Timer) -> Result<()> {
+        timer.push("setting up GTFS");
+        timer.step("parse");
+        let mut gtfs = match source {
+            GtfsSource::Dir(path) => GtfsModel::parse(&path, Some(&self.mercator))?,
+            GtfsSource::Geomedea(url) => GtfsModel::from_geomedea(&url, &self.mercator).await?,
+            GtfsSource::None => GtfsModel::empty(),
+        };
+        snap_stops(
+            &mut self.roads,
+            &mut gtfs,
+            &self.closest_road[Mode::Foot],
+            timer,
+        );
+        timer.pop();
+        Ok(())
     }
 }
 
