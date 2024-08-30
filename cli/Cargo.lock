@@ -329,11 +329,12 @@ dependencies = [
  "clap",
  "fs-err",
  "geo",
- "geojson 0.24.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "geojson",
  "geomedea",
  "graph",
  "log",
  "serde",
+ "serde_json",
  "simple_logger",
  "utils",
 ]
@@ -718,19 +719,6 @@ dependencies = [
 [[package]]
 name = "geojson"
 version = "0.24.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5d728c1df1fbf328d74151efe6cb0586f79ee813346ea981add69bd22c9241b"
-dependencies = [
- "geo-types",
- "log",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "geojson"
-version = "0.24.1"
 source = "git+https://github.com/georust/geojson#f14a9a49883c12ec3e59acf0b81267f281be6dff"
 dependencies = [
  "geo-types",
@@ -780,7 +768,7 @@ dependencies = [
  "fast_paths",
  "futures-util",
  "geo",
- "geojson 0.24.1 (git+https://github.com/georust/geojson)",
+ "geojson",
  "geomedea",
  "itertools 0.13.0",
  "js-sys",
