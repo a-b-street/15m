@@ -286,6 +286,10 @@ impl MapModel {
             Ok(serde_json::to_string(&GeoJson::from(vec![f])).map_err(err_to_js)?)
         }
     }
+
+    pub fn graph(&self) -> &Graph {
+        &self.graph
+    }
 }
 
 #[derive(Deserialize)]

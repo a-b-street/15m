@@ -24,9 +24,9 @@ enum Command {
         gtfs_dir: String,
     },
     SnapTest {
-        /// Path to a .osm.pbf or .xml file
+        /// Path to a model.bin file
         #[arg(long)]
-        osm: String,
+        model: String,
 
         /// Path to a .geojson file with routes to snap and buffer
         #[arg(long)]
@@ -73,22 +73,16 @@ async fn main() -> Result<()> {
             timer.done();
             Ok(())
         }
-        Command::SnapTest { osm, routes } => snap_test(osm, routes),
+        Command::SnapTest { model, routes } => snap_test(model, routes),
     }
 }
 
-fn snap_test(osm: String, routes_path: String) -> Result<()> {
+fn snap_test(model_path: String, routes_path: String) -> Result<()> {
     let mut timer = Timer::new("snap routes", None);
 
-    timer.push("build graph");
-    let modify_roads = |_roads: &mut Vec<graph::Road>| {};
-    let graph = Graph::new(
-        &fs_err::read(&osm)?,
-        &mut utils::osm2graph::NullReader,
-        modify_roads,
-        &mut timer,
-    )?;
-    timer.pop();
+    timer.step("load model");
+    let model: MapModel = bincode::deserialize(&fs_err::read(&model_path)?)?;
+    let graph = model.graph();
 
     timer.step("snap routes");
     let mut features = Vec::new();
@@ -114,9 +108,9 @@ fn snap_test(osm: String, routes_path: String) -> Result<()> {
 
         graph.mercator.to_mercator_in_place(&mut input.geometry);
 
-        match snap(&input, &graph) {
+        match snap(&input, graph) {
             Ok(route) => {
-                let output = route.linestring(&graph);
+                let output = route.linestring(graph);
                 let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&output)));
                 f.set_property("kind", "snapped");
 
