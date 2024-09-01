@@ -9,7 +9,7 @@ use chrono::NaiveTime;
 use geo::{Coord, LineString};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
 use graph::{Graph, Mode, Timer};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use crate::amenity::Amenities;
@@ -25,6 +25,7 @@ static START: Once = Once::new();
 
 // TODO Rename
 #[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 pub struct MapModel {
     graph: Graph,
     zones: Zones,
@@ -33,12 +34,9 @@ pub struct MapModel {
 
 #[wasm_bindgen]
 impl MapModel {
-    /// If is_osm is true, expect bytes of an osm.pbf or osm.xml string. Otherwise, expect a
-    /// bincoded graph
     #[wasm_bindgen(constructor)]
     pub async fn new(
         input_bytes: &[u8],
-        is_osm: bool,
         gtfs_url: Option<String>,
         population_url: Option<String>,
         progress_cb: Option<js_sys::Function>,
@@ -50,40 +48,17 @@ impl MapModel {
         });
 
         let mut timer = Timer::new("build graph", progress_cb);
-        let mut amenities = Amenities::new();
-        let modify_roads = |_roads: &mut Vec<graph::Road>| {};
-        let graph = if is_osm {
-            let mut graph = Graph::new(input_bytes, &mut amenities, modify_roads, &mut timer)
-                .map_err(err_to_js)?;
-
-            graph
-                .setup_gtfs(
-                    match gtfs_url {
-                        Some(url) => graph::GtfsSource::Geomedea(url),
-                        None => graph::GtfsSource::None,
-                    },
-                    &mut timer,
-                )
-                .await
-                .map_err(err_to_js)?;
-
-            graph
-        } else {
-            bincode::deserialize_from(input_bytes).map_err(err_to_js)?
-        };
-        amenities.finalize(&graph, &mut timer);
-        // TODO Serialize this too
-        let zones = Zones::load(population_url, &graph.mercator, &mut timer)
+        let model = MapModel::create(input_bytes, gtfs_url, population_url, &mut timer)
             .await
             .map_err(err_to_js)?;
-
         timer.done();
 
-        Ok(MapModel {
-            graph,
-            zones,
-            amenities,
-        })
+        Ok(model)
+    }
+
+    #[wasm_bindgen(js_name = loadFile)]
+    pub fn load_file(input_bytes: &[u8]) -> Result<MapModel, JsValue> {
+        bincode::deserialize_from(input_bytes).map_err(err_to_js)
     }
 
     /// Returns a GeoJSON string. Just shows the full network
@@ -242,16 +217,33 @@ impl MapModel {
     }
 }
 
-// Non WASM methods
-// TODO Reconsider these. Benchmark should use Graph. MapModel should just be a thin WASM layer.
+// Non WASM methods, also used by the CLI
 impl MapModel {
-    pub fn from_graph_bytes(input_bytes: &[u8]) -> Result<MapModel, JsValue> {
-        let graph = bincode::deserialize_from(input_bytes).map_err(err_to_js)?;
+    pub async fn create(
+        input_bytes: &[u8],
+        gtfs_url: Option<String>,
+        population_url: Option<String>,
+        timer: &mut Timer,
+    ) -> anyhow::Result<MapModel> {
         let mut amenities = Amenities::new();
-        amenities.finalize(&graph, &mut Timer::new("deserialize graph", None));
+        let modify_roads = |_roads: &mut Vec<graph::Road>| {};
+        let mut graph = Graph::new(input_bytes, &mut amenities, modify_roads, timer)?;
+
+        graph
+            .setup_gtfs(
+                match gtfs_url {
+                    Some(url) => graph::GtfsSource::Geomedea(url),
+                    None => graph::GtfsSource::None,
+                },
+                timer,
+            )
+            .await?;
+        amenities.finalize(&graph, timer);
+        let zones = Zones::load(population_url, &graph.mercator, timer).await?;
+
         Ok(MapModel {
             graph,
-            zones: Zones::empty(),
+            zones,
             amenities,
         })
     }

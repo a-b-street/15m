@@ -23,8 +23,8 @@ use utils::{Mercator, Tags};
 pub use self::route::Route;
 use self::route::Router;
 pub use self::timer::Timer;
-use crate::gtfs::TripID;
-use crate::gtfs::{GtfsModel, StopID};
+pub use crate::gtfs::GtfsModel;
+use crate::gtfs::{StopID, TripID};
 
 #[derive(Serialize, Deserialize)]
 pub struct Graph {

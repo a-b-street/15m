@@ -84,7 +84,7 @@
       <label>
         <input type="checkbox" bind:checked={$showRouteBuffer} />
         Buffer around route (minutes)
-        <input type="number" bind:value={$bufferMins} min="1" max="30" />
+        <input type="number" bind:value={$bufferMins} min="1" max="60" />
       </label>
       {#if $showRouteBuffer}
         <label>

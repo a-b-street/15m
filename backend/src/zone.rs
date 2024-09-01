@@ -3,18 +3,21 @@ use flatgeobuf::{FeatureProperties, FgbFeature, GeozeroGeometry, HttpFgbReader};
 use geo::{Area, MultiPolygon, Polygon};
 use geojson::{Feature, FeatureCollection, Geometry};
 use rstar::{primitives::GeomWithData, RTree};
+use serde::{Deserialize, Serialize};
 use utils::Mercator;
 
 use crate::Timer;
 
+#[derive(Serialize, Deserialize)]
 pub struct Zones {
     pub zones: Vec<Zone>,
     pub rtree: RTree<GeomWithData<Polygon, ZoneID>>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ZoneID(pub usize);
 
+#[derive(Serialize, Deserialize)]
 pub struct Zone {
     // TODO Maybe split these upfront, including area and population, and just store in the RTree?
     // TODO Do these need to be Mercator?
@@ -25,14 +28,6 @@ pub struct Zone {
 }
 
 impl Zones {
-    // TODO Remove when benchmarks don't use WASM layer
-    pub fn empty() -> Self {
-        Self {
-            zones: Vec::new(),
-            rtree: RTree::new(),
-        }
-    }
-
     pub async fn load(
         population_url: Option<String>,
         mercator: &Mercator,

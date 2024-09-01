@@ -41,13 +41,13 @@
     loading = [];
   }
 
-  let graphFileInput: HTMLInputElement;
-  async function loadGraphFile(e: Event) {
+  let modelFileInput: HTMLInputElement;
+  async function loadModelFile(e: Event) {
     try {
       loading = ["Loading pre-built file"];
-      let buffer = await graphFileInput.files![0].arrayBuffer();
+      let buffer = await modelFileInput.files![0].arrayBuffer();
       console.time("load");
-      await $backend!.loadGraphFile(new Uint8Array(buffer));
+      await $backend!.loadModelFile(new Uint8Array(buffer));
       console.timeEnd("load");
       $isLoaded = true;
 
@@ -157,7 +157,7 @@
 
 <div>
   <label>
-    Load a pre-built graph.bin file:
-    <input bind:this={graphFileInput} on:change={loadGraphFile} type="file" />
+    Load a pre-built model.bin file:
+    <input bind:this={modelFileInput} on:change={loadModelFile} type="file" />
   </label>
 </div>

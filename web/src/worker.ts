@@ -27,25 +27,17 @@ export class Backend {
 
     this.inner = await new MapModel(
       osmBytes,
-      true,
       gtfsUrl,
       populationUrl,
       progressCb,
     );
   }
 
-  async loadGraphFile(graphBytes: Uint8Array) {
+  async loadModelFile(graphBytes: Uint8Array) {
     // TODO Do we need to do this only once?
     await init();
 
-    // No progress worth reporting for this
-    this.inner = await new MapModel(
-      graphBytes,
-      false,
-      undefined,
-      undefined,
-      undefined,
-    );
+    this.inner = await MapModel.loadFile(graphBytes);
   }
 
   isLoaded(): boolean {

@@ -6,8 +6,10 @@ use geo::{Coord, Point};
 use geojson::{Feature, GeoJson, Geometry};
 use graph::{Graph, Mode, Timer};
 use osm_reader::OsmID;
+use serde::{Deserialize, Serialize};
 use utils::{Mercator, Tags};
 
+#[derive(Serialize, Deserialize)]
 pub struct Amenities {
     pub amenities: Vec<Amenity>,
     // Indexed by RoadID. These're broken down this way because the 3 graphs look different and
@@ -15,6 +17,7 @@ pub struct Amenities {
     pub per_road: Vec<EnumMap<Mode, Vec<AmenityID>>>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Amenity {
     pub id: AmenityID,
     pub osm_id: OsmID,
@@ -27,7 +30,7 @@ pub struct Amenity {
     pub cuisine: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AmenityID(pub usize);
 
 impl Amenities {
