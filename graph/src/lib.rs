@@ -8,7 +8,7 @@ mod gtfs;
 mod isochrone;
 mod route;
 mod scrape;
-mod snap;
+pub mod snap;
 mod timer;
 mod transit_route;
 

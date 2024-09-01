@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use geo::LineString;
+use geo::{EuclideanLength, LineString};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
 use graph::{Graph, Mode, Timer};
 use serde::Deserialize;
@@ -43,13 +43,22 @@ fn main() -> Result<()> {
         graph.mercator.to_mercator_in_place(&mut input.geometry);
         match graph.snap_route(&input.geometry, mode) {
             Ok(route) => {
+                let output = route.linestring(&graph);
+                let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&output)));
+                f.set_property("kind", "snapped");
+
+                if let Some((len_pct, dist_between_equiv_pts)) =
+                    graph::snap::score_similarity(&input.geometry, &output)
+                {
+                    println!("len_pct {len_pct}, dist_between_equiv_pts {dist_between_equiv_pts}");
+                    f.set_property("len_pct", len_pct);
+                    f.set_property("dist_between_equiv_pts", dist_between_equiv_pts);
+                } else {
+                    println!("scoring broke! output len is {}", output.euclidean_length());
+                }
+
                 // Only show inputs successfully snapped (to conveniently clip, for now)
                 features.push(input_f);
-
-                let mut f = Feature::from(Geometry::from(
-                    &graph.mercator.to_wgs84(&route.linestring(&graph)),
-                ));
-                f.set_property("kind", "snapped");
                 features.push(f);
                 routes.push(route);
             }

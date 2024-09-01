@@ -13,13 +13,14 @@ impl Graph {
         let end = self.snap_to_road(*input.coords().last().unwrap(), mode);
         let route = self.router[mode].route(self, start, end)?;
 
-        score_similarity(input, &route.linestring(self));
+        // TODO Detect/handle zero-length output here
 
         Ok(route)
     }
 }
 
-fn score_similarity(ls1: &LineString, ls2: &LineString) {
+// TODO Reconsider exposing
+pub fn score_similarity(ls1: &LineString, ls2: &LineString) -> Option<(f64, f64)> {
     // Just check length
     let len1 = ls1.euclidean_length();
     let len2 = ls2.euclidean_length();
@@ -34,10 +35,12 @@ fn score_similarity(ls1: &LineString, ls2: &LineString) {
     let mut dist_between_equiv_pts = 0.0;
     for pct in 0..=100 {
         let pct = (pct as f64) / 100.0;
-        let pt1 = ls1.line_interpolate_point(pct).unwrap();
-        let pt2 = ls2.line_interpolate_point(pct).unwrap();
+        // TODO Where do we have zero-length lines?
+        let pt1 = ls1.line_interpolate_point(pct)?;
+        let pt2 = ls2.line_interpolate_point(pct)?;
+
         dist_between_equiv_pts += pt1.euclidean_distance(&pt2);
     }
 
-    info!("snap_route scores: {len_pct} ratio (1 is perfect), {dist_between_equiv_pts} sum distance between equivalent points");
+    Some((len_pct, dist_between_equiv_pts))
 }
