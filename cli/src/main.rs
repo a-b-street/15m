@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
-use geo::{Contains, EuclideanLength, LineString};
+use geo::{Contains, Coord, EuclideanLength, LineString};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
-use graph::{Graph, Mode, Timer};
+use graph::{Graph, Mode, Route, Timer};
 use serde::Deserialize;
 
 #[derive(Parser)]
@@ -34,7 +34,6 @@ fn main() -> Result<()> {
     timer.step("snap routes");
     let mut features = Vec::new();
     let mut routes = Vec::new();
-    let mode = Mode::Bicycle;
     let mut errors = 0;
     let mut len_pcts = Vec::new();
     for mut input in geojson::de::deserialize_feature_collection_str_to_vec::<GeoJsonLineString>(
@@ -55,7 +54,8 @@ fn main() -> Result<()> {
         }
 
         graph.mercator.to_mercator_in_place(&mut input.geometry);
-        match graph.snap_route(&input.geometry, mode) {
+
+        match snap(&input, &graph) {
             Ok(route) => {
                 let output = route.linestring(&graph);
                 let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&output)));
@@ -122,4 +122,47 @@ struct Waypoint {
     lon: f64,
     lat: f64,
     snapped: bool,
+}
+
+fn snap(input: &GeoJsonLineString, graph: &Graph) -> Result<Route> {
+    let mode = Mode::Bicycle;
+
+    // Try to use waypoints?
+    if input
+        .waypoints
+        .as_ref()
+        .map(|waypts| waypts.iter().all(|waypt| waypt.snapped))
+        .unwrap_or(false)
+    {
+        let pts: Vec<Coord> = input
+            .waypoints
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|waypt| {
+                graph.mercator.pt_to_mercator(Coord {
+                    x: waypt.lon,
+                    y: waypt.lat,
+                })
+            })
+            .collect();
+        let mut routes = Vec::new();
+        for pair in pts.windows(2) {
+            let route = graph.snap_route(&LineString::new(pair.to_vec()), mode)?;
+            routes.push(route);
+        }
+
+        // TODO Naively concatenate
+        let mut steps = Vec::new();
+        for route in &mut routes {
+            steps.extend(std::mem::take(&mut route.steps));
+        }
+        return Ok(Route {
+            start: routes[0].start,
+            end: routes.last().unwrap().end,
+            steps,
+        });
+    }
+
+    graph.snap_route(&input.geometry, mode)
 }
