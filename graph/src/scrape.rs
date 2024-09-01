@@ -52,7 +52,15 @@ impl Graph {
             .into_iter()
             .map(|e| {
                 let access = calculate_access(&e.osm_tags);
-                let max_speed = calculate_max_speed(&e.osm_tags);
+                let mut max_speed = calculate_max_speed(&e.osm_tags);
+                if max_speed == 0.0 {
+                    error!(
+                        "Zero maxspeed for {} ({:?}), boosting to 1mph",
+                        e.osm_way, e.osm_tags
+                    );
+                    max_speed = 1.0 * 0.44704;
+                }
+
                 Road {
                     id: RoadID(e.id.0),
                     src_i: IntersectionID(e.src.0),
