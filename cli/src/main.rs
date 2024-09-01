@@ -1,30 +1,89 @@
+use std::fs::File;
+use std::io::BufWriter;
+
 use anyhow::Result;
-use clap::Parser;
+use backend::MapModel;
+use clap::{Parser, Subcommand};
 use geo::{Contains, Coord, EuclideanLength, LineString};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
-use graph::{Graph, Mode, Route, Timer};
+use graph::{Graph, GtfsModel, Mode, Route, Timer};
 use serde::Deserialize;
 
 #[derive(Parser)]
 struct Args {
-    /// Path to a .osm.pbf or .xml file
-    #[arg(long)]
-    osm: String,
-
-    /// Path to a .geojson file with routes to snap and buffer
-    #[arg(long)]
-    routes: String,
+    #[command(subcommand)]
+    command: Command,
 }
 
-fn main() -> Result<()> {
+#[derive(Subcommand)]
+enum Command {
+    BuildGraph {
+        osm_path: String,
+    },
+    BuildGTFS {
+        gtfs_dir: String,
+    },
+    SnapTest {
+        /// Path to a .osm.pbf or .xml file
+        #[arg(long)]
+        osm: String,
+
+        /// Path to a .geojson file with routes to snap and buffer
+        #[arg(long)]
+        routes: String,
+    },
+}
+
+// TODO Don't need tokio multithreading, but fighting config to get single working
+/// This is a CLI tool to build a MapModel file, for later use in the web app or CLI. This gives a
+/// perf benefit (faster to load a pre-built graph), but manually managing these prebuilt files as
+/// the format changes is tedious. That's why, unlike in A/B Street, this'll just be for manual
+/// testing for now.
+#[tokio::main]
+async fn main() -> Result<()> {
     simple_logger::init_with_level(log::Level::Info).unwrap();
     let args = Args::parse();
+
+    match args.command {
+        Command::BuildGraph { osm_path } => {
+            let mut timer = Timer::new("build model", None);
+            let osm_bytes = std::fs::read(&osm_path)?;
+            let model = MapModel::create(
+                &osm_bytes,
+                // TODO Hardcoded, or could we read from local files at least?
+                Some("https://assets.od2net.org/gtfs.gmd".to_string()),
+                Some("https://assets.od2net.org/population.fgb".to_string()),
+                &mut timer,
+            )
+            .await?;
+
+            timer.step("Writing");
+            let writer = BufWriter::new(File::create("model.bin")?);
+            bincode::serialize_into(writer, &model)?;
+
+            timer.done();
+            Ok(())
+        }
+        Command::BuildGTFS { gtfs_dir } => {
+            let mut timer = Timer::new("build geomedea from gtfs", None);
+            timer.step("parse GTFS");
+            let model = GtfsModel::parse(&gtfs_dir, None)?;
+            timer.step("turn into geomedea");
+            model.to_geomedea("gtfs.gmd")?;
+            timer.done();
+            Ok(())
+        }
+        Command::SnapTest { osm, routes } => snap_test(osm, routes),
+    }
+}
+
+fn snap_test(osm: String, routes_path: String) -> Result<()> {
     let mut timer = Timer::new("snap routes", None);
 
     timer.push("build graph");
     let modify_roads = |_roads: &mut Vec<graph::Road>| {};
     let graph = Graph::new(
-        &fs_err::read(&args.osm)?,
+        &fs_err::read(&osm)?,
         &mut utils::osm2graph::NullReader,
         modify_roads,
         &mut timer,
@@ -37,7 +96,7 @@ fn main() -> Result<()> {
     let mut errors = 0;
     let mut len_pcts = Vec::new();
     for mut input in geojson::de::deserialize_feature_collection_str_to_vec::<GeoJsonLineString>(
-        &fs_err::read_to_string(&args.routes)?,
+        &fs_err::read_to_string(&routes_path)?,
     )? {
         let mut input_f = Feature::from(Geometry::from(&input.geometry));
         input_f.set_property("kind", "input");

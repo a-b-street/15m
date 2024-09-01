@@ -5,15 +5,18 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
+backend = { path = "../backend" }
+bincode = "1.3.3"
 clap = { version = "4.5.16", features = ["derive"] }
 fs-err = "2.11.0"
 geo = "0.28.0"
 geojson = { git = "https://github.com/georust/geojson", features = ["geo-types"] }
-# TODO graph deps aren't correct for non-wasm
+# TODO graph deps aren't correct for non-wasm?
 geomedea = { git = "https://github.com/michaelkirk/geomedea", features = ["writer"] }
 graph = { path = "../graph" }
 log = "0.4.22"
 serde = "1.0.209"
 serde_json = "1.0.127"
 simple_logger = "5.0.0"
+tokio = { version = "1.38.0", features = ["macros", "rt-multi-thread"] }
 utils = { git = "https://github.com/a-b-street/utils" }
