@@ -36,6 +36,11 @@ impl Router {
             let node1 = node_map.get_or_insert(road.src_i);
             let node2 = node_map.get_or_insert(road.dst_i);
 
+            // Loops aren't ever part of a shortest path, and fast_paths warns loudly, so just skip
+            if node1 == node2 {
+                continue;
+            }
+
             if road.allows_forwards(mode) {
                 input_graph.add_edge(node1, node2, cost);
             }
