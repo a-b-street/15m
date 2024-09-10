@@ -6,7 +6,7 @@ use anyhow::{bail, Result};
 use backend::MapModel;
 use chrono::NaiveTime;
 use clap::{Parser, Subcommand};
-use geo::{Contains, Coord, EuclideanLength, LineString};
+use geo::{Contains, Coord, EuclideanLength, LineString, Point};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
 use graph::{Graph, GtfsModel, Mode, Route, Router, Timer};
 use serde::{Deserialize, Serialize};
@@ -153,6 +153,15 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
                 features.push(input_f);
                 features.push(f);
                 routes.push(route);
+
+                // Also turn all of the input waypoints into points, for even easier debugging
+                for (idx, waypt) in input.waypoints.into_iter().enumerate() {
+                    let mut f = Feature::from(Geometry::from(&Point::new(waypt.lon, waypt.lat)));
+                    f.set_property("kind", "waypoint");
+                    f.set_property("snapped", waypt.snapped);
+                    f.set_property("idx", idx);
+                    features.push(f);
+                }
             }
             Err(_err) => {
                 errors += 1;
