@@ -20,8 +20,7 @@ use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
 use utils::{Mercator, Tags};
 
-pub use self::route::Route;
-use self::route::Router;
+pub use self::route::{Route, Router};
 pub use self::timer::Timer;
 pub use crate::gtfs::GtfsModel;
 use crate::gtfs::{StopID, TripID};

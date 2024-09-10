@@ -2,14 +2,14 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use backend::MapModel;
 use chrono::NaiveTime;
 use clap::{Parser, Subcommand};
 use geo::{Contains, Coord, EuclideanLength, LineString};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
-use graph::{Graph, GtfsModel, Mode, Route, Timer};
-use serde::Deserialize;
+use graph::{Graph, GtfsModel, Mode, Route, Router, Timer};
+use serde::{Deserialize, Serialize};
 
 #[derive(Parser)]
 struct Args {
@@ -93,6 +93,9 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
     let model: MapModel = bincode::deserialize(&fs_err::read(&model_path)?)?;
     let graph = model.graph();
 
+    timer.step("prepare distance-based routing");
+    let router = Router::by_distance(&graph.roads);
+
     timer.step("snap routes");
     let mut features = Vec::new();
     let mut routes = Vec::new();
@@ -103,6 +106,7 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
     )? {
         let mut input_f = Feature::from(Geometry::from(&input.geometry));
         input_f.set_property("kind", "input");
+        input_f.set_property("waypoints", serde_json::to_value(&input.waypoints)?);
 
         // Filter out inputs obviously far away, just based on endpoints
         if !graph.mercator.wgs84_bounds.contains(&input.geometry.0[0])
@@ -117,7 +121,7 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
 
         graph.mercator.to_mercator_in_place(&mut input.geometry);
 
-        match snap(&input, graph) {
+        match snap(&input, graph, &router) {
             Ok(route) => {
                 let output = route.linestring(graph);
                 let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&output)));
@@ -184,30 +188,22 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
 struct GeoJsonLineString {
     #[serde(deserialize_with = "deserialize_geometry")]
     geometry: LineString,
-    waypoints: Option<Vec<Waypoint>>,
+    #[serde(default)]
+    waypoints: Vec<Waypoint>,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct Waypoint {
     lon: f64,
     lat: f64,
     snapped: bool,
 }
 
-fn snap(input: &GeoJsonLineString, graph: &Graph) -> Result<Route> {
-    let mode = Mode::Bicycle;
-
-    // Try to use waypoints?
-    if input
-        .waypoints
-        .as_ref()
-        .map(|waypts| waypts.iter().all(|waypt| waypt.snapped))
-        .unwrap_or(false)
-    {
+fn snap(input: &GeoJsonLineString, graph: &Graph, router: &Router) -> Result<Route> {
+    // Use waypoints if they're all snapped
+    if !input.waypoints.is_empty() && input.waypoints.iter().all(|waypt| waypt.snapped) {
         let pts: Vec<Coord> = input
             .waypoints
-            .as_ref()
-            .unwrap()
             .iter()
             .map(|waypt| {
                 graph.mercator.pt_to_mercator(Coord {
@@ -216,10 +212,16 @@ fn snap(input: &GeoJsonLineString, graph: &Graph) -> Result<Route> {
                 })
             })
             .collect();
+        if false && pts.len() != 2 {
+            bail!("TODO, skip route with more than two waypoints");
+        }
         let mut routes = Vec::new();
         for pair in pts.windows(2) {
-            let route = graph.snap_route(&LineString::new(pair.to_vec()), mode)?;
-            routes.push(route);
+            routes.push(hack_snap_route(
+                &LineString::new(pair.to_vec()),
+                graph,
+                router,
+            )?);
         }
 
         // TODO Naively concatenate
@@ -234,5 +236,14 @@ fn snap(input: &GeoJsonLineString, graph: &Graph) -> Result<Route> {
         });
     }
 
-    graph.snap_route(&input.geometry, mode)
+    bail!("TODO, skip without all snapped waypoints");
+    //hack_snap_route(&input.geometry, graph, router)
+}
+
+// TODO API is getting so messy
+fn hack_snap_route(input: &LineString, graph: &Graph, router: &Router) -> Result<Route> {
+    let mode = Mode::Bicycle;
+    let start = graph.snap_to_road(*input.coords().next().unwrap(), mode);
+    let end = graph.snap_to_road(*input.coords().last().unwrap(), mode);
+    router.route(graph, start, end)
 }
