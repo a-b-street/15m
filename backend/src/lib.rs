@@ -159,15 +159,8 @@ impl MapModel {
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
 
-        crate::buffer::buffer_route(
-            &self.graph,
-            &self.zones,
-            mode,
-            vec![route],
-            start_time,
-            limit,
-        )
-        .map_err(err_to_js)
+        self.buffer_routes(vec![route], mode, start_time, limit)
+            .map_err(err_to_js)
     }
 
     #[wasm_bindgen(js_name = score)]
@@ -212,7 +205,7 @@ impl MapModel {
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
 
-        crate::buffer::buffer_route(&self.graph, &self.zones, mode, routes, start_time, limit)
+        self.buffer_routes(routes, mode, start_time, limit)
             .map_err(err_to_js)
     }
 }

@@ -8,79 +8,82 @@ use geojson::{Feature, FeatureCollection, Geometry};
 use graph::{Graph, Mode, PathStep, Route};
 use rstar::RTreeObject;
 
-use crate::Zones;
+use crate::{MapModel, Zones};
 
-pub fn buffer_route(
-    graph: &Graph,
-    zones: &Zones,
-    mode: Mode,
-    routes: Vec<Route>,
-    start_time: NaiveTime,
-    limit: Duration,
-) -> Result<String> {
-    let mut features = Vec::new();
-    let mut route_roads = HashSet::new();
-    let mut starts = HashSet::new();
-    for route in routes {
-        let mut f = Feature::from(Geometry::from(
-            &graph.mercator.to_wgs84(&route.linestring(graph)),
-        ));
-        f.set_property("kind", "route");
-        features.push(f);
-
-        for step in route.steps {
-            if let PathStep::Road { road, .. } = step {
-                route_roads.insert(road);
-                let road = &graph.roads[road.0];
-                starts.insert(road.src_i);
-                starts.insert(road.dst_i);
-            }
-        }
-    }
-
-    let public_transit = false; // TODO
-    let cost_per_road = graph.get_costs(
-        starts.into_iter().collect(),
-        mode,
-        public_transit,
-        start_time,
-        start_time + limit,
-    );
-    let mut intersection_points: Vec<Coord> = Vec::new();
-    for (r, cost) in cost_per_road {
-        if !route_roads.contains(&r) {
-            let road = &graph.roads[r.0];
-            let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&road.linestring)));
-            f.set_property("kind", "buffer");
-            f.set_property("cost_seconds", cost.as_secs());
+impl MapModel {
+    pub fn buffer_routes(
+        &self,
+        routes: Vec<Route>,
+        mode: Mode,
+        start_time: NaiveTime,
+        limit: Duration,
+    ) -> Result<String> {
+        let mut features = Vec::new();
+        let mut route_roads = HashSet::new();
+        let mut starts = HashSet::new();
+        for route in routes {
+            let mut f = Feature::from(Geometry::from(
+                &self.graph.mercator.to_wgs84(&route.linestring(&self.graph)),
+            ));
+            f.set_property("kind", "route");
             features.push(f);
 
-            intersection_points.push(graph.intersections[road.src_i.0].point.into());
-            intersection_points.push(graph.intersections[road.dst_i.0].point.into());
+            for step in route.steps {
+                if let PathStep::Road { road, .. } = step {
+                    route_roads.insert(road);
+                    let road = &self.graph.roads[road.0];
+                    starts.insert(road.src_i);
+                    starts.insert(road.dst_i);
+                }
+            }
         }
+
+        let public_transit = false; // TODO
+        let cost_per_road = self.graph.get_costs(
+            starts.into_iter().collect(),
+            mode,
+            public_transit,
+            start_time,
+            start_time + limit,
+        );
+        let mut intersection_points: Vec<Coord> = Vec::new();
+        for (r, cost) in cost_per_road {
+            if !route_roads.contains(&r) {
+                let road = &self.graph.roads[r.0];
+                let mut f = Feature::from(Geometry::from(
+                    &self.graph.mercator.to_wgs84(&road.linestring),
+                ));
+                f.set_property("kind", "buffer");
+                f.set_property("cost_seconds", cost.as_secs());
+                features.push(f);
+
+                intersection_points.push(self.graph.intersections[road.src_i.0].point.into());
+                intersection_points.push(self.graph.intersections[road.dst_i.0].point.into());
+            }
+        }
+
+        // Build a convex hull around all the explored roads. It's only defined on polygons, so make up
+        // a nonsense polygon first
+        let hull = Polygon::new(LineString(intersection_points), Vec::new()).convex_hull();
+        let mut f = Feature::from(Geometry::from(&self.graph.mercator.to_wgs84(&hull)));
+        f.set_property("kind", "hull");
+        features.push(f);
+
+        let total_population = intersect_zones(&self.graph, &self.zones, &mut features, hull);
+
+        Ok(serde_json::to_string(&FeatureCollection {
+            features,
+            bbox: None,
+            foreign_members: Some(
+                serde_json::json!({
+                    "total_population": total_population,
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            ),
+        })?)
     }
-
-    // Build a convex hull around all the explored roads. It's only defined on polygons, so make up
-    // a nonsense polygon first
-    let hull = Polygon::new(LineString(intersection_points), Vec::new()).convex_hull();
-    let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&hull)));
-    f.set_property("kind", "hull");
-    features.push(f);
-
-    let total_population = intersect_zones(graph, zones, &mut features, hull);
-
-    Ok(serde_json::to_string(&FeatureCollection {
-        features,
-        bbox: None,
-        foreign_members: Some(
-            serde_json::json!({
-                "total_population": total_population,
-            })
-            .as_object()
-            .unwrap()
-            .clone(),
-        ),
-    })?)
 }
 
 // TODO Move to Zones?

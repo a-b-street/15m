@@ -1,8 +1,10 @@
 use std::fs::File;
 use std::io::BufWriter;
+use std::time::Duration;
 
 use anyhow::Result;
 use backend::MapModel;
+use chrono::NaiveTime;
 use clap::{Parser, Subcommand};
 use geo::{Contains, Coord, EuclideanLength, LineString};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
@@ -31,6 +33,9 @@ enum Command {
         /// Path to a .geojson file with routes to snap and buffer
         #[arg(long)]
         routes: String,
+
+        #[arg(long, default_value_t = 1)]
+        buffer_mins: u64,
     },
 }
 
@@ -73,11 +78,15 @@ async fn main() -> Result<()> {
             timer.done();
             Ok(())
         }
-        Command::SnapTest { model, routes } => snap_test(model, routes),
+        Command::SnapTest {
+            model,
+            routes,
+            buffer_mins,
+        } => snap_test(model, routes, Duration::from_secs(buffer_mins * 60)),
     }
 }
 
-fn snap_test(model_path: String, routes_path: String) -> Result<()> {
+fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result<()> {
     let mut timer = Timer::new("snap routes", None);
 
     timer.step("load model");
@@ -147,9 +156,17 @@ fn snap_test(model_path: String, routes_path: String) -> Result<()> {
         }
     }
 
+    let num_routes = routes.len();
+    timer.step("buffer around routes");
+    let start_time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
+    fs_err::write(
+        "buffered.geojson",
+        model.buffer_routes(routes, Mode::Bicycle, start_time, limit)?,
+    )?;
+
     timer.done();
 
-    println!("Snapped {} routes, failed on {}", routes.len(), errors);
+    println!("Snapped {num_routes} routes, failed on {errors}");
     println!(
         "Average len_pct is {}",
         len_pcts.iter().cloned().sum::<f64>() / (len_pcts.len() as f64)
