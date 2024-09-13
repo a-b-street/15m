@@ -23,8 +23,10 @@ jobs:
       - name: Cache WASM build
         uses: actions/cache@v3
         with:
-          path: target
           key: doesnt-matter-share-everything
+          path: |
+            backend/target
+            graph/target
 
       - name: Build web app
         run: |
@@ -32,9 +34,6 @@ jobs:
           npm ci
           npm run wasm-release
           npm run build --if-present
-
-      - name: Install cargo
-        run: rustup toolchain install stable
 
       - name: Build docs
         run: |
