@@ -16,7 +16,6 @@ use anyhow::Result;
 use enum_map::{Enum, EnumMap};
 use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
 use geojson::{Feature, FeatureCollection, Geometry};
-use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
 use utils::{Mercator, Tags};
 
@@ -34,7 +33,6 @@ pub struct Graph {
     /// `Graph` stores all geometry in a Mercator projection for the study area. This field helps
     /// translation to/from WGS84.
     pub mercator: Mercator,
-    pub closest_road: EnumMap<Mode, RTree<EdgeLocation>>,
     pub router: EnumMap<Mode, Router>,
     /// A polygon covering the study area.
     pub boundary_polygon: Polygon,
@@ -42,9 +40,6 @@ pub struct Graph {
     pub gtfs: GtfsModel,
 }
 
-pub type EdgeLocation = GeomWithData<LineString, RoadID>;
-
-///
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RoadID(pub usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -169,7 +164,8 @@ impl Graph {
     /// Given a point (in Mercator) and mode, snap to a position along some road that mode can
     /// cross.
     pub fn snap_to_road(&self, pt: Coord, mode: Mode) -> Position {
-        let r = self.closest_road[mode]
+        let r = self.router[mode]
+            .closest_road
             .nearest_neighbor(&pt.into())
             .unwrap()
             .data;

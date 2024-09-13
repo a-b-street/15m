@@ -4,14 +4,15 @@ use anyhow::{bail, Result};
 use fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
 use geo::{Coord, LineString};
 use itertools::Itertools;
+use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
 use utils::{deserialize_nodemap, LineSplit, NodeMap};
 
 use crate::costs::cost;
-use crate::{Graph, IntersectionID, Mode, PathStep, Position, Road};
+use crate::{Direction, Graph, IntersectionID, Mode, PathStep, Position, Road, RoadID};
 
-/// Calculates optimal routes for one mode. This structure uses contraction hierarchies to
-/// calculate routes very quickly. They are slower to construct, but fast to query.
+/// Manages routing queries for one mode. This structure uses contraction hierarchies to calculate
+/// routes very quickly. They are slower to construct, but fast to query.
 #[derive(Serialize, Deserialize)]
 pub struct Router {
     #[serde(deserialize_with = "deserialize_nodemap")]
@@ -20,7 +21,11 @@ pub struct Router {
     ch: FastGraph,
     #[serde(skip_serializing, skip_deserializing)]
     path_calc: RefCell<Option<PathCalculator>>,
+
+    pub closest_road: RTree<EdgeLocation>,
 }
+
+pub type EdgeLocation = GeomWithData<LineString, RoadID>;
 
 /// A route between two positions.
 pub struct Route {
@@ -58,10 +63,20 @@ impl Router {
 
         let path_calc = RefCell::new(Some(fast_paths::create_calculator(&ch)));
 
+        let closest_road = RTree::bulk_load(
+            roads
+                .iter()
+                .filter(|r| r.access[mode] != Direction::None)
+                .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
+                .collect(),
+        );
+
         Self {
             node_map,
             ch,
             path_calc,
+
+            closest_road,
         }
     }
 
@@ -90,10 +105,19 @@ impl Router {
 
         let path_calc = RefCell::new(Some(fast_paths::create_calculator(&ch)));
 
+        let closest_road = RTree::bulk_load(
+            roads
+                .iter()
+                .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
+                .collect(),
+        );
+
         Self {
             node_map,
             ch,
             path_calc,
+
+            closest_road,
         }
     }
 

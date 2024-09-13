@@ -2,14 +2,12 @@ use anyhow::Result;
 use enum_map::EnumMap;
 use geo::EuclideanLength;
 use muv_osm::{AccessLevel, TMode};
-use rstar::RTree;
 use utils::Tags;
 
 use crate::gtfs::{GtfsModel, StopID};
 use crate::route::Router;
 use crate::{
-    Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID,
-    Timer,
+    Direction, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID, Timer,
 };
 
 impl Graph {
@@ -83,19 +81,6 @@ impl Graph {
 
         modify_roads(&mut roads);
 
-        timer.push("build closest_road");
-        let closest_road = EnumMap::from_fn(|mode| {
-            timer.step(format!("for {mode:?}"));
-            RTree::bulk_load(
-                roads
-                    .iter()
-                    .filter(|r| r.access[mode] != Direction::None)
-                    .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
-                    .collect(),
-            )
-        });
-        timer.pop();
-
         timer.push("building router");
         let router = EnumMap::from_fn(|mode| {
             timer.step(format!("for {mode:?}"));
@@ -107,7 +92,6 @@ impl Graph {
             roads,
             intersections,
             mercator: graph.mercator,
-            closest_road,
             router,
             boundary_polygon: graph.boundary_polygon,
 
@@ -124,12 +108,7 @@ impl Graph {
             GtfsSource::Geomedea(url) => GtfsModel::from_geomedea(&url, &self.mercator).await?,
             GtfsSource::None => GtfsModel::empty(),
         };
-        snap_stops(
-            &mut self.roads,
-            &mut gtfs,
-            &self.closest_road[Mode::Foot],
-            timer,
-        );
+        snap_stops(&mut self.roads, &mut gtfs, &self.router[Mode::Foot], timer);
         timer.pop();
         Ok(())
     }
@@ -219,7 +198,7 @@ fn calculate_max_speed(tags: &Tags) -> f64 {
 fn snap_stops(
     roads: &mut Vec<Road>,
     gtfs: &mut GtfsModel,
-    closest_road: &RTree<EdgeLocation>,
+    foot_router: &Router,
     timer: &mut Timer,
 ) {
     if gtfs.stops.is_empty() {
@@ -230,7 +209,10 @@ fn snap_stops(
     // TODO Make an iterator method that returns the IDs too
     for (idx, stop) in gtfs.stops.iter_mut().enumerate() {
         let stop_id = StopID(idx);
-        if let Some(r) = closest_road.nearest_neighbor(&stop.point.into()) {
+        if let Some(r) = foot_router
+            .closest_road
+            .nearest_neighbor(&stop.point.into())
+        {
             // TODO Limit how far away we snap, or use the boundary polygon
             roads[r.data.0].stops.push(stop_id);
             stop.road = r.data;

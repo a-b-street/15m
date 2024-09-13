@@ -50,8 +50,8 @@ impl Amenities {
         for amenity in &mut self.amenities {
             amenity.point = graph.mercator.pt_to_mercator(amenity.point.into()).into();
 
-            for (mode, closest) in &graph.closest_road {
-                if let Some(r) = closest.nearest_neighbor(&amenity.point) {
+            for (mode, router) in &graph.router {
+                if let Some(r) = router.closest_road.nearest_neighbor(&amenity.point) {
                     self.per_road[r.data.0][mode].push(amenity.id);
                 }
             }
