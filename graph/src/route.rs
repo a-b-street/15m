@@ -10,6 +10,8 @@ use utils::{deserialize_nodemap, LineSplit, NodeMap};
 use crate::costs::cost;
 use crate::{Graph, IntersectionID, Mode, PathStep, Position, Road};
 
+/// Calculates optimal routes for one mode. This structure uses contraction hierarchies to
+/// calculate routes very quickly. They are slower to construct, but fast to query.
 #[derive(Serialize, Deserialize)]
 pub struct Router {
     #[serde(deserialize_with = "deserialize_nodemap")]
@@ -20,6 +22,7 @@ pub struct Router {
     path_calc: RefCell<Option<PathCalculator>>,
 }
 
+/// A route between two positions.
 pub struct Route {
     pub start: Position,
     pub end: Position,
@@ -27,6 +30,8 @@ pub struct Route {
 }
 
 impl Router {
+    /// Creates a router for a mode. This is slow to calculate, as it builds a
+    /// contraction hierarchy.
     pub fn new(roads: &Vec<Road>, mode: Mode) -> Self {
         let mut input_graph = InputGraph::new();
         let mut node_map = NodeMap::new();
@@ -92,6 +97,7 @@ impl Router {
         }
     }
 
+    /// Calculates a route between two positions.
     pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<Route> {
         debug!("route from {start:?} to {end:?}");
         if start == end {
@@ -179,6 +185,7 @@ impl Router {
 }
 
 impl Route {
+    /// Renders a route as a linestring (in Mercator), with precise positions at the start and end.
     pub fn linestring(&self, graph: &Graph) -> LineString {
         let mut pts = Vec::new();
         debug!("turning {} steps into linestring", self.steps.len());

@@ -25,14 +25,18 @@ pub use self::timer::Timer;
 pub use crate::gtfs::GtfsModel;
 use crate::gtfs::{StopID, TripID};
 
+/// A study area imported from OpenStreetMap.
 #[derive(Serialize, Deserialize)]
 pub struct Graph {
     pub roads: Vec<Road>,
     pub intersections: Vec<Intersection>,
     // All geometry stored in worldspace, including rtrees
+    /// `Graph` stores all geometry in a Mercator projection for the study area. This field helps
+    /// translation to/from WGS84.
     pub mercator: Mercator,
     pub closest_road: EnumMap<Mode, RTree<EdgeLocation>>,
     pub router: EnumMap<Mode, Router>,
+    /// A polygon covering the study area.
     pub boundary_polygon: Polygon,
 
     pub gtfs: GtfsModel,
@@ -40,11 +44,13 @@ pub struct Graph {
 
 pub type EdgeLocation = GeomWithData<LineString, RoadID>;
 
+///
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RoadID(pub usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct IntersectionID(pub usize);
 
+/// How can a `Road` be crossed by a particular `Mode`?
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
     Forwards,
@@ -53,6 +59,7 @@ pub enum Direction {
     None,
 }
 
+/// The graph structure is expressed for each of these different modes of travel.
 // TODO Justify why PublicTransit isn't captured here
 #[derive(Clone, Copy, Enum, Debug, Serialize, Deserialize)]
 pub enum Mode {
@@ -75,6 +82,7 @@ impl Mode {
     }
 }
 
+/// Represents an edge going between exactly two `Intersection`s.
 #[derive(Serialize, Deserialize)]
 pub struct Road {
     pub id: RoadID,
@@ -89,14 +97,17 @@ pub struct Road {
     pub linestring: LineString,
 
     // A simplified view of who can access a road. All might be None (buses, trains ignored)
+    /// Per mode, what direction is this road traversable?
     pub access: EnumMap<Mode, Direction>,
 
-    // Meters/second, for cars
+    /// For cars, the speed limit in meters/second
     pub max_speed: f64,
 
+    /// The bus stops associated with this road
     pub stops: Vec<StopID>,
 }
 
+/// An intersection between one or more roads. This might represent a dead-end.
 #[derive(Serialize, Deserialize)]
 pub struct Intersection {
     pub id: IntersectionID,
@@ -143,6 +154,7 @@ impl Graph {
         Ok(out)
     }
 
+    /// Find the Road going from `i1` to `i2` or vice versa. Panics if neither exists.
     pub fn find_edge(&self, i1: IntersectionID, i2: IntersectionID) -> &Road {
         // TODO Store lookup table
         for r in &self.intersections[i1.0].roads {
@@ -154,6 +166,8 @@ impl Graph {
         panic!("no road from {i1:?} to {i2:?} or vice versa");
     }
 
+    /// Given a point (in Mercator) and mode, snap to a position along some road that mode can
+    /// cross.
     pub fn snap_to_road(&self, pt: Coord, mode: Mode) -> Position {
         let r = self.closest_road[mode]
             .nearest_neighbor(&pt.into())
@@ -175,10 +189,12 @@ impl Graph {
 }
 
 impl Road {
+    /// Can this mode cross this road in the forwards direction?
     pub fn allows_forwards(&self, mode: Mode) -> bool {
         matches!(self.access[mode], Direction::Forwards | Direction::Both)
     }
 
+    /// Can this mode cross this road in the backwards direction?
     pub fn allows_backwards(&self, mode: Mode) -> bool {
         matches!(self.access[mode], Direction::Backwards | Direction::Both)
     }
@@ -201,7 +217,7 @@ impl Road {
     }
 }
 
-/// A position along a road, along with the closer intersection
+/// A position along a road, along with the closest intersection
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct Position {
     pub road: RoadID,
@@ -215,6 +231,7 @@ pub enum GtfsSource {
     None,
 }
 
+/// A single step along a route
 pub enum PathStep {
     Road {
         road: RoadID,

@@ -9,6 +9,9 @@ use crate::{Graph, IntersectionID, Mode, RoadID};
 
 impl Graph {
     // TODO Doesn't account for start/end distance along roads
+    /// From a list of start intersections, floods out the graph for a mode until `end_time` is
+    /// reached. Returns the time needed to reach each road within that range. This query is not
+    /// precise about positions along a road.
     pub fn get_costs(
         &self,
         starts: Vec<IntersectionID>,

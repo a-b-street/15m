@@ -13,9 +13,11 @@ use crate::{
 };
 
 impl Graph {
-    /// input_bytes: Bytes of an osm.pbf or osm.xml string
-    /// osm_reader: To scrape OSM elements
-    /// modify_roads: Runs before any routing structures are calculated. Use to modify access per mode.
+    /// Constructs a graph from OpenStreetMap data.
+    ///
+    /// - `input_bytes`: Bytes of an osm.pbf or osm.xml file
+    /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
+    /// - `modify_roads`: Runs before any routing structures are calculated. Use to modify access per mode.
     pub fn new<F: FnOnce(&mut Vec<Road>), R: utils::osm2graph::OsmReader>(
         input_bytes: &[u8],
         osm_reader: &mut R,
@@ -113,6 +115,7 @@ impl Graph {
         })
     }
 
+    /// Adds in GTFS data to the current graph. This only makes sense to call once.
     pub async fn setup_gtfs(&mut self, source: GtfsSource, timer: &mut Timer) -> Result<()> {
         timer.push("setting up GTFS");
         timer.step("parse");
