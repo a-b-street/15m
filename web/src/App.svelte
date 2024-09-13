@@ -135,7 +135,7 @@
       <div><button on:click={zoomToFit}>Zoom to fit</button></div>
     {/if}
   </div>
-  <div slot="main" style="position:relative; width: 100%; height: 100vh;">
+  <div slot="main" style="position:relative; width: 100%; height: 100%;">
     <MapLibre
       style={offlineMode
         ? "http://localhost:5173/offline/light_style.json"
