@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Direction","GtfsSource","Mode","PathStep"],"mod":["snap"],"struct":["Graph","GtfsModel","Intersection","IntersectionID","Position","Road","RoadID","Route","Router","Timer"],"type":["EdgeLocation"]};
