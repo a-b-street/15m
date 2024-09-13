@@ -4,6 +4,7 @@
   import type { FeatureCollection } from "geojson";
   import {
     backend,
+    map,
     travelMode,
     bufferMins,
     showRouteBuffer,
@@ -15,13 +16,37 @@
   import BufferLayer from "./BufferLayer.svelte";
   import { SequentialLegend } from "svelte-utils";
   import { colorScale } from "./colors";
+  import { onMount, onDestroy } from "svelte";
 
+  let allInput: FeatureCollection | null = null;
   let input: FeatureCollection | null = null;
   let output: FeatureCollection | null = null;
   let totalPopulationInBuffer = 0;
 
   let showInput = true;
   let showOutput = true;
+  let showOneInput = false;
+  let oneFeatureId: number | null = null;
+
+  $: if (showOneInput) {
+    if (oneFeatureId == null) {
+      oneFeatureId = 0;
+    }
+  } else {
+    oneFeatureId = null;
+  }
+  $: if (allInput) {
+    if (showOneInput && oneFeatureId != null) {
+      input = {
+        type: "FeatureCollection",
+        features: [allInput.features[oneFeatureId]],
+      };
+    } else {
+      input = allInput;
+    }
+  } else {
+    input = null;
+  }
 
   let fileInput: HTMLInputElement;
   async function loadFile(e: Event) {
@@ -30,7 +55,8 @@
         await fileInput.files![0].text(),
       ) as FeatureCollection;
       gj.features = gj.features.filter((f) => f.geometry.type == "LineString");
-      input = gj;
+      allInput = gj;
+      showOneInput = false;
     } catch (err) {
       window.alert(`Couldn't snap routes from file: ${err}`);
     }
@@ -66,7 +92,34 @@
   $: limits = Array.from(Array(6).keys()).map(
     (i) => (($bufferMins * 60) / (6 - 1)) * i,
   );
+
+  onMount(() => {
+    $map?.keyboard.disable();
+  });
+  onDestroy(() => {
+    $map?.keyboard.enable();
+  });
+
+  function onKeyDown(e: KeyboardEvent) {
+    if (oneFeatureId == null || allInput == null) {
+      return;
+    }
+    if (e.key == "ArrowLeft") {
+      e.stopPropagation();
+      if (oneFeatureId > 0) {
+        oneFeatureId--;
+      }
+    }
+    if (e.key == "ArrowRight") {
+      e.stopPropagation();
+      if (oneFeatureId != allInput.features.length - 1) {
+        oneFeatureId++;
+      }
+    }
+  }
 </script>
+
+<svelte:window on:keydown={onKeyDown} />
 
 <SplitComponent>
   <div slot="top"><NavBar /></div>
@@ -80,6 +133,26 @@
       Select a GeoJSON file with LineStrings:
       <input bind:this={fileInput} on:change={loadFile} type="file" />
     </label>
+
+    {#if input}
+      <label>
+        <input type="checkbox" bind:checked={showOneInput} />
+        Show one input at a time
+      </label>
+
+      {#if oneFeatureId != null}
+        <div>
+          <button on:click={() => oneFeatureId--} disabled={oneFeatureId == 0}
+            >Prev</button
+          >
+          {oneFeatureId + 1} / {allInput.features.length}
+          <button
+            on:click={() => oneFeatureId++}
+            disabled={oneFeatureId == allInput.features.length - 1}>Next</button
+          >
+        </div>
+      {/if}
+    {/if}
 
     <label style:color="cyan">
       <input type="checkbox" bind:checked={showInput} />
@@ -121,6 +194,11 @@
             "line-opacity": hoverStateFilter(0.5, 1.0),
           }}
           manageHoverState
+          hoverCursor={showOneInput ? "inherit" : "pointer"}
+          on:click={(e) => {
+            showOneInput = true;
+            oneFeatureId = e.detail.features[0].id;
+          }}
         />
       </GeoJSON>
     {/if}
