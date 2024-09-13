@@ -237,6 +237,9 @@
 <a href="#237" id="237">237</a>
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>enum_map::EnumMap;
 <span class="kw">use </span>geo::EuclideanLength;
@@ -252,9 +255,11 @@
 };
 
 <span class="kw">impl </span>Graph {
-    <span class="doccomment">/// input_bytes: Bytes of an osm.pbf or osm.xml string
-    /// osm_reader: To scrape OSM elements
-    /// modify_roads: Runs before any routing structures are calculated. Use to modify access per mode.
+    <span class="doccomment">/// Constructs a graph from OpenStreetMap data.
+    ///
+    /// - `input_bytes`: Bytes of an osm.pbf or osm.xml file
+    /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
+    /// - `modify_roads`: Runs before any routing structures are calculated. Use to modify access per mode.
     </span><span class="kw">pub fn </span>new&lt;F: FnOnce(<span class="kw-2">&amp;mut </span>Vec&lt;Road&gt;), R: utils::osm2graph::OsmReader&gt;(
         input_bytes: <span class="kw-2">&amp;</span>[u8],
         osm_reader: <span class="kw-2">&amp;mut </span>R,
@@ -352,7 +357,8 @@
         })
     }
 
-    <span class="kw">pub async fn </span>setup_gtfs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, source: GtfsSource, timer: <span class="kw-2">&amp;mut </span>Timer) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="doccomment">/// Adds in GTFS data to the current graph. This only makes sense to call once.
+    </span><span class="kw">pub async fn </span>setup_gtfs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, source: GtfsSource, timer: <span class="kw-2">&amp;mut </span>Timer) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         timer.push(<span class="string">"setting up GTFS"</span>);
         timer.step(<span class="string">"parse"</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>gtfs = <span class="kw">match </span>source {

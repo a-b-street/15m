@@ -226,6 +226,23 @@
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
 </pre></div><pre class="rust"><code><span class="attr">#[macro_use]
 </span><span class="kw">extern crate </span>anyhow;
 <span class="attr">#[macro_use]
@@ -253,27 +270,33 @@
 <span class="kw">pub use </span><span class="kw">crate</span>::gtfs::GtfsModel;
 <span class="kw">use </span><span class="kw">crate</span>::gtfs::{StopID, TripID};
 
-<span class="attr">#[derive(Serialize, Deserialize)]
+<span class="doccomment">/// A study area imported from OpenStreetMap.
+</span><span class="attr">#[derive(Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Graph {
     <span class="kw">pub </span>roads: Vec&lt;Road&gt;,
     <span class="kw">pub </span>intersections: Vec&lt;Intersection&gt;,
     <span class="comment">// All geometry stored in worldspace, including rtrees
+    </span><span class="doccomment">/// `Graph` stores all geometry in a Mercator projection for the study area. This field helps
+    /// translation to/from WGS84.
     </span><span class="kw">pub </span>mercator: Mercator,
     <span class="kw">pub </span>closest_road: EnumMap&lt;Mode, RTree&lt;EdgeLocation&gt;&gt;,
     <span class="kw">pub </span>router: EnumMap&lt;Mode, Router&gt;,
-    <span class="kw">pub </span>boundary_polygon: Polygon,
+    <span class="doccomment">/// A polygon covering the study area.
+    </span><span class="kw">pub </span>boundary_polygon: Polygon,
 
     <span class="kw">pub </span>gtfs: GtfsModel,
 }
 
 <span class="kw">pub type </span>EdgeLocation = GeomWithData&lt;LineString, RoadID&gt;;
 
-<span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+<span class="doccomment">///
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>RoadID(<span class="kw">pub </span>usize);
 <span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>IntersectionID(<span class="kw">pub </span>usize);
 
-<span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+<span class="doccomment">/// How can a `Road` be crossed by a particular `Mode`?
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Direction {
     Forwards,
     Backwards,
@@ -281,7 +304,8 @@
     <span class="prelude-val">None</span>,
 }
 
-<span class="comment">// TODO Justify why PublicTransit isn't captured here
+<span class="doccomment">/// The graph structure is expressed for each of these different modes of travel.
+</span><span class="comment">// TODO Justify why PublicTransit isn't captured here
 </span><span class="attr">#[derive(Clone, Copy, Enum, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Mode {
     Car,
@@ -303,7 +327,8 @@
     }
 }
 
-<span class="attr">#[derive(Serialize, Deserialize)]
+<span class="doccomment">/// Represents an edge going between exactly two `Intersection`s.
+</span><span class="attr">#[derive(Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Road {
     <span class="kw">pub </span>id: RoadID,
     <span class="kw">pub </span>src_i: IntersectionID,
@@ -317,15 +342,18 @@
     <span class="kw">pub </span>linestring: LineString,
 
     <span class="comment">// A simplified view of who can access a road. All might be None (buses, trains ignored)
+    </span><span class="doccomment">/// Per mode, what direction is this road traversable?
     </span><span class="kw">pub </span>access: EnumMap&lt;Mode, Direction&gt;,
 
-    <span class="comment">// Meters/second, for cars
+    <span class="doccomment">/// For cars, the speed limit in meters/second
     </span><span class="kw">pub </span>max_speed: f64,
 
-    <span class="kw">pub </span>stops: Vec&lt;StopID&gt;,
+    <span class="doccomment">/// The bus stops associated with this road
+    </span><span class="kw">pub </span>stops: Vec&lt;StopID&gt;,
 }
 
-<span class="attr">#[derive(Serialize, Deserialize)]
+<span class="doccomment">/// An intersection between one or more roads. This might represent a dead-end.
+</span><span class="attr">#[derive(Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Intersection {
     <span class="kw">pub </span>id: IntersectionID,
     <span class="attr">#[allow(dead_code)]
@@ -371,7 +399,8 @@
         <span class="prelude-val">Ok</span>(out)
     }
 
-    <span class="kw">pub fn </span>find_edge(<span class="kw-2">&amp;</span><span class="self">self</span>, i1: IntersectionID, i2: IntersectionID) -&gt; <span class="kw-2">&amp;</span>Road {
+    <span class="doccomment">/// Find the Road going from `i1` to `i2` or vice versa. Panics if neither exists.
+    </span><span class="kw">pub fn </span>find_edge(<span class="kw-2">&amp;</span><span class="self">self</span>, i1: IntersectionID, i2: IntersectionID) -&gt; <span class="kw-2">&amp;</span>Road {
         <span class="comment">// TODO Store lookup table
         </span><span class="kw">for </span>r <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.intersections[i1.<span class="number">0</span>].roads {
             <span class="kw">let </span>road = <span class="kw-2">&amp;</span><span class="self">self</span>.roads[r.<span class="number">0</span>];
@@ -382,7 +411,9 @@
         <span class="macro">panic!</span>(<span class="string">"no road from {i1:?} to {i2:?} or vice versa"</span>);
     }
 
-    <span class="kw">pub fn </span>snap_to_road(<span class="kw-2">&amp;</span><span class="self">self</span>, pt: Coord, mode: Mode) -&gt; Position {
+    <span class="doccomment">/// Given a point (in Mercator) and mode, snap to a position along some road that mode can
+    /// cross.
+    </span><span class="kw">pub fn </span>snap_to_road(<span class="kw-2">&amp;</span><span class="self">self</span>, pt: Coord, mode: Mode) -&gt; Position {
         <span class="kw">let </span>r = <span class="self">self</span>.closest_road[mode]
             .nearest_neighbor(<span class="kw-2">&amp;</span>pt.into())
             .unwrap()
@@ -403,11 +434,13 @@
 }
 
 <span class="kw">impl </span>Road {
-    <span class="kw">pub fn </span>allows_forwards(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: Mode) -&gt; bool {
+    <span class="doccomment">/// Can this mode cross this road in the forwards direction?
+    </span><span class="kw">pub fn </span>allows_forwards(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: Mode) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>.access[mode], Direction::Forwards | Direction::Both)
     }
 
-    <span class="kw">pub fn </span>allows_backwards(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: Mode) -&gt; bool {
+    <span class="doccomment">/// Can this mode cross this road in the backwards direction?
+    </span><span class="kw">pub fn </span>allows_backwards(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: Mode) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>.access[mode], Direction::Backwards | Direction::Both)
     }
 
@@ -429,7 +462,7 @@
     }
 }
 
-<span class="doccomment">/// A position along a road, along with the closer intersection
+<span class="doccomment">/// A position along a road, along with the closest intersection
 </span><span class="attr">#[derive(Clone, Debug, Copy, PartialEq)]
 </span><span class="kw">pub struct </span>Position {
     <span class="kw">pub </span>road: RoadID,
@@ -443,7 +476,8 @@
     <span class="prelude-val">None</span>,
 }
 
-<span class="kw">pub enum </span>PathStep {
+<span class="doccomment">/// A single step along a route
+</span><span class="kw">pub enum </span>PathStep {
     Road {
         road: RoadID,
         forwards: bool,

@@ -70,6 +70,9 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>chrono::NaiveTime;
 <span class="kw">use </span>std::collections::{BinaryHeap, HashMap, HashSet};
 <span class="kw">use </span>std::time::Duration;
@@ -81,6 +84,9 @@
 
 <span class="kw">impl </span>Graph {
     <span class="comment">// TODO Doesn't account for start/end distance along roads
+    </span><span class="doccomment">/// From a list of start intersections, floods out the graph for a mode until `end_time` is
+    /// reached. Returns the time needed to reach each road within that range. This query is not
+    /// precise about positions along a road.
     </span><span class="kw">pub fn </span>get_costs(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         starts: Vec&lt;IntersectionID&gt;,
