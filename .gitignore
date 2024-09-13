@@ -1,5 +1,7 @@
 *.swp
 target/
 node_modules/
+# This is a library
+graph/Cargo.lock
 # Local symlink to avoid hitting od2net.org
 web/public
