@@ -201,11 +201,10 @@ impl MapModel {
             self.graph
                 .mercator
                 .to_mercator_in_place(&mut input.geometry);
-            routes.push(
-                self.graph
-                    .snap_route(&input.geometry, mode)
-                    .map_err(err_to_js)?,
-            );
+            match self.graph.snap_route(&input.geometry, mode) {
+                Ok(route) => routes.push(route),
+                Err(err) => log::warn!("Couldn't snap a route: {err}"),
+            }
         }
 
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;

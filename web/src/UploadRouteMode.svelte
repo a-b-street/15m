@@ -20,6 +20,9 @@
   let output: FeatureCollection | null = null;
   let totalPopulationInBuffer = 0;
 
+  let showInput = true;
+  let showOutput = true;
+
   let fileInput: HTMLInputElement;
   async function loadFile(e: Event) {
     try {
@@ -78,6 +81,15 @@
       <input bind:this={fileInput} on:change={loadFile} type="file" />
     </label>
 
+    <label style:color="cyan">
+      <input type="checkbox" bind:checked={showInput} />
+      Show input
+    </label>
+    <label style:color="red">
+      <input type="checkbox" bind:checked={showOutput} />
+      Show snapped output
+    </label>
+
     <PickTravelMode bind:travelMode={$travelMode} />
 
     {#if input}
@@ -100,6 +112,9 @@
     {#if input}
       <GeoJSON data={input} generateId>
         <LineLayer
+          layout={{
+            visibility: showInput ? "visible" : "none",
+          }}
           paint={{
             "line-width": 20,
             "line-color": "cyan",
@@ -117,6 +132,9 @@
         {:else}
           <LineLayer
             filter={["==", ["get", "kind"], "route"]}
+            layout={{
+              visibility: showOutput ? "visible" : "none",
+            }}
             paint={{
               "line-width": 20,
               "line-color": "red",
