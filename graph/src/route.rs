@@ -93,11 +93,13 @@ impl Router {
     }
 
     pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<Route> {
+        debug!("route from {start:?} to {end:?}");
         if start == end {
             bail!("start = end");
         }
 
         if start.road == end.road {
+            debug!("path: start = end road case");
             return Ok(Route {
                 start,
                 end,
@@ -105,6 +107,27 @@ impl Router {
                     road: start.road,
                     forwards: start.fraction_along < end.fraction_along,
                 }],
+            });
+        }
+
+        if start.intersection == end.intersection {
+            let common_intersection = start.intersection;
+            debug!("path: start = end intersection case");
+            let start_road = &graph.roads[start.road.0];
+            let end_road = &graph.roads[start.road.0];
+            return Ok(Route {
+                start,
+                end,
+                steps: vec![
+                    PathStep::Road {
+                        road: start.road,
+                        forwards: start_road.dst_i == common_intersection,
+                    },
+                    PathStep::Road {
+                        road: end.road,
+                        forwards: end_road.src_i == common_intersection,
+                    },
+                ],
             });
         }
 
@@ -127,7 +150,9 @@ impl Router {
             let i2 = self.node_map.translate_id(pair[1]);
             let road = graph.find_edge(i1, i2);
 
-            if pos == itertools::Position::First && road.id != start.road {
+            if (pos == itertools::Position::First || pos == itertools::Position::Only)
+                && road.id != start.road
+            {
                 steps.push(PathStep::Road {
                     road: start.road,
                     // TODO Test carefully.
@@ -138,7 +163,9 @@ impl Router {
                 road: road.id,
                 forwards: road.src_i == i1,
             });
-            if pos == itertools::Position::Last && road.id != end.road {
+            if (pos == itertools::Position::Last || pos == itertools::Position::Only)
+                && road.id != end.road
+            {
                 steps.push(PathStep::Road {
                     road: end.road,
                     // TODO Test carefully.
@@ -154,9 +181,12 @@ impl Router {
 impl Route {
     pub fn linestring(&self, graph: &Graph) -> LineString {
         let mut pts = Vec::new();
+        debug!("turning {} steps into linestring", self.steps.len());
+        debug!("route start is {:?}, end is {:?}", self.start, self.end);
         for (pos, step) in self.steps.iter().with_position() {
             match step {
                 PathStep::Road { road, forwards } => {
+                    debug!("step on {road:?}, forwards = {forwards}");
                     pts.extend(slice_road_step(
                         &graph.roads[road.0].linestring,
                         *forwards,

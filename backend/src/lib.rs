@@ -58,6 +58,12 @@ impl MapModel {
 
     #[wasm_bindgen(js_name = loadFile)]
     pub fn load_file(input_bytes: &[u8]) -> Result<MapModel, JsValue> {
+        // Panics shouldn't happen, but if they do, console.log them.
+        console_error_panic_hook::set_once();
+        START.call_once(|| {
+            console_log::init_with_level(log::Level::Info).unwrap();
+        });
+
         bincode::deserialize_from(input_bytes).map_err(err_to_js)
     }
 
