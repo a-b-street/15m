@@ -222,36 +222,16 @@
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>enum_map::EnumMap;
 <span class="kw">use </span>geo::EuclideanLength;
 <span class="kw">use </span>muv_osm::{AccessLevel, TMode};
-<span class="kw">use </span>rstar::RTree;
 <span class="kw">use </span>utils::Tags;
 
 <span class="kw">use </span><span class="kw">crate</span>::gtfs::{GtfsModel, StopID};
 <span class="kw">use </span><span class="kw">crate</span>::route::Router;
 <span class="kw">use crate</span>::{
-    Direction, EdgeLocation, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID,
-    Timer,
+    Direction, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID, Timer,
 };
 
 <span class="kw">impl </span>Graph {
@@ -325,19 +305,6 @@
 
         modify_roads(<span class="kw-2">&amp;mut </span>roads);
 
-        timer.push(<span class="string">"build closest_road"</span>);
-        <span class="kw">let </span>closest_road = EnumMap::from_fn(|mode| {
-            timer.step(<span class="macro">format!</span>(<span class="string">"for {mode:?}"</span>));
-            RTree::bulk_load(
-                roads
-                    .iter()
-                    .filter(|r| r.access[mode] != Direction::None)
-                    .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
-                    .collect(),
-            )
-        });
-        timer.pop();
-
         timer.push(<span class="string">"building router"</span>);
         <span class="kw">let </span>router = EnumMap::from_fn(|mode| {
             timer.step(<span class="macro">format!</span>(<span class="string">"for {mode:?}"</span>));
@@ -349,7 +316,6 @@
             roads,
             intersections,
             mercator: graph.mercator,
-            closest_road,
             router,
             boundary_polygon: graph.boundary_polygon,
 
@@ -366,12 +332,7 @@
             GtfsSource::Geomedea(url) =&gt; GtfsModel::from_geomedea(<span class="kw-2">&amp;</span>url, <span class="kw-2">&amp;</span><span class="self">self</span>.mercator).<span class="kw">await</span><span class="question-mark">?</span>,
             GtfsSource::None =&gt; GtfsModel::empty(),
         };
-        snap_stops(
-            <span class="kw-2">&amp;mut </span><span class="self">self</span>.roads,
-            <span class="kw-2">&amp;mut </span>gtfs,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.closest_road[Mode::Foot],
-            timer,
-        );
+        snap_stops(<span class="kw-2">&amp;mut </span><span class="self">self</span>.roads, <span class="kw-2">&amp;mut </span>gtfs, <span class="kw-2">&amp;</span><span class="self">self</span>.router[Mode::Foot], timer);
         timer.pop();
         <span class="prelude-val">Ok</span>(())
     }
@@ -461,7 +422,7 @@
 <span class="kw">fn </span>snap_stops(
     roads: <span class="kw-2">&amp;mut </span>Vec&lt;Road&gt;,
     gtfs: <span class="kw-2">&amp;mut </span>GtfsModel,
-    closest_road: <span class="kw-2">&amp;</span>RTree&lt;EdgeLocation&gt;,
+    foot_router: <span class="kw-2">&amp;</span>Router,
     timer: <span class="kw-2">&amp;mut </span>Timer,
 ) {
     <span class="kw">if </span>gtfs.stops.is_empty() {
@@ -472,7 +433,10 @@
     <span class="comment">// TODO Make an iterator method that returns the IDs too
     </span><span class="kw">for </span>(idx, stop) <span class="kw">in </span>gtfs.stops.iter_mut().enumerate() {
         <span class="kw">let </span>stop_id = StopID(idx);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(r) = closest_road.nearest_neighbor(<span class="kw-2">&amp;</span>stop.point.into()) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(r) = foot_router
+            .closest_road
+            .nearest_neighbor(<span class="kw-2">&amp;</span>stop.point.into())
+        {
             <span class="comment">// TODO Limit how far away we snap, or use the boundary polygon
             </span>roads[r.data.<span class="number">0</span>].stops.push(stop_id);
             stop.road = r.data;

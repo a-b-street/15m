@@ -259,20 +259,45 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 
 <span class="kw">use </span>anyhow::{bail, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
 <span class="kw">use </span>geo::{Coord, LineString};
 <span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>rstar::{primitives::GeomWithData, RTree};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>utils::{deserialize_nodemap, LineSplit, NodeMap};
 
 <span class="kw">use </span><span class="kw">crate</span>::costs::cost;
-<span class="kw">use crate</span>::{Graph, IntersectionID, Mode, PathStep, Position, Road};
+<span class="kw">use crate</span>::{Direction, Graph, IntersectionID, Mode, PathStep, Position, Road, RoadID};
 
-<span class="doccomment">/// Calculates optimal routes for one mode. This structure uses contraction hierarchies to
-/// calculate routes very quickly. They are slower to construct, but fast to query.
+<span class="doccomment">/// Manages routing queries for one mode. This structure uses contraction hierarchies to calculate
+/// routes very quickly. They are slower to construct, but fast to query.
 </span><span class="attr">#[derive(Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Router {
     <span class="attr">#[serde(deserialize_with = <span class="string">"deserialize_nodemap"</span>)]
@@ -281,7 +306,11 @@
     </span>ch: FastGraph,
     <span class="attr">#[serde(skip_serializing, skip_deserializing)]
     </span>path_calc: RefCell&lt;<span class="prelude-ty">Option</span>&lt;PathCalculator&gt;&gt;,
+
+    <span class="kw">pub </span>closest_road: RTree&lt;EdgeLocation&gt;,
 }
+
+<span class="kw">pub type </span>EdgeLocation = GeomWithData&lt;LineString, RoadID&gt;;
 
 <span class="doccomment">/// A route between two positions.
 </span><span class="kw">pub struct </span>Route {
@@ -319,10 +348,20 @@
 
         <span class="kw">let </span>path_calc = RefCell::new(<span class="prelude-val">Some</span>(fast_paths::create_calculator(<span class="kw-2">&amp;</span>ch)));
 
+        <span class="kw">let </span>closest_road = RTree::bulk_load(
+            roads
+                .iter()
+                .filter(|r| r.access[mode] != Direction::None)
+                .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
+                .collect(),
+        );
+
         <span class="self">Self </span>{
             node_map,
             ch,
             path_calc,
+
+            closest_road,
         }
     }
 
@@ -351,10 +390,19 @@
 
         <span class="kw">let </span>path_calc = RefCell::new(<span class="prelude-val">Some</span>(fast_paths::create_calculator(<span class="kw-2">&amp;</span>ch)));
 
+        <span class="kw">let </span>closest_road = RTree::bulk_load(
+            roads
+                .iter()
+                .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
+                .collect(),
+        );
+
         <span class="self">Self </span>{
             node_map,
             ch,
             path_calc,
+
+            closest_road,
         }
     }
 
