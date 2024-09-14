@@ -1,14 +1,24 @@
 use anyhow::Result;
-use geo::{EuclideanDistance, EuclideanLength, LineInterpolatePoint, LineString};
+use geo::{
+    Closest, ClosestPoint, EuclideanDistance, EuclideanLength, LineInterpolatePoint,
+    LineLocatePoint, LineString,
+};
 
-use crate::{Graph, Mode, Route};
+use crate::{Graph, IntersectionID, Mode, PathStep, Route};
 
 impl Graph {
     /// Given an input LineString (in Mercator), try to snap/map-match it to a given Mode's graph
     pub fn snap_route(&self, input: &LineString, mode: Mode) -> Result<Route> {
-        // TODO Simple start: just match the endpoints and find the optimal route, according to
-        // that mode's graph.
+        if false {
+            self.snap_by_endpoints(input, mode)
+        } else {
+            self.snap_greedy(input, mode)
+        }
+    }
 
+    fn snap_by_endpoints(&self, input: &LineString, mode: Mode) -> Result<Route> {
+        // Simple start: just match the endpoints and find the optimal route, according to
+        // that mode's graph.
         let start = self.snap_to_road(*input.coords().next().unwrap(), mode);
         let end = self.snap_to_road(*input.coords().last().unwrap(), mode);
         let route = self.router[mode].route(self, start, end)?;
@@ -16,6 +26,82 @@ impl Graph {
         // TODO Detect/handle zero-length output here
 
         Ok(route)
+    }
+
+    fn snap_greedy(&self, input: &LineString, mode: Mode) -> Result<Route> {
+        let start = self.snap_to_road(*input.coords().next().unwrap(), mode);
+        let end = self.snap_to_road(*input.coords().last().unwrap(), mode);
+
+        let mut current = start.intersection;
+        let mut fraction_along = 0.0;
+        let mut steps = Vec::new();
+
+        while current != end.intersection {
+            match self
+                .next_steps(current)
+                .filter_map(|(i, step)| {
+                    // Find the closest point on the input linestring to this possible next
+                    // intersection
+                    match input.closest_point(&self.intersections[i.0].point) {
+                        Closest::Intersection(pt) | Closest::SinglePoint(pt) => {
+                            // How far along on the input linestring is it? If we'd move backwards,
+                            // skip it
+                            let new_fraction_along = input.line_locate_point(&pt)?;
+                            if new_fraction_along > fraction_along {
+                                let dist = (100.0
+                                    * pt.euclidean_distance(&self.intersections[i.0].point))
+                                    as usize;
+                                Some((i, step, dist, new_fraction_along))
+                            } else {
+                                None
+                            }
+                        }
+                        Closest::Indeterminate => None,
+                    }
+                })
+                // TODO Maybe also use new_fraction_along to judge the best next step
+                .min_by_key(|(_, _, dist, _)| *dist)
+            {
+                Some((i, step, _, new_fraction_along)) => {
+                    fraction_along = new_fraction_along;
+                    steps.push(step);
+                    current = i;
+                }
+                None => bail!("Got stuck at {}", self.intersections[current.0].node),
+            }
+        }
+
+        Ok(Route { steps, start, end })
+    }
+
+    // TODO Ignores mode and direction
+    fn next_steps(
+        &self,
+        i: IntersectionID,
+    ) -> impl Iterator<Item = (IntersectionID, PathStep)> + '_ {
+        self.intersections[i.0].roads.iter().flat_map(move |r| {
+            let road = &self.roads[r.0];
+            if road.src_i != i {
+                Some((
+                    road.src_i,
+                    PathStep::Road {
+                        road: *r,
+                        forwards: false,
+                    },
+                ))
+            } else if road.dst_i != i {
+                Some((
+                    road.dst_i,
+                    PathStep::Road {
+                        road: *r,
+                        forwards: true,
+                    },
+                ))
+            } else {
+                // A loop on i
+                None
+            }
+        })
     }
 }
 
