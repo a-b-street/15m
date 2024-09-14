@@ -193,23 +193,29 @@ export class Backend {
     );
   }
 
-  snapAndBufferRoute(req: {
-    input: FeatureCollection;
-    mode: TravelMode;
-    startTime: string;
-    maxSeconds: number;
-  }): FeatureCollection {
+  snapAndBufferRoute(
+    req: {
+      input: FeatureCollection;
+      mode: TravelMode;
+      startTime: string;
+      maxSeconds: number;
+    },
+    progressCb: (msg: string) => void,
+  ): FeatureCollection {
     if (!this.inner) {
       throw new Error("Backend used without a file loaded");
     }
 
     return JSON.parse(
-      this.inner.snapAndBufferRoute({
-        input: JSON.stringify(req.input),
-        mode: req.mode,
-        start_time: req.startTime,
-        max_seconds: req.maxSeconds,
-      }),
+      this.inner.snapAndBufferRoute(
+        {
+          input: JSON.stringify(req.input),
+          mode: req.mode,
+          start_time: req.startTime,
+          max_seconds: req.maxSeconds,
+        },
+        progressCb,
+      ),
     );
   }
 }

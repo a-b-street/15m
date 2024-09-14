@@ -189,15 +189,23 @@ impl MapModel {
     }
 
     #[wasm_bindgen(js_name = snapAndBufferRoute)]
-    pub fn snap_and_buffer_route(&self, input: JsValue) -> Result<String, JsValue> {
+    pub fn snap_and_buffer_route(
+        &self,
+        input: JsValue,
+        progress_cb: Option<js_sys::Function>,
+    ) -> Result<String, JsValue> {
         let req: SnapRouteRequest = serde_wasm_bindgen::from_value(input)?;
         let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
-
-        let mut routes = Vec::new();
-        for mut input in
+        let inputs =
             geojson::de::deserialize_feature_collection_str_to_vec::<GeoJsonLineString>(&req.input)
-                .map_err(err_to_js)?
-        {
+                .map_err(err_to_js)?;
+        let num_inputs = inputs.len();
+
+        let mut timer = Timer::new("snap and buffer routes", progress_cb);
+        timer.step(format!("snap {num_inputs} routes"));
+        let mut routes = Vec::new();
+        for (idx, mut input) in inputs.into_iter().enumerate() {
+            timer.log(format!("route {} / {num_inputs}", idx + 1));
             self.graph
                 .mercator
                 .to_mercator_in_place(&mut input.geometry);
@@ -207,11 +215,15 @@ impl MapModel {
             }
         }
 
+        timer.step(format!("buffer {} routes", routes.len()));
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
 
-        self.buffer_routes(routes, mode, start_time, limit)
-            .map_err(err_to_js)
+        let result = self
+            .buffer_routes(routes, mode, start_time, limit)
+            .map_err(err_to_js);
+        timer.done();
+        result
     }
 }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { NavBar, PickTravelMode } from "./common";
+  import * as Comlink from "comlink";
+  import { Loading, NavBar, PickTravelMode } from "./common";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import type { FeatureCollection } from "geojson";
   import {
@@ -17,6 +18,8 @@
   import { SequentialLegend } from "svelte-utils";
   import { colorScale } from "./colors";
   import { onMount, onDestroy } from "svelte";
+
+  let loading: string[] = [];
 
   let allInput: FeatureCollection | null = null;
   let input: FeatureCollection | null = null;
@@ -75,19 +78,28 @@
       return;
     }
 
+    loading = ["Snapping routes"];
     try {
-      output = await $backend!.snapAndBufferRoute({
-        input,
-        mode: $travelMode,
-        startTime: $startTime,
-        maxSeconds: $bufferMins * 60,
-      });
+      output = await $backend!.snapAndBufferRoute(
+        {
+          input,
+          mode: $travelMode,
+          startTime: $startTime,
+          maxSeconds: $bufferMins * 60,
+        },
+        Comlink.proxy(progressCb),
+      );
       totalPopulationInBuffer = output.total_population;
     } catch (err) {
       window.alert(`Problem: ${err}`);
     }
+    loading = [];
   }
   $: update(input, $travelMode, $startTime, $bufferMins, $showRouteBuffer);
+  function progressCb(msg: string) {
+    // TODO All of the work happens, then the logs get sent. Why?!
+    //loading = [msg];
+  }
 
   $: limits = Array.from(Array(6).keys()).map(
     (i) => (($bufferMins * 60) / (6 - 1)) * i,
@@ -120,6 +132,8 @@
 </script>
 
 <svelte:window on:keydown={onKeyDown} />
+
+<Loading {loading} />
 
 <SplitComponent>
   <div slot="top"><NavBar /></div>
