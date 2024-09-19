@@ -178,7 +178,9 @@ impl Router {
         for (pos, pair) in path.get_nodes().windows(2).with_position() {
             let i1 = self.node_map.translate_id(pair[0]);
             let i2 = self.node_map.translate_id(pair[1]);
-            let road = graph.find_edge(i1, i2);
+            let Some(road) = graph.find_edge(i1, i2) else {
+                bail!("No road between {i1:?} and {i2:?}");
+            };
 
             if (pos == itertools::Position::First || pos == itertools::Position::Only)
                 && road.id != start.road

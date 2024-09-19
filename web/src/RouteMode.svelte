@@ -185,8 +185,12 @@
   <div slot="map">
     <MapEvents on:contextmenu={onRightClick} />
 
-    <Marker bind:lngLat={$routeA} draggable><span class="dot">A</span></Marker>
-    <Marker bind:lngLat={$routeB} draggable><span class="dot">B</span></Marker>
+    {#if $routeA && $routeB}
+      <Marker bind:lngLat={$routeA} draggable><span class="dot">A</span></Marker
+      >
+      <Marker bind:lngLat={$routeB} draggable><span class="dot">B</span></Marker
+      >
+    {/if}
 
     {#if gj}
       <GeoJSON data={gj} generateId>

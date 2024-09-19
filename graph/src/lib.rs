@@ -149,16 +149,16 @@ impl Graph {
         Ok(out)
     }
 
-    /// Find the Road going from `i1` to `i2` or vice versa. Panics if neither exists.
-    pub fn find_edge(&self, i1: IntersectionID, i2: IntersectionID) -> &Road {
+    /// Find the Road going from `i1` to `i2` or vice versa
+    pub fn find_edge(&self, i1: IntersectionID, i2: IntersectionID) -> Option<&Road> {
         // TODO Store lookup table
         for r in &self.intersections[i1.0].roads {
             let road = &self.roads[r.0];
             if road.src_i == i2 || road.dst_i == i2 {
-                return road;
+                return Some(road);
             }
         }
-        panic!("no road from {i1:?} to {i2:?} or vice versa");
+        None
     }
 
     /// Given a point (in Mercator) and mode, snap to a position along some road that mode can
