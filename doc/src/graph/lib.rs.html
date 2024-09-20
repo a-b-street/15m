@@ -391,17 +391,17 @@
         <span class="prelude-val">Ok</span>(out)
     }
 
-    <span class="doccomment">/// Find the Road going from `i1` to `i2` or vice versa. Panics if neither exists.
-    </span><span class="kw">pub fn </span>find_edge(<span class="kw-2">&amp;</span><span class="self">self</span>, i1: IntersectionID, i2: IntersectionID) -&gt; <span class="kw-2">&amp;</span>Road {
+    <span class="doccomment">/// Find the Road going from `i1` to `i2` or vice versa
+    </span><span class="kw">pub fn </span>find_edge(<span class="kw-2">&amp;</span><span class="self">self</span>, i1: IntersectionID, i2: IntersectionID) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Road&gt; {
         <span class="comment">// TODO Store lookup table
         </span><span class="kw">for </span>r <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.intersections[i1.<span class="number">0</span>].roads {
             <span class="kw">let </span>road = <span class="kw-2">&amp;</span><span class="self">self</span>.roads[r.<span class="number">0</span>];
             <span class="kw">if </span>road.src_i == i2 || road.dst_i == i2 {
-                <span class="kw">return </span>road;
+                <span class="kw">return </span><span class="prelude-val">Some</span>(road);
             }
         }
-        <span class="macro">panic!</span>(<span class="string">"no road from {i1:?} to {i2:?} or vice versa"</span>);
-    }
+        <span class="prelude-val">None
+    </span>}
 
     <span class="doccomment">/// Given a point (in Mercator) and mode, snap to a position along some road that mode can
     /// cross.
