@@ -109,6 +109,7 @@
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>chrono::NaiveTime;
@@ -121,7 +122,8 @@
 <span class="kw">pub use </span><span class="self">self</span>::ids::{RouteID, StopID, TripID};
 <span class="kw">use </span><span class="kw">crate</span>::RoadID;
 
-<span class="kw">mod </span>gmd;
+<span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
+</span><span class="kw">mod </span>gmd;
 <span class="kw">mod </span>ids;
 <span class="kw">mod </span>scrape;
 

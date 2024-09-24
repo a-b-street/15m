@@ -222,17 +222,17 @@
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>enum_map::EnumMap;
 <span class="kw">use </span>geo::EuclideanLength;
 <span class="kw">use </span>muv_osm::{AccessLevel, TMode};
 <span class="kw">use </span>utils::Tags;
 
-<span class="kw">use </span><span class="kw">crate</span>::gtfs::{GtfsModel, StopID};
+<span class="kw">use </span><span class="kw">crate</span>::gtfs::GtfsModel;
 <span class="kw">use </span><span class="kw">crate</span>::route::Router;
-<span class="kw">use crate</span>::{
-    Direction, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID, Timer,
-};
+<span class="kw">use crate</span>::{Direction, Graph, Intersection, IntersectionID, Mode, Road, RoadID, Timer};
 
 <span class="kw">impl </span>Graph {
     <span class="doccomment">/// Constructs a graph from OpenStreetMap data.
@@ -324,7 +324,10 @@
     }
 
     <span class="doccomment">/// Adds in GTFS data to the current graph. This only makes sense to call once.
-    </span><span class="kw">pub async fn </span>setup_gtfs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, source: GtfsSource, timer: <span class="kw-2">&amp;mut </span>Timer) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    </span><span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
+    </span><span class="kw">pub async fn </span>setup_gtfs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, source: <span class="kw">crate</span>::GtfsSource, timer: <span class="kw-2">&amp;mut </span>Timer) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">use </span><span class="kw">crate</span>::GtfsSource;
+
         timer.push(<span class="string">"setting up GTFS"</span>);
         timer.step(<span class="string">"parse"</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>gtfs = <span class="kw">match </span>source {
@@ -419,7 +422,8 @@
     </span><span class="number">30.0 </span>* <span class="number">0.44704
 </span>}
 
-<span class="kw">fn </span>snap_stops(
+<span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
+</span><span class="kw">fn </span>snap_stops(
     roads: <span class="kw-2">&amp;mut </span>Vec&lt;Road&gt;,
     gtfs: <span class="kw-2">&amp;mut </span>GtfsModel,
     foot_router: <span class="kw-2">&amp;</span>Router,
@@ -432,7 +436,7 @@
     timer.step(<span class="string">"find closest roads per stop"</span>);
     <span class="comment">// TODO Make an iterator method that returns the IDs too
     </span><span class="kw">for </span>(idx, stop) <span class="kw">in </span>gtfs.stops.iter_mut().enumerate() {
-        <span class="kw">let </span>stop_id = StopID(idx);
+        <span class="kw">let </span>stop_id = <span class="kw">crate</span>::gtfs::StopID(idx);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(r) = foot_router
             .closest_road
             .nearest_neighbor(<span class="kw-2">&amp;</span>stop.point.into())
