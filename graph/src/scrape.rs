@@ -4,11 +4,9 @@ use geo::EuclideanLength;
 use muv_osm::{AccessLevel, TMode};
 use utils::Tags;
 
-use crate::gtfs::{GtfsModel, StopID};
+use crate::gtfs::GtfsModel;
 use crate::route::Router;
-use crate::{
-    Direction, Graph, GtfsSource, Intersection, IntersectionID, Mode, Road, RoadID, Timer,
-};
+use crate::{Direction, Graph, Intersection, IntersectionID, Mode, Road, RoadID, Timer};
 
 impl Graph {
     /// Constructs a graph from OpenStreetMap data.
@@ -100,7 +98,10 @@ impl Graph {
     }
 
     /// Adds in GTFS data to the current graph. This only makes sense to call once.
-    pub async fn setup_gtfs(&mut self, source: GtfsSource, timer: &mut Timer) -> Result<()> {
+    #[cfg(feature = "gtfs")]
+    pub async fn setup_gtfs(&mut self, source: crate::GtfsSource, timer: &mut Timer) -> Result<()> {
+        use crate::GtfsSource;
+
         timer.push("setting up GTFS");
         timer.step("parse");
         let mut gtfs = match source {
@@ -195,6 +196,7 @@ fn calculate_max_speed(tags: &Tags) -> f64 {
     30.0 * 0.44704
 }
 
+#[cfg(feature = "gtfs")]
 fn snap_stops(
     roads: &mut Vec<Road>,
     gtfs: &mut GtfsModel,
@@ -208,7 +210,7 @@ fn snap_stops(
     timer.step("find closest roads per stop");
     // TODO Make an iterator method that returns the IDs too
     for (idx, stop) in gtfs.stops.iter_mut().enumerate() {
-        let stop_id = StopID(idx);
+        let stop_id = crate::gtfs::StopID(idx);
         if let Some(r) = foot_router
             .closest_road
             .nearest_neighbor(&stop.point.into())

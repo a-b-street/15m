@@ -10,6 +10,7 @@ use self::ids::orig_ids;
 pub use self::ids::{RouteID, StopID, TripID};
 use crate::RoadID;
 
+#[cfg(feature = "gtfs")]
 mod gmd;
 mod ids;
 mod scrape;

@@ -764,7 +764,7 @@ dependencies = [
 [[package]]
 name = "geomedea"
 version = "0.3.0-beta.2"
-source = "git+https://github.com/michaelkirk/geomedea#417d4f43cd35aa98aea19a0b17632c8309b50466"
+source = "git+https://github.com/michaelkirk/geomedea#c8306d98a953dc50235e5f8f4faf68641549e591"
 dependencies = [
  "async-compression",
  "async-stream",
@@ -774,7 +774,7 @@ dependencies = [
  "bytes",
  "futures-util",
  "log",
- "memmap2 0.9.4",
+ "memmap2 0.9.5",
  "ruzstd",
  "serde",
  "streaming-http-range-client",
@@ -1020,9 +1020,9 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "hyper"
-version = "0.14.29"
+version = "0.14.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f361cde2f109281a220d4307746cdfd5ee3f410da58a70377762396775634b33"
+checksum = "a152ddd61dfaec7273fe8419ab357f33aee0d914c5f4efbf0d96fa749eea5ec9"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -1086,7 +1086,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6183ddfa99b85da61a140bea0efc93fdf56ceaa041b37d553518030827f9905"
 dependencies = [
  "bytes",
- "hyper 0.14.29",
+ "hyper 0.14.30",
  "native-tls",
  "tokio",
  "tokio-native-tls",
@@ -1285,9 +1285,9 @@ dependencies = [
 
 [[package]]
 name = "memmap2"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe751422e4a8caa417e13c3ea66452215d7d63e19e604f4980461212f3ae1322"
+checksum = "fd3f7eed9d3848f8b98834af67102b720745c4ec028fcd0aa0239277e7de374f"
 dependencies = [
  "libc",
 ]
@@ -1816,7 +1816,7 @@ dependencies = [
  "h2 0.3.26",
  "http 0.2.12",
  "http-body 0.4.6",
- "hyper 0.14.29",
+ "hyper 0.14.30",
  "hyper-tls 0.5.0",
  "ipnet",
  "js-sys",
