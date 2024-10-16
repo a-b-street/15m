@@ -110,6 +110,7 @@ impl Graph {
             GtfsSource::None => GtfsModel::empty(),
         };
         snap_stops(&mut self.roads, &mut gtfs, &self.router[Mode::Foot], timer);
+        self.gtfs = gtfs;
         timer.pop();
         Ok(())
     }
@@ -207,7 +208,10 @@ fn snap_stops(
         return;
     }
 
-    timer.step("find closest roads per stop");
+    timer.step(format!(
+        "find closest roads per stop ({})",
+        gtfs.stops.len()
+    ));
     // TODO Make an iterator method that returns the IDs too
     for (idx, stop) in gtfs.stops.iter_mut().enumerate() {
         let stop_id = crate::gtfs::StopID(idx);
