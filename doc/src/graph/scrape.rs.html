@@ -224,6 +224,10 @@
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
 <a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>enum_map::EnumMap;
 <span class="kw">use </span>geo::EuclideanLength;
@@ -336,6 +340,7 @@
             GtfsSource::None =&gt; GtfsModel::empty(),
         };
         snap_stops(<span class="kw-2">&amp;mut </span><span class="self">self</span>.roads, <span class="kw-2">&amp;mut </span>gtfs, <span class="kw-2">&amp;</span><span class="self">self</span>.router[Mode::Foot], timer);
+        <span class="self">self</span>.gtfs = gtfs;
         timer.pop();
         <span class="prelude-val">Ok</span>(())
     }
@@ -433,7 +438,10 @@
         <span class="kw">return</span>;
     }
 
-    timer.step(<span class="string">"find closest roads per stop"</span>);
+    timer.step(<span class="macro">format!</span>(
+        <span class="string">"find closest roads per stop ({})"</span>,
+        gtfs.stops.len()
+    ));
     <span class="comment">// TODO Make an iterator method that returns the IDs too
     </span><span class="kw">for </span>(idx, stop) <span class="kw">in </span>gtfs.stops.iter_mut().enumerate() {
         <span class="kw">let </span>stop_id = <span class="kw">crate</span>::gtfs::StopID(idx);
