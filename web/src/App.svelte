@@ -1,7 +1,7 @@
 <script lang="ts">
   import "@picocss/pico/css/pico.jade.min.css";
   import cycleParking from "../assets/bicycle_parking.png?url";
-  import logoDark from "../assets/logo_dark.svg?url";
+  import logo from "../assets/logo_light.svg?url";
   import About from "./About.svelte";
   import { notNull } from "svelte-utils";
   import { Geocoder } from "svelte-utils/map";
@@ -122,7 +122,7 @@
 <Layout>
   <div slot="top" style="display: flex">
     <button class="outline" on:click={() => ($showAbout = true)}>
-      <img src={logoDark} style="height: 6vh;" alt="A/B Street logo" />
+      <img src={logo} style="height: 6vh;" alt="A/B Street logo" />
     </button>
     <span bind:this={topDiv} style="width: 100%" />
   </div>
