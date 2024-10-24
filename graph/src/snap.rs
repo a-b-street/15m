@@ -4,33 +4,33 @@ use geo::{
     LineLocatePoint, LineString,
 };
 
-use crate::{Graph, IntersectionID, Mode, PathStep, Route};
+use crate::{Graph, IntersectionID, PathStep, ProfileID, Route};
 
 impl Graph {
-    /// Given an input LineString (in Mercator), try to snap/map-match it to a given Mode's graph
-    pub fn snap_route(&self, input: &LineString, mode: Mode) -> Result<Route> {
+    /// Given an input LineString (in Mercator), try to snap/map-match it to a given profile's graph
+    pub fn snap_route(&self, input: &LineString, profile: ProfileID) -> Result<Route> {
         if false {
-            self.snap_by_endpoints(input, mode)
+            self.snap_by_endpoints(input, profile)
         } else {
-            self.snap_greedy(input, mode)
+            self.snap_greedy(input, profile)
         }
     }
 
-    fn snap_by_endpoints(&self, input: &LineString, mode: Mode) -> Result<Route> {
+    fn snap_by_endpoints(&self, input: &LineString, profile: ProfileID) -> Result<Route> {
         // Simple start: just match the endpoints and find the optimal route, according to
-        // that mode's graph.
-        let start = self.snap_to_road(*input.coords().next().unwrap(), mode);
-        let end = self.snap_to_road(*input.coords().last().unwrap(), mode);
-        let route = self.router[mode].route(self, start, end)?;
+        // that profile's graph.
+        let start = self.snap_to_road(*input.coords().next().unwrap(), profile);
+        let end = self.snap_to_road(*input.coords().last().unwrap(), profile);
+        let route = self.routers[profile.0].route(self, start, end)?;
 
         // TODO Detect/handle zero-length output here
 
         Ok(route)
     }
 
-    fn snap_greedy(&self, input: &LineString, mode: Mode) -> Result<Route> {
-        let start = self.snap_to_road(*input.coords().next().unwrap(), mode);
-        let end = self.snap_to_road(*input.coords().last().unwrap(), mode);
+    fn snap_greedy(&self, input: &LineString, profile: ProfileID) -> Result<Route> {
+        let start = self.snap_to_road(*input.coords().next().unwrap(), profile);
+        let end = self.snap_to_road(*input.coords().last().unwrap(), profile);
 
         let mut current = start.intersection;
         let mut fraction_along = 0.0;
@@ -74,7 +74,7 @@ impl Graph {
         Ok(Route { steps, start, end })
     }
 
-    // TODO Ignores mode and direction
+    // TODO Ignores profile and direction
     fn next_steps(
         &self,
         i: IntersectionID,

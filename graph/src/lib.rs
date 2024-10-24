@@ -3,17 +3,20 @@ extern crate anyhow;
 #[macro_use]
 extern crate log;
 
-mod costs;
 mod gtfs;
 mod isochrone;
+#[cfg(feature = "muv")]
+pub mod muv_profiles;
 mod route;
 mod scrape;
 pub mod snap;
 mod timer;
 mod transit_route;
 
+use std::collections::BTreeMap;
+use std::time::Duration;
+
 use anyhow::Result;
-use enum_map::{Enum, EnumMap};
 use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
 use geojson::{Feature, FeatureCollection, Geometry};
 use serde::{Deserialize, Serialize};
@@ -33,7 +36,10 @@ pub struct Graph {
     /// `Graph` stores all geometry in a Mercator projection for the study area. This field helps
     /// translation to/from WGS84.
     pub mercator: Mercator,
-    pub router: EnumMap<Mode, Router>,
+    pub profile_names: BTreeMap<String, ProfileID>,
+    pub walking_profile_for_transit: Option<ProfileID>,
+    /// Per profile
+    pub routers: Vec<Router>,
     /// A polygon covering the study area.
     pub boundary_polygon: Polygon,
 
@@ -44,37 +50,16 @@ pub struct Graph {
 pub struct RoadID(pub usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct IntersectionID(pub usize);
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct ProfileID(pub usize);
 
-/// How can a `Road` be crossed by a particular `Mode`?
+/// How can a `Road` be crossed by a particular profile?
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
     Forwards,
     Backwards,
     Both,
     None,
-}
-
-/// The graph structure is expressed for each of these different modes of travel.
-// TODO Justify why PublicTransit isn't captured here
-#[derive(Clone, Copy, Enum, Debug, Serialize, Deserialize)]
-pub enum Mode {
-    Car,
-    Bicycle,
-    Foot,
-}
-
-impl Mode {
-    /// Parses a string. Treats "transit" as Mode::Foot
-    pub fn parse(x: &str) -> Result<Mode> {
-        match x {
-            "car" => Ok(Mode::Car),
-            "bicycle" => Ok(Mode::Bicycle),
-            "foot" => Ok(Mode::Foot),
-            // Caller special-cases this
-            "transit" => Ok(Mode::Foot),
-            x => bail!("unknown Mode input {x}"),
-        }
-    }
 }
 
 /// Represents an edge going between exactly two `Intersection`s.
@@ -91,12 +76,11 @@ pub struct Road {
     pub length_meters: f64,
     pub linestring: LineString,
 
-    // A simplified view of who can access a road. All might be None (buses, trains ignored)
-    /// Per mode, what direction is this road traversable?
-    pub access: EnumMap<Mode, Direction>,
-
-    /// For cars, the speed limit in meters/second
-    pub max_speed: f64,
+    /// Per profile, what direction is this road traversable?
+    pub access: Vec<Direction>,
+    /// What's the cost of crossing this road? If there's no access, this is ignored. (TODO in
+    /// either direction, for now -- maybe combine with access)
+    pub cost: Vec<Duration>,
 
     /// The bus stops associated with this road
     pub stops: Vec<StopID>,
@@ -118,7 +102,7 @@ impl Graph {
         let mut features = Vec::new();
 
         for r in &self.roads {
-            features.push(r.to_gj(&self.mercator));
+            features.push(r.to_gj(self));
         }
         for s in &self.gtfs.stops {
             features.push(s.to_gj(&self.mercator));
@@ -161,10 +145,10 @@ impl Graph {
         None
     }
 
-    /// Given a point (in Mercator) and mode, snap to a position along some road that mode can
+    /// Given a point (in Mercator) and profile, snap to a position along some road that profile can
     /// cross.
-    pub fn snap_to_road(&self, pt: Coord, mode: Mode) -> Position {
-        let r = self.router[mode]
+    pub fn snap_to_road(&self, pt: Coord, profile: ProfileID) -> Position {
+        let r = self.routers[profile.0]
             .closest_road
             .nearest_neighbor(&pt.into())
             .unwrap()
@@ -185,30 +169,35 @@ impl Graph {
 }
 
 impl Road {
-    /// Can this mode cross this road in the forwards direction?
-    pub fn allows_forwards(&self, mode: Mode) -> bool {
-        matches!(self.access[mode], Direction::Forwards | Direction::Both)
+    /// Can this profile cross this road in the forwards direction?
+    pub fn allows_forwards(&self, profile: ProfileID) -> bool {
+        matches!(
+            self.access[profile.0],
+            Direction::Forwards | Direction::Both
+        )
     }
 
-    /// Can this mode cross this road in the backwards direction?
-    pub fn allows_backwards(&self, mode: Mode) -> bool {
-        matches!(self.access[mode], Direction::Backwards | Direction::Both)
+    /// Can this profile cross this road in the backwards direction?
+    pub fn allows_backwards(&self, profile: ProfileID) -> bool {
+        matches!(
+            self.access[profile.0],
+            Direction::Backwards | Direction::Both
+        )
     }
 
-    pub fn to_gj(&self, mercator: &Mercator) -> Feature {
-        let mut f = Feature::from(Geometry::from(&mercator.to_wgs84(&self.linestring)));
+    pub fn to_gj(&self, graph: &Graph) -> Feature {
+        let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&self.linestring)));
         // TODO Rethink most of this -- it's debug info
         f.set_property("id", self.id.0);
         f.set_property("way", self.way.to_string());
         f.set_property("node1", self.node1.to_string());
         f.set_property("node2", self.node2.to_string());
-        f.set_property("access_car", format!("{:?}", self.access[Mode::Car]));
-        f.set_property(
-            "access_bicycle",
-            format!("{:?}", self.access[Mode::Bicycle]),
-        );
-        f.set_property("access_foot", format!("{:?}", self.access[Mode::Foot]));
-        f.set_property("max_speed_mph", self.max_speed * 2.23694);
+        for (profile, id) in &graph.profile_names {
+            f.set_property(
+                format!("access_{profile}"),
+                format!("{:?}", self.access[id.0]),
+            );
+        }
         f
     }
 }

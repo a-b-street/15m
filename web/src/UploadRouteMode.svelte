@@ -1,17 +1,17 @@
 <script lang="ts">
   import * as Comlink from "comlink";
-  import { Loading, NavBar, PickTravelMode } from "./common";
+  import { Loading, NavBar, PickProfile } from "./common";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import type { FeatureCollection } from "geojson";
   import {
     backend,
     map,
-    travelMode,
+    profile,
     bufferMins,
     showRouteBuffer,
     showRouteBufferPopulation,
     startTime,
-    type TravelMode,
+    type Profile,
   } from "./stores";
   import { GeoJSON, LineLayer, hoverStateFilter } from "svelte-maplibre";
   import BufferLayer from "./BufferLayer.svelte";
@@ -67,7 +67,7 @@
 
   async function update(
     input: FeatureCollection | null,
-    mode: TravelMode,
+    profile: Profile,
     _t: string,
     _b: number,
     _sb: boolean,
@@ -83,7 +83,7 @@
       output = await $backend!.snapAndBufferRoute(
         {
           input,
-          mode: $travelMode,
+          profile: $profile,
           startTime: $startTime,
           maxSeconds: $bufferMins * 60,
         },
@@ -95,7 +95,7 @@
     }
     loading = [];
   }
-  $: update(input, $travelMode, $startTime, $bufferMins, $showRouteBuffer);
+  $: update(input, $profile, $startTime, $bufferMins, $showRouteBuffer);
   function progressCb(msg: string) {
     // TODO All of the work happens, then the logs get sent. Why?!
     //loading = [msg];
@@ -177,7 +177,7 @@
       Show snapped output
     </label>
 
-    <PickTravelMode bind:travelMode={$travelMode} />
+    <PickProfile bind:profile={$profile} />
 
     {#if input}
       <label>

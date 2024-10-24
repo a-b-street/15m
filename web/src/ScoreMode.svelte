@@ -1,6 +1,6 @@
 <script lang="ts">
   import * as Comlink from "comlink";
-  import { Loading, NavBar, PickAmenityKinds } from "./common";
+  import { Loading, NavBar, PickAmenityKinds, PickProfile } from "./common";
   import type { Feature, FeatureCollection, Point } from "geojson";
   import { colorScale } from "./colors";
   import {
@@ -11,7 +11,7 @@
     SymbolLayer,
   } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { backend, type ScoreProps } from "./stores";
+  import { backend, profile, type ScoreProps } from "./stores";
   import { SequentialLegend, notNull } from "svelte-utils";
   import { makeColorRamp } from "svelte-utils/map";
 
@@ -22,12 +22,13 @@
 
   let gj: FeatureCollection<Point, ScoreProps> | null = null;
 
-  $: updateScores(poiKinds, maxSeconds);
+  $: updateScores(poiKinds, maxSeconds, $profile);
 
-  async function updateScores(_x: string[], _y: number) {
+  async function updateScores(_x: string[], _y: number, _z: string) {
     loading = [...loading, "Calculating scores"];
     gj = await $backend!.score(
       {
+        profile: $profile,
         poiKinds,
         maxSeconds,
       },
@@ -59,7 +60,7 @@
             hoveredAmenity.properties.closest_lon,
             hoveredAmenity.properties.closest_lat,
           ],
-          mode: "foot",
+          profile: $profile,
           debugSearch: false,
           useHeuristic: false,
           startTime: "07:00",
@@ -85,6 +86,8 @@
   </div>
   <div slot="sidebar">
     <h2>Score mode</h2>
+
+    <PickProfile bind:profile={$profile} />
 
     {#if hoveredAmenity}
       <span

@@ -5,7 +5,7 @@ use anyhow::Result;
 use chrono::NaiveTime;
 use geo::{Area, BooleanOps, ConvexHull, Coord, LineString, MultiPolygon, Polygon};
 use geojson::{Feature, FeatureCollection, Geometry};
-use graph::{Graph, Mode, PathStep, Route};
+use graph::{Graph, PathStep, ProfileID, Route};
 use rstar::RTreeObject;
 
 use crate::{MapModel, Zones};
@@ -14,7 +14,7 @@ impl MapModel {
     pub fn buffer_routes(
         &self,
         routes: Vec<Route>,
-        mode: Mode,
+        profile: ProfileID,
         start_time: NaiveTime,
         limit: Duration,
     ) -> Result<String> {
@@ -41,7 +41,7 @@ impl MapModel {
         let public_transit = false; // TODO
         let cost_per_road = self.graph.get_costs(
             starts.into_iter().collect(),
-            mode,
+            profile,
             public_transit,
             start_time,
             start_time + limit,

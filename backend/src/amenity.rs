@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use enum_map::EnumMap;
 use geo::{Coord, Point};
 use geojson::{Feature, GeoJson, Geometry};
-use graph::{Graph, Mode, Timer};
+use graph::{Graph, Timer};
 use osm_reader::OsmID;
 use serde::{Deserialize, Serialize};
 use utils::{Mercator, Tags};
@@ -12,9 +11,9 @@ use utils::{Mercator, Tags};
 #[derive(Serialize, Deserialize)]
 pub struct Amenities {
     pub amenities: Vec<Amenity>,
-    // Indexed by RoadID. These're broken down this way because the 3 graphs look different and
-    // could snap to different roads in each case
-    pub per_road: Vec<EnumMap<Mode, Vec<AmenityID>>>,
+    // Indexed by RoadID, then by ProfileID. Each amenity could snap to different roads depending
+    // on the profile.
+    pub per_road: Vec<Vec<Vec<AmenityID>>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,16 +42,20 @@ impl Amenities {
 
     pub fn finalize(&mut self, graph: &Graph, timer: &mut Timer) {
         timer.step("snap amenities");
-        self.per_road = std::iter::repeat_with(EnumMap::default)
-            .take(graph.roads.len())
-            .collect();
+        self.per_road = std::iter::repeat_with(|| {
+            std::iter::repeat_with(Vec::new)
+                .take(graph.profile_names.len())
+                .collect()
+        })
+        .take(graph.roads.len())
+        .collect();
 
         for amenity in &mut self.amenities {
             amenity.point = graph.mercator.pt_to_mercator(amenity.point.into()).into();
 
-            for (mode, router) in &graph.router {
+            for (idx, router) in graph.routers.iter().enumerate() {
                 if let Some(r) = router.closest_road.nearest_neighbor(&amenity.point) {
-                    self.per_road[r.data.0][mode].push(amenity.id);
+                    self.per_road[r.data.0][idx].push(amenity.id);
                 }
             }
         }

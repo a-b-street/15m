@@ -8,10 +8,9 @@ use rstar::{primitives::GeomWithData, RTree};
 use serde::{Deserialize, Serialize};
 use utils::{deserialize_nodemap, LineSplit, NodeMap};
 
-use crate::costs::cost;
-use crate::{Direction, Graph, IntersectionID, Mode, PathStep, Position, Road, RoadID};
+use crate::{Direction, Graph, IntersectionID, PathStep, Position, ProfileID, Road, RoadID};
 
-/// Manages routing queries for one mode. This structure uses contraction hierarchies to calculate
+/// Manages routing queries for one profile. This structure uses contraction hierarchies to calculate
 /// routes very quickly. They are slower to construct, but fast to query.
 #[derive(Serialize, Deserialize)]
 pub struct Router {
@@ -35,14 +34,14 @@ pub struct Route {
 }
 
 impl Router {
-    /// Creates a router for a mode. This is slow to calculate, as it builds a
+    /// Creates a router for a profile. This is slow to calculate, as it builds a
     /// contraction hierarchy.
-    pub fn new(roads: &Vec<Road>, mode: Mode) -> Self {
+    pub fn new(roads: &Vec<Road>, profile: ProfileID) -> Self {
         let mut input_graph = InputGraph::new();
         let mut node_map = NodeMap::new();
 
         for road in roads {
-            let cost = cost(road, mode).as_millis() as usize;
+            let cost = road.cost[profile.0].as_millis() as usize;
             let node1 = node_map.get_or_insert(road.src_i);
             let node2 = node_map.get_or_insert(road.dst_i);
 
@@ -51,10 +50,10 @@ impl Router {
                 continue;
             }
 
-            if road.allows_forwards(mode) {
+            if road.allows_forwards(profile) {
                 input_graph.add_edge(node1, node2, cost);
             }
-            if road.allows_backwards(mode) {
+            if road.allows_backwards(profile) {
                 input_graph.add_edge(node2, node1, cost);
             }
         }
@@ -66,7 +65,7 @@ impl Router {
         let closest_road = RTree::bulk_load(
             roads
                 .iter()
-                .filter(|r| r.access[mode] != Direction::None)
+                .filter(|r| r.access[profile.0] != Direction::None)
                 .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
                 .collect(),
         );

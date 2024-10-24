@@ -1,30 +1,33 @@
+use std::collections::BTreeMap;
+use std::time::Duration;
+
 use anyhow::Result;
-use enum_map::EnumMap;
 use geo::EuclideanLength;
-use muv_osm::{AccessLevel, TMode};
-use utils::Tags;
 
 use crate::gtfs::GtfsModel;
 use crate::route::Router;
-use crate::{Direction, Graph, Intersection, IntersectionID, Mode, Road, RoadID, Timer};
+use crate::{Direction, Graph, Intersection, IntersectionID, ProfileID, Road, RoadID, Timer};
 
 impl Graph {
     /// Constructs a graph from OpenStreetMap data.
     ///
     /// - `input_bytes`: Bytes of an osm.pbf or osm.xml file
     /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
-    /// - `modify_roads`: Runs before any routing structures are calculated. Use to modify access per mode.
-    pub fn new<F: FnOnce(&mut Vec<Road>), R: utils::osm2graph::OsmReader>(
+    /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost to
+    ///    each Road.
+    pub fn new<R: utils::osm2graph::OsmReader>(
         input_bytes: &[u8],
         osm_reader: &mut R,
-        modify_roads: F,
+        profiles: Vec<(String, Box<dyn Fn(&Road) -> (Direction, Duration)>)>,
         timer: &mut Timer,
     ) -> Result<Graph> {
         timer.step("parse OSM and split graph");
 
         let graph = utils::osm2graph::Graph::new(
             input_bytes,
-            // Don't do any filtering by Mode yet
+            // Don't do any filtering by profile yet
+            // TODO Actually, see if any profile accepts it. But can we avoid calling the profiles
+            // twice?
             |tags| {
                 tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes")
             },
@@ -48,49 +51,53 @@ impl Graph {
         let mut roads: Vec<Road> = graph
             .edges
             .into_iter()
-            .map(|e| {
-                let access = calculate_access(&e.osm_tags);
-                let mut max_speed = calculate_max_speed(&e.osm_tags);
-                if max_speed == 0.0 {
-                    error!(
-                        "Zero maxspeed for {} ({:?}), boosting to 1mph",
-                        e.osm_way, e.osm_tags
-                    );
-                    max_speed = 1.0 * 0.44704;
-                }
+            .map(|e| Road {
+                id: RoadID(e.id.0),
+                src_i: IntersectionID(e.src.0),
+                dst_i: IntersectionID(e.dst.0),
+                way: e.osm_way,
+                node1: e.osm_node1,
+                node2: e.osm_node2,
+                osm_tags: e.osm_tags,
+                length_meters: e.linestring.euclidean_length(),
+                linestring: e.linestring,
 
-                Road {
-                    id: RoadID(e.id.0),
-                    src_i: IntersectionID(e.src.0),
-                    dst_i: IntersectionID(e.dst.0),
-                    way: e.osm_way,
-                    node1: e.osm_node1,
-                    node2: e.osm_node2,
-                    osm_tags: e.osm_tags,
-                    length_meters: e.linestring.euclidean_length(),
-                    linestring: e.linestring,
-
-                    access,
-                    max_speed,
-                    stops: Vec::new(),
-                }
+                access: Vec::new(),
+                cost: Vec::new(),
+                stops: Vec::new(),
             })
             .collect();
 
-        modify_roads(&mut roads);
+        timer.step("set up profiles");
+        for road in &mut roads {
+            let mut access = Vec::new();
+            let mut cost = Vec::new();
+            for (_, profile) in &profiles {
+                let (dir, c) = profile(road);
+                access.push(dir);
+                cost.push(c);
+            }
+            road.access = access;
+            road.cost = cost;
+        }
 
-        timer.push("building router");
-        let router = EnumMap::from_fn(|mode| {
-            timer.step(format!("for {mode:?}"));
-            Router::new(&roads, mode)
-        });
-        timer.pop();
+        timer.push("building routers");
+        let mut routers = Vec::new();
+        let mut profile_names = BTreeMap::new();
+        for (idx, (name, _)) in profiles.into_iter().enumerate() {
+            timer.step(format!("for {name}"));
+            routers.push(Router::new(&roads, ProfileID(idx)));
+
+            profile_names.insert(name, ProfileID(idx));
+        }
 
         Ok(Graph {
             roads,
             intersections,
             mercator: graph.mercator,
-            router,
+            profile_names,
+            walking_profile_for_transit: None,
+            routers,
             boundary_polygon: graph.boundary_polygon,
 
             gtfs: GtfsModel::empty(),
@@ -99,7 +106,17 @@ impl Graph {
 
     /// Adds in GTFS data to the current graph. This only makes sense to call once.
     #[cfg(feature = "gtfs")]
-    pub async fn setup_gtfs(&mut self, source: crate::GtfsSource, timer: &mut Timer) -> Result<()> {
+    pub async fn setup_gtfs(
+        &mut self,
+        source: crate::GtfsSource,
+        profile: ProfileID,
+        timer: &mut Timer,
+    ) -> Result<()> {
+        if self.walking_profile_for_transit.is_some() {
+            bail!("Can't call setup_gtfs twice");
+        }
+        self.walking_profile_for_transit = Some(profile);
+
         use crate::GtfsSource;
 
         timer.push("setting up GTFS");
@@ -109,92 +126,11 @@ impl Graph {
             GtfsSource::Geomedea(url) => GtfsModel::from_geomedea(&url, &self.mercator).await?,
             GtfsSource::None => GtfsModel::empty(),
         };
-        snap_stops(&mut self.roads, &mut gtfs, &self.router[Mode::Foot], timer);
+        snap_stops(&mut self.roads, &mut gtfs, &self.routers[profile.0], timer);
         self.gtfs = gtfs;
         timer.pop();
         Ok(())
     }
-}
-
-// TODO Should also look at any barriers
-fn calculate_access(tags: &Tags) -> EnumMap<Mode, Direction> {
-    let tags: muv_osm::Tag = tags.0.iter().collect();
-    let regions: [&'static str; 0] = [];
-    let lanes = muv_osm::lanes::highway_lanes(&tags, &regions).unwrap();
-
-    let mut forwards: EnumMap<Mode, bool> = EnumMap::default();
-    let mut backwards: EnumMap<Mode, bool> = EnumMap::default();
-
-    // TODO Check if this logic is correct
-    for lane in lanes.lanes {
-        if let muv_osm::lanes::LaneVariant::Travel(lane) = lane.variant {
-            for (direction_per_mode, lane_direction) in [
-                (&mut forwards, &lane.forward),
-                (&mut backwards, &lane.backward),
-            ] {
-                for (mode, muv_mode) in [
-                    (Mode::Car, TMode::Motorcar),
-                    (Mode::Bicycle, TMode::Bicycle),
-                    (Mode::Foot, TMode::Foot),
-                ] {
-                    if let Some(conditional_access) = lane_direction.access.get(muv_mode) {
-                        if let Some(access) = conditional_access.base() {
-                            if access_level_allowed(access) {
-                                direction_per_mode[mode] = true;
-                            }
-                        }
-                    }
-
-                    if let Some(conditional_speed) = lane_direction.maxspeed.get(muv_mode) {
-                        if let Some(_speed) = conditional_speed.base() {
-                            // TODO
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    EnumMap::from_fn(|mode| bool_to_dir(forwards[mode], backwards[mode]))
-}
-
-fn access_level_allowed(access: &AccessLevel) -> bool {
-    matches!(
-        access,
-        AccessLevel::Designated
-            | AccessLevel::Yes
-            | AccessLevel::Permissive
-            | AccessLevel::Discouraged
-            | AccessLevel::Destination
-            | AccessLevel::Customers
-            | AccessLevel::Private
-    )
-}
-
-fn bool_to_dir(f: bool, b: bool) -> Direction {
-    if f && b {
-        Direction::Both
-    } else if f {
-        Direction::Forwards
-    } else if b {
-        Direction::Backwards
-    } else {
-        Direction::None
-    }
-}
-
-fn calculate_max_speed(tags: &Tags) -> f64 {
-    // TODO Use muv
-    if let Some(x) = tags.get("maxspeed") {
-        if let Some(kmph) = x.parse::<f64>().ok() {
-            return 0.277778 * kmph;
-        }
-        if let Some(mph) = x.strip_suffix(" mph").and_then(|x| x.parse::<f64>().ok()) {
-            return 0.44704 * mph;
-        }
-    }
-    // Arbitrary fallback
-    30.0 * 0.44704
 }
 
 #[cfg(feature = "gtfs")]

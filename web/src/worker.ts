@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import init, { MapModel } from "backend";
-import type { TravelMode, ScoreProps, Amenity } from "./stores";
+import type { Profile, ScoreProps, Amenity } from "./stores";
 import type {
   Position,
   Feature,
@@ -96,7 +96,7 @@ export class Backend {
   isochrone(req: {
     // TODO LngLatLike doesn't work?
     start: { lng: number; lat: number };
-    mode: TravelMode;
+    profile: Profile;
     style: string;
     startTime: string;
     maxSeconds: number;
@@ -109,7 +109,8 @@ export class Backend {
       this.inner.isochrone({
         x: req.start.lng,
         y: req.start.lat,
-        mode: req.mode,
+        profile: req.profile == "transit" ? "foot" : req.profile,
+        transit: req.profile == "transit",
         style: req.style,
         start_time: req.startTime,
         max_seconds: req.maxSeconds,
@@ -121,7 +122,7 @@ export class Backend {
     // TODO LngLatLike doesn't work?
     start: { lng: number; lat: number };
     end: Position;
-    mode: TravelMode;
+    profile: Profile;
     debugSearch: boolean;
     useHeuristic: boolean;
     startTime: string;
@@ -136,7 +137,8 @@ export class Backend {
         y1: req.start.lat,
         x2: req.end[0],
         y2: req.end[1],
-        mode: req.mode,
+        profile: req.profile == "transit" ? "foot" : req.profile,
+        transit: req.profile == "transit",
         debug_search: req.debugSearch,
         use_heuristic: req.useHeuristic,
         start_time: req.startTime,
@@ -148,7 +150,7 @@ export class Backend {
     // TODO LngLatLike doesn't work?
     start: { lng: number; lat: number };
     end: Position;
-    mode: TravelMode;
+    profile: Profile;
     useHeuristic: boolean;
     startTime: string;
     maxSeconds: number;
@@ -163,7 +165,8 @@ export class Backend {
         y1: req.start.lat,
         x2: req.end[0],
         y2: req.end[1],
-        mode: req.mode,
+        profile: req.profile == "transit" ? "foot" : req.profile,
+        transit: req.profile == "transit",
         use_heuristic: req.useHeuristic,
         start_time: req.startTime,
         max_seconds: req.maxSeconds,
@@ -173,6 +176,7 @@ export class Backend {
 
   score(
     req: {
+      profile: Profile;
       poiKinds: string[];
       maxSeconds: number;
     },
@@ -185,6 +189,8 @@ export class Backend {
     return JSON.parse(
       this.inner.score(
         {
+          // TODO Note transit won't work here
+          profile: req.profile,
           poi_kinds: req.poiKinds,
           max_seconds: req.maxSeconds,
         },
@@ -196,7 +202,7 @@ export class Backend {
   snapAndBufferRoute(
     req: {
       input: FeatureCollection;
-      mode: TravelMode;
+      profile: Profile;
       startTime: string;
       maxSeconds: number;
     },
@@ -210,7 +216,8 @@ export class Backend {
       this.inner.snapAndBufferRoute(
         {
           input: JSON.stringify(req.input),
-          mode: req.mode,
+          // TODO Note transit won't work here
+          profile: req.profile,
           start_time: req.startTime,
           max_seconds: req.maxSeconds,
         },

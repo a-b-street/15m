@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use chrono::NaiveTime;
-use graph::{Graph, Mode, RoadID, Timer};
+use graph::{Graph, ProfileID, RoadID, Timer};
 
 use crate::Amenities;
 
@@ -12,6 +12,7 @@ use crate::Amenities;
 pub fn calculate(
     graph: &Graph,
     amenities: &Amenities,
+    profile: ProfileID,
     poi_kinds: HashSet<String>,
     limit: Duration,
     mut timer: Timer,
@@ -24,7 +25,7 @@ pub fn calculate(
     timer.step("look for targets (cycle parking)");
     let mut cycle_parking_roads = HashMap::new();
     for (idx, list) in amenities.per_road.iter().enumerate() {
-        if let Some(a) = list[Mode::Foot]
+        if let Some(a) = list[profile.0]
             .iter()
             .find(|a| amenities.amenities[a.0].kind == "bicycle_parking")
         {
@@ -45,10 +46,10 @@ pub fn calculate(
         let costs = graph.get_costs(
             vec![
                 graph
-                    .snap_to_road(amenity.point.into(), Mode::Foot)
+                    .snap_to_road(amenity.point.into(), profile)
                     .intersection,
             ],
-            Mode::Foot,
+            profile,
             false,
             start_time,
             end_time,

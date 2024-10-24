@@ -4,18 +4,17 @@ use std::time::Duration;
 
 use utils::PriorityQueueItem;
 
-use crate::costs::cost;
-use crate::{Graph, IntersectionID, Mode, RoadID};
+use crate::{Graph, IntersectionID, ProfileID, RoadID};
 
 impl Graph {
     // TODO Doesn't account for start/end distance along roads
-    /// From a list of start intersections, floods out the graph for a mode until `end_time` is
+    /// From a list of start intersections, floods out the graph for a profile until `end_time` is
     /// reached. Returns the time needed to reach each road within that range. This query is not
     /// precise about positions along a road.
     pub fn get_costs(
         &self,
         starts: Vec<IntersectionID>,
-        mode: Mode,
+        profile: ProfileID,
         public_transit: bool,
         start_time: NaiveTime,
         end_time: NaiveTime,
@@ -39,15 +38,15 @@ impl Graph {
 
             for r in &self.intersections[current.value.0].roads {
                 let road = &self.roads[r.0];
-                let total_cost = current.cost + cost(road, mode);
+                let total_cost = current.cost + road.cost[profile.0];
                 cost_per_road
                     .entry(*r)
                     .or_insert((total_cost - start_time).to_std().unwrap());
 
-                if road.src_i == current.value && road.allows_forwards(mode) {
+                if road.src_i == current.value && road.allows_forwards(profile) {
                     queue.push(PriorityQueueItem::new(total_cost, road.dst_i));
                 }
-                if road.dst_i == current.value && road.allows_backwards(mode) {
+                if road.dst_i == current.value && road.allows_backwards(profile) {
                     queue.push(PriorityQueueItem::new(total_cost, road.src_i));
                 }
 

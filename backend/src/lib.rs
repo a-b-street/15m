@@ -8,7 +8,7 @@ use std::time::Duration;
 use chrono::NaiveTime;
 use geo::{Coord, LineString};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
-use graph::{Graph, Mode, Timer};
+use graph::{Graph, ProfileID, Timer};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -112,15 +112,15 @@ impl MapModel {
             .graph
             .mercator
             .pt_to_mercator(Coord { x: req.x, y: req.y });
-        let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
+        let profile = self.parse_profile(&req.profile)?;
         isochrone::calculate(
             &self.graph,
             &self.amenities,
             start,
-            mode,
+            profile,
             // TODO Hack
             serde_json::from_str(&format!("\"{}\"", req.style)).map_err(err_to_js)?,
-            req.mode == "transit",
+            req.transit,
             NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?,
             Duration::from_secs(req.max_seconds),
             Timer::new("isochrone request", None),
@@ -138,26 +138,26 @@ impl MapModel {
     pub fn buffer_route(&self, input: JsValue) -> Result<String, JsValue> {
         let req: BufferRouteRequest = serde_wasm_bindgen::from_value(input)?;
 
-        let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
+        let profile = self.parse_profile(&req.profile)?;
         let start = self.graph.snap_to_road(
             self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x1,
                 y: req.y1,
             }),
-            mode,
+            profile,
         );
         let end = self.graph.snap_to_road(
             self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x2,
                 y: req.y2,
             }),
-            mode,
+            profile,
         );
 
-        let route = if req.mode == "transit" {
+        let route = if req.transit {
             todo!()
         } else {
-            self.graph.router[mode]
+            self.graph.routers[profile.0]
                 .route(&self.graph, start, end)
                 .map_err(err_to_js)?
         };
@@ -165,7 +165,7 @@ impl MapModel {
         let start_time = NaiveTime::parse_from_str(&req.start_time, "%H:%M").map_err(err_to_js)?;
         let limit = Duration::from_secs(req.max_seconds);
 
-        self.buffer_routes(vec![route], mode, start_time, limit)
+        self.buffer_routes(vec![route], profile, start_time, limit)
             .map_err(err_to_js)
     }
 
@@ -176,11 +176,13 @@ impl MapModel {
         progress_cb: Option<js_sys::Function>,
     ) -> Result<String, JsValue> {
         let req: ScoreRequest = serde_wasm_bindgen::from_value(input)?;
+        let profile = self.parse_profile(&req.profile)?;
         let poi_kinds: HashSet<String> = req.poi_kinds.into_iter().collect();
         let limit = Duration::from_secs(req.max_seconds);
         score::calculate(
             &self.graph,
             &self.amenities,
+            profile,
             poi_kinds,
             limit,
             Timer::new("score", progress_cb),
@@ -195,7 +197,7 @@ impl MapModel {
         progress_cb: Option<js_sys::Function>,
     ) -> Result<String, JsValue> {
         let req: SnapRouteRequest = serde_wasm_bindgen::from_value(input)?;
-        let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
+        let profile = self.parse_profile(&req.profile)?;
         let inputs =
             geojson::de::deserialize_feature_collection_str_to_vec::<GeoJsonLineString>(&req.input)
                 .map_err(err_to_js)?;
@@ -209,7 +211,7 @@ impl MapModel {
             self.graph
                 .mercator
                 .to_mercator_in_place(&mut input.geometry);
-            match self.graph.snap_route(&input.geometry, mode) {
+            match self.graph.snap_route(&input.geometry, profile) {
                 Ok(route) => routes.push(route),
                 Err(err) => log::warn!("Couldn't snap a route: {err}"),
             }
@@ -220,7 +222,7 @@ impl MapModel {
         let limit = Duration::from_secs(req.max_seconds);
 
         let result = self
-            .buffer_routes(routes, mode, start_time, limit)
+            .buffer_routes(routes, profile, start_time, limit)
             .map_err(err_to_js);
         timer.done();
         result
@@ -229,6 +231,14 @@ impl MapModel {
 
 // Non WASM methods, also used by the CLI
 impl MapModel {
+    fn parse_profile(&self, name: &str) -> Result<ProfileID, JsValue> {
+        if let Some(id) = self.graph.profile_names.get(name) {
+            Ok(*id)
+        } else {
+            Err(JsValue::from_str(&format!("unknown profile {name}")))
+        }
+    }
+
     pub async fn create(
         input_bytes: &[u8],
         gtfs_url: Option<String>,
@@ -236,8 +246,16 @@ impl MapModel {
         timer: &mut Timer,
     ) -> anyhow::Result<MapModel> {
         let mut amenities = Amenities::new();
-        let modify_roads = |_roads: &mut Vec<graph::Road>| {};
-        let mut graph = Graph::new(input_bytes, &mut amenities, modify_roads, timer)?;
+        let mut graph = Graph::new(
+            input_bytes,
+            &mut amenities,
+            vec![
+                graph::muv_profiles::muv_car_profile(),
+                graph::muv_profiles::muv_bicycle_profile(),
+                graph::muv_profiles::muv_pedestrian_profile(),
+            ],
+            timer,
+        )?;
 
         graph
             .setup_gtfs(
@@ -245,6 +263,7 @@ impl MapModel {
                     Some(url) => graph::GtfsSource::Geomedea(url),
                     None => graph::GtfsSource::None,
                 },
+                graph.profile_names["foot"],
                 timer,
             )
             .await?;
@@ -259,23 +278,24 @@ impl MapModel {
     }
 
     pub fn route_from_req(&self, req: &RouteRequest) -> Result<String, JsValue> {
-        let mode = Mode::parse(&req.mode).map_err(err_to_js)?;
+        let profile = self.parse_profile(&req.profile)?;
         let start = self.graph.snap_to_road(
             self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x1,
                 y: req.y1,
             }),
-            mode,
+            profile,
         );
         let end = self.graph.snap_to_road(
             self.graph.mercator.pt_to_mercator(Coord {
                 x: req.x2,
                 y: req.y2,
             }),
-            mode,
+            profile,
         );
 
-        if req.mode == "transit" {
+        if req.transit {
+            assert_eq!(self.graph.walking_profile_for_transit, Some(profile));
             self.graph
                 .transit_route_gj(
                     start,
@@ -287,7 +307,7 @@ impl MapModel {
                 )
                 .map_err(err_to_js)
         } else {
-            let linestring = self.graph.router[mode]
+            let linestring = self.graph.routers[profile.0]
                 .route(&self.graph, start, end)
                 .map_err(err_to_js)?
                 .linestring(&self.graph);
@@ -307,7 +327,8 @@ pub struct IsochroneRequest {
     // TODO Rename lon, lat to be clear?
     x: f64,
     y: f64,
-    mode: String,
+    profile: String,
+    transit: bool,
     style: String,
     start_time: String,
     max_seconds: u64,
@@ -319,7 +340,8 @@ pub struct RouteRequest {
     pub y1: f64,
     pub x2: f64,
     pub y2: f64,
-    pub mode: String,
+    pub profile: String,
+    pub transit: bool,
     // TODO Only works for transit
     pub debug_search: bool,
     pub use_heuristic: bool,
@@ -332,7 +354,8 @@ pub struct BufferRouteRequest {
     pub y1: f64,
     pub x2: f64,
     pub y2: f64,
-    pub mode: String,
+    pub profile: String,
+    pub transit: bool,
     pub use_heuristic: bool,
     pub start_time: String,
     pub max_seconds: u64,
@@ -340,6 +363,7 @@ pub struct BufferRouteRequest {
 
 #[derive(Deserialize)]
 pub struct ScoreRequest {
+    profile: String,
     poi_kinds: Vec<String>,
     max_seconds: u64,
 }
@@ -347,7 +371,7 @@ pub struct ScoreRequest {
 #[derive(Deserialize)]
 struct SnapRouteRequest {
     input: String,
-    mode: String,
+    profile: String,
     start_time: String,
     max_seconds: u64,
 }

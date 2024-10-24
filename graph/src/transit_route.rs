@@ -8,8 +8,7 @@ use geo::{EuclideanDistance, LineString};
 use geojson::{Feature, GeoJson, Geometry};
 use utils::PriorityQueueItem;
 
-use crate::costs::cost;
-use crate::{Graph, IntersectionID, Mode, PathStep, Position, Timer};
+use crate::{Graph, IntersectionID, PathStep, Position, Timer};
 
 impl Graph {
     pub fn transit_route_gj(
@@ -26,6 +25,9 @@ impl Graph {
         if start == end {
             bail!("start = end");
         }
+        let Some(profile) = self.walking_profile_for_transit else {
+            bail!("public transit hasn't been set up");
+        };
         // TODO Handle start.road == end.road case. Share code somewhere.
 
         let end_pt = self.intersections[end.intersection.0].point;
@@ -79,8 +81,8 @@ impl Graph {
                 let road = &self.roads[r.0];
 
                 // Handle walking to the other end of the road
-                let total_cost = current_time + cost(road, Mode::Foot);
-                if road.src_i == current_i && road.allows_forwards(Mode::Foot) {
+                let total_cost = current_time + road.cost[profile.0];
+                if road.src_i == current_i && road.allows_forwards(profile) {
                     if let Entry::Vacant(entry) = backrefs.entry(road.dst_i) {
                         entry.insert(Backreference {
                             src_i: current_i,
@@ -96,7 +98,7 @@ impl Graph {
                             (road.dst_i, total_cost),
                         ));
                     }
-                } else if road.dst_i == current_i && road.allows_backwards(Mode::Foot) {
+                } else if road.dst_i == current_i && road.allows_backwards(profile) {
                     if let Entry::Vacant(entry) = backrefs.entry(road.src_i) {
                         entry.insert(Backreference {
                             src_i: current_i,

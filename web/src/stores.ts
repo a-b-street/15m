@@ -27,13 +27,13 @@ export let map: Writable<Map | null> = writable(null);
 export let showAbout: Writable<boolean> = writable(true);
 export let showPopulation: Writable<boolean> = writable(false);
 
-export type TravelMode = "car" | "bicycle" | "foot" | "transit";
+export type Profile = "car" | "bicycle" | "foot" | "transit";
 
-export function filterForMode(travelMode: TravelMode): ExpressionSpecification {
-  return ["!=", ["get", `access_${travelMode}`], "None"];
+export function filterForProfile(profile: Profile): ExpressionSpecification {
+  return ["!=", ["get", `access_${profile}`], "None"];
 }
 
-export let travelMode: Writable<TravelMode> = writable("foot");
+export let profile: Writable<Profile> = writable("foot");
 export let startTime: Writable<string> = writable("07:00");
 
 // Only used in RouteMode

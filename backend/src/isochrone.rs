@@ -4,7 +4,7 @@ use anyhow::Result;
 use chrono::NaiveTime;
 use geo::{Coord, Densify, Rect};
 use geojson::{Feature, Geometry};
-use graph::{Graph, Mode, Timer};
+use graph::{Graph, ProfileID, Timer};
 use serde::Deserialize;
 use utils::Grid;
 
@@ -21,7 +21,7 @@ pub fn calculate(
     graph: &Graph,
     amenities: &Amenities,
     req: Coord,
-    mode: Mode,
+    profile: ProfileID,
     style: Style,
     public_transit: bool,
     start_time: NaiveTime,
@@ -30,8 +30,8 @@ pub fn calculate(
 ) -> Result<String> {
     timer.step("get_costs");
     let cost_per_road = graph.get_costs(
-        vec![graph.snap_to_road(req, mode).intersection],
-        mode,
+        vec![graph.snap_to_road(req, profile).intersection],
+        profile,
         public_transit,
         start_time,
         start_time + limit,
@@ -41,7 +41,7 @@ pub fn calculate(
     // Show reached amenities
     let mut features = Vec::new();
     for (r, _) in &cost_per_road {
-        for a in &amenities.per_road[r.0][mode] {
+        for a in &amenities.per_road[r.0][profile.0] {
             features.push(amenities.amenities[a.0].to_gj(&graph.mercator));
         }
     }

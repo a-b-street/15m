@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AmenityLayer, AmenityList, PickTravelMode, NavBar } from "./common";
+  import { AmenityLayer, AmenityList, PickProfile, NavBar } from "./common";
   import type { Feature, Point } from "geojson";
   import { colorScale } from "./colors";
   import type { FeatureCollection } from "geojson";
@@ -7,8 +7,8 @@
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import {
     backend,
-    travelMode,
-    type TravelMode,
+    profile,
+    type Profile,
     startTime,
     type Amenity,
     describeAmenity,
@@ -37,7 +37,7 @@
 
   async function updateIsochrone(
     _x: { lng: number; lat: number } | null,
-    _y: TravelMode,
+    _y: Profile,
     _z: string,
     _t: string,
     _im: number,
@@ -46,7 +46,7 @@
       try {
         isochroneGj = await $backend!.isochrone({
           start,
-          mode: $travelMode,
+          profile: $profile,
           style,
           startTime: $startTime,
           maxSeconds: 60 * $isochroneMins,
@@ -58,7 +58,7 @@
       }
     }
   }
-  $: updateIsochrone(start, $travelMode, style, $startTime, $isochroneMins);
+  $: updateIsochrone(start, $profile, style, $startTime, $isochroneMins);
 
   async function updateRoute(
     x: { lng: number; lat: number } | null,
@@ -70,7 +70,7 @@
         routeGj = await $backend!.route({
           start,
           end: hoveredAmenity.geometry.coordinates,
-          mode: $travelMode,
+          profile: $profile,
           debugSearch: false,
           useHeuristic: false,
           startTime: $startTime,
@@ -113,14 +113,14 @@
       >
     {/if}
 
-    <PickTravelMode bind:travelMode={$travelMode} />
+    <PickProfile bind:profile={$profile} />
 
     <label>
       Start time (PT only)
       <input
         type="time"
         bind:value={$startTime}
-        disabled={$travelMode != "transit"}
+        disabled={$profile != "transit"}
       />
     </label>
 

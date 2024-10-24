@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PickTravelMode, NavBar } from "./common";
+  import { PickProfile, NavBar } from "./common";
   import type { MapMouseEvent } from "maplibre-gl";
   import {
     MapEvents,
@@ -12,8 +12,8 @@
   import {
     mode,
     backend,
-    travelMode,
-    type TravelMode,
+    profile,
+    type Profile,
     startTime,
     useHeuristic,
     routeA,
@@ -35,7 +35,7 @@
   async function update(
     start: { lng: number; lat: number },
     end: { lng: number; lat: number },
-    mode: TravelMode,
+    profile: Profile,
     _z: boolean,
     _t: string,
     _b: number,
@@ -47,7 +47,7 @@
         gj = await $backend!.bufferRoute({
           start: $routeA!,
           end: [$routeB!.lng, $routeB!.lat],
-          mode: $travelMode,
+          profile: $profile,
           useHeuristic: $useHeuristic,
           startTime: $startTime,
           maxSeconds: $bufferMins * 60,
@@ -57,7 +57,7 @@
         gj = await $backend!.route({
           start,
           end: [end.lng, end.lat],
-          mode,
+          profile: $profile,
           debugSearch: false,
           useHeuristic: $useHeuristic,
           startTime: $startTime,
@@ -72,7 +72,7 @@
   $: update(
     $routeA!,
     $routeB!,
-    $travelMode,
+    $profile,
     $useHeuristic,
     $startTime,
     $bufferMins,
@@ -89,7 +89,7 @@
       let debugGj = await $backend!.route({
         start: $routeA!,
         end: [$routeB!.lng, $routeB!.lat],
-        mode: $travelMode,
+        profile: $profile,
         debugSearch: true,
         useHeuristic: $useHeuristic,
         startTime: $startTime,
@@ -116,13 +116,13 @@
   <div slot="sidebar">
     <h2>Route mode</h2>
 
-    <PickTravelMode bind:travelMode={$travelMode} />
+    <PickProfile bind:profile={$profile} />
 
     <label>
       <input
         type="checkbox"
         bind:checked={$useHeuristic}
-        disabled={$travelMode != "transit"}
+        disabled={$profile != "transit"}
       />
       Use heuristic (PT only)
     </label>
@@ -132,7 +132,7 @@
       <input
         type="time"
         bind:value={$startTime}
-        disabled={$travelMode != "transit"}
+        disabled={$profile != "transit"}
       />
     </label>
 
@@ -157,7 +157,7 @@
     {#if err}
       <p>{err}</p>
     {:else if gj}
-      <button on:click={debugRoute} disabled={$travelMode != "transit"}
+      <button on:click={debugRoute} disabled={$profile != "transit"}
         >Watch how this route was found (PT only)</button
       >
 

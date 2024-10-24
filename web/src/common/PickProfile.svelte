@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { TravelMode } from "../stores";
+  import type { Profile } from "../stores";
 
-  export let travelMode: TravelMode;
+  export let profile: Profile;
 </script>
 
 <label
-  >Mode:
-  <select bind:value={travelMode}>
+  >Profile:
+  <select bind:value={profile}>
     <option value="car">Car</option>
     <option value="bicycle">Bicycle</option>
     <option value="foot">Foot</option>
