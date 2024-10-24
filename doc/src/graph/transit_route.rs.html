@@ -286,6 +286,8 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BinaryHeap, HashMap};
 <span class="kw">use </span>std::time::Duration;
@@ -296,8 +298,7 @@
 <span class="kw">use </span>geojson::{Feature, GeoJson, Geometry};
 <span class="kw">use </span>utils::PriorityQueueItem;
 
-<span class="kw">use </span><span class="kw">crate</span>::costs::cost;
-<span class="kw">use crate</span>::{Graph, IntersectionID, Mode, PathStep, Position, Timer};
+<span class="kw">use crate</span>::{Graph, IntersectionID, PathStep, Position, Timer};
 
 <span class="kw">impl </span>Graph {
     <span class="kw">pub fn </span>transit_route_gj(
@@ -314,6 +315,9 @@
         <span class="kw">if </span>start == end {
             <span class="macro">bail!</span>(<span class="string">"start = end"</span>);
         }
+        <span class="kw">let </span><span class="prelude-val">Some</span>(profile) = <span class="self">self</span>.walking_profile_for_transit <span class="kw">else </span>{
+            <span class="macro">bail!</span>(<span class="string">"public transit hasn't been set up"</span>);
+        };
         <span class="comment">// TODO Handle start.road == end.road case. Share code somewhere.
 
         </span><span class="kw">let </span>end_pt = <span class="self">self</span>.intersections[end.intersection.<span class="number">0</span>].point;
@@ -367,8 +371,8 @@
                 <span class="kw">let </span>road = <span class="kw-2">&amp;</span><span class="self">self</span>.roads[r.<span class="number">0</span>];
 
                 <span class="comment">// Handle walking to the other end of the road
-                </span><span class="kw">let </span>total_cost = current_time + cost(road, Mode::Foot);
-                <span class="kw">if </span>road.src_i == current_i &amp;&amp; road.allows_forwards(Mode::Foot) {
+                </span><span class="kw">let </span>total_cost = current_time + road.cost[profile.<span class="number">0</span>];
+                <span class="kw">if </span>road.src_i == current_i &amp;&amp; road.allows_forwards(profile) {
                     <span class="kw">if let </span>Entry::Vacant(entry) = backrefs.entry(road.dst_i) {
                         entry.insert(Backreference {
                             src_i: current_i,
@@ -384,7 +388,7 @@
                             (road.dst_i, total_cost),
                         ));
                     }
-                } <span class="kw">else if </span>road.dst_i == current_i &amp;&amp; road.allows_backwards(Mode::Foot) {
+                } <span class="kw">else if </span>road.dst_i == current_i &amp;&amp; road.allows_backwards(profile) {
                     <span class="kw">if let </span>Entry::Vacant(entry) = backrefs.entry(road.src_i) {
                         entry.insert(Backreference {
                             src_i: current_i,

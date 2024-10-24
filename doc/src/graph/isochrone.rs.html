@@ -72,25 +72,23 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>chrono::NaiveTime;
 <span class="kw">use </span>std::collections::{BinaryHeap, HashMap, HashSet};
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>utils::PriorityQueueItem;
 
-<span class="kw">use </span><span class="kw">crate</span>::costs::cost;
-<span class="kw">use crate</span>::{Graph, IntersectionID, Mode, RoadID};
+<span class="kw">use crate</span>::{Graph, IntersectionID, ProfileID, RoadID};
 
 <span class="kw">impl </span>Graph {
     <span class="comment">// TODO Doesn't account for start/end distance along roads
-    </span><span class="doccomment">/// From a list of start intersections, floods out the graph for a mode until `end_time` is
+    </span><span class="doccomment">/// From a list of start intersections, floods out the graph for a profile until `end_time` is
     /// reached. Returns the time needed to reach each road within that range. This query is not
     /// precise about positions along a road.
     </span><span class="kw">pub fn </span>get_costs(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         starts: Vec&lt;IntersectionID&gt;,
-        mode: Mode,
+        profile: ProfileID,
         public_transit: bool,
         start_time: NaiveTime,
         end_time: NaiveTime,
@@ -114,15 +112,15 @@
 
             <span class="kw">for </span>r <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.intersections[current.value.<span class="number">0</span>].roads {
                 <span class="kw">let </span>road = <span class="kw-2">&amp;</span><span class="self">self</span>.roads[r.<span class="number">0</span>];
-                <span class="kw">let </span>total_cost = current.cost + cost(road, mode);
+                <span class="kw">let </span>total_cost = current.cost + road.cost[profile.<span class="number">0</span>];
                 cost_per_road
                     .entry(<span class="kw-2">*</span>r)
                     .or_insert((total_cost - start_time).to_std().unwrap());
 
-                <span class="kw">if </span>road.src_i == current.value &amp;&amp; road.allows_forwards(mode) {
+                <span class="kw">if </span>road.src_i == current.value &amp;&amp; road.allows_forwards(profile) {
                     queue.push(PriorityQueueItem::new(total_cost, road.dst_i));
                 }
-                <span class="kw">if </span>road.dst_i == current.value &amp;&amp; road.allows_backwards(mode) {
+                <span class="kw">if </span>road.dst_i == current.value &amp;&amp; road.allows_backwards(profile) {
                     queue.push(PriorityQueueItem::new(total_cost, road.src_i));
                 }
 

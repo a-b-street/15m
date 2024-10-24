@@ -284,7 +284,6 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 
 <span class="kw">use </span>anyhow::{bail, <span class="prelude-ty">Result</span>};
@@ -295,10 +294,9 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>utils::{deserialize_nodemap, LineSplit, NodeMap};
 
-<span class="kw">use </span><span class="kw">crate</span>::costs::cost;
-<span class="kw">use crate</span>::{Direction, Graph, IntersectionID, Mode, PathStep, Position, Road, RoadID};
+<span class="kw">use crate</span>::{Direction, Graph, IntersectionID, PathStep, Position, ProfileID, Road, RoadID};
 
-<span class="doccomment">/// Manages routing queries for one mode. This structure uses contraction hierarchies to calculate
+<span class="doccomment">/// Manages routing queries for one profile. This structure uses contraction hierarchies to calculate
 /// routes very quickly. They are slower to construct, but fast to query.
 </span><span class="attr">#[derive(Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Router {
@@ -322,14 +320,14 @@
 }
 
 <span class="kw">impl </span>Router {
-    <span class="doccomment">/// Creates a router for a mode. This is slow to calculate, as it builds a
+    <span class="doccomment">/// Creates a router for a profile. This is slow to calculate, as it builds a
     /// contraction hierarchy.
-    </span><span class="kw">pub fn </span>new(roads: <span class="kw-2">&amp;</span>Vec&lt;Road&gt;, mode: Mode) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(roads: <span class="kw-2">&amp;</span>Vec&lt;Road&gt;, profile: ProfileID) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>input_graph = InputGraph::new();
         <span class="kw">let </span><span class="kw-2">mut </span>node_map = NodeMap::new();
 
         <span class="kw">for </span>road <span class="kw">in </span>roads {
-            <span class="kw">let </span>cost = cost(road, mode).as_millis() <span class="kw">as </span>usize;
+            <span class="kw">let </span>cost = road.cost[profile.<span class="number">0</span>].as_millis() <span class="kw">as </span>usize;
             <span class="kw">let </span>node1 = node_map.get_or_insert(road.src_i);
             <span class="kw">let </span>node2 = node_map.get_or_insert(road.dst_i);
 
@@ -338,10 +336,10 @@
                 <span class="kw">continue</span>;
             }
 
-            <span class="kw">if </span>road.allows_forwards(mode) {
+            <span class="kw">if </span>road.allows_forwards(profile) {
                 input_graph.add_edge(node1, node2, cost);
             }
-            <span class="kw">if </span>road.allows_backwards(mode) {
+            <span class="kw">if </span>road.allows_backwards(profile) {
                 input_graph.add_edge(node2, node1, cost);
             }
         }
@@ -353,7 +351,7 @@
         <span class="kw">let </span>closest_road = RTree::bulk_load(
             roads
                 .iter()
-                .filter(|r| r.access[mode] != Direction::None)
+                .filter(|r| r.access[profile.<span class="number">0</span>] != Direction::None)
                 .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
                 .collect(),
         );

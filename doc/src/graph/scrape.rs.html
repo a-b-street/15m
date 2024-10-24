@@ -164,97 +164,36 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Result;
-<span class="kw">use </span>enum_map::EnumMap;
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::time::Duration;
+
+<span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>geo::EuclideanLength;
-<span class="kw">use </span>muv_osm::{AccessLevel, TMode};
-<span class="kw">use </span>utils::Tags;
 
 <span class="kw">use </span><span class="kw">crate</span>::gtfs::GtfsModel;
 <span class="kw">use </span><span class="kw">crate</span>::route::Router;
-<span class="kw">use crate</span>::{Direction, Graph, Intersection, IntersectionID, Mode, Road, RoadID, Timer};
+<span class="kw">use crate</span>::{Direction, Graph, Intersection, IntersectionID, ProfileID, Road, RoadID, Timer};
 
 <span class="kw">impl </span>Graph {
     <span class="doccomment">/// Constructs a graph from OpenStreetMap data.
     ///
     /// - `input_bytes`: Bytes of an osm.pbf or osm.xml file
     /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
-    /// - `modify_roads`: Runs before any routing structures are calculated. Use to modify access per mode.
-    </span><span class="kw">pub fn </span>new&lt;F: FnOnce(<span class="kw-2">&amp;mut </span>Vec&lt;Road&gt;), R: utils::osm2graph::OsmReader&gt;(
+    /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost to
+    ///    each Road.
+    </span><span class="kw">pub fn </span>new&lt;R: utils::osm2graph::OsmReader&gt;(
         input_bytes: <span class="kw-2">&amp;</span>[u8],
         osm_reader: <span class="kw-2">&amp;mut </span>R,
-        modify_roads: F,
+        profiles: Vec&lt;(String, Box&lt;<span class="kw">dyn </span>Fn(<span class="kw-2">&amp;</span>Road) -&gt; (Direction, Duration)&gt;)&gt;,
         timer: <span class="kw-2">&amp;mut </span>Timer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Graph&gt; {
         timer.step(<span class="string">"parse OSM and split graph"</span>);
 
         <span class="kw">let </span>graph = utils::osm2graph::Graph::new(
             input_bytes,
-            <span class="comment">// Don't do any filtering by Mode yet
+            <span class="comment">// Don't do any filtering by profile yet
+            // TODO Actually, see if any profile accepts it. But can we avoid calling the profiles
+            // twice?
             </span>|tags| {
                 tags.has(<span class="string">"highway"</span>) &amp;&amp; !tags.is(<span class="string">"highway"</span>, <span class="string">"proposed"</span>) &amp;&amp; !tags.is(<span class="string">"area"</span>, <span class="string">"yes"</span>)
             },
@@ -278,49 +217,53 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>roads: Vec&lt;Road&gt; = graph
             .edges
             .into_iter()
-            .map(|e| {
-                <span class="kw">let </span>access = calculate_access(<span class="kw-2">&amp;</span>e.osm_tags);
-                <span class="kw">let </span><span class="kw-2">mut </span>max_speed = calculate_max_speed(<span class="kw-2">&amp;</span>e.osm_tags);
-                <span class="kw">if </span>max_speed == <span class="number">0.0 </span>{
-                    <span class="macro">error!</span>(
-                        <span class="string">"Zero maxspeed for {} ({:?}), boosting to 1mph"</span>,
-                        e.osm_way, e.osm_tags
-                    );
-                    max_speed = <span class="number">1.0 </span>* <span class="number">0.44704</span>;
-                }
+            .map(|e| Road {
+                id: RoadID(e.id.<span class="number">0</span>),
+                src_i: IntersectionID(e.src.<span class="number">0</span>),
+                dst_i: IntersectionID(e.dst.<span class="number">0</span>),
+                way: e.osm_way,
+                node1: e.osm_node1,
+                node2: e.osm_node2,
+                osm_tags: e.osm_tags,
+                length_meters: e.linestring.euclidean_length(),
+                linestring: e.linestring,
 
-                Road {
-                    id: RoadID(e.id.<span class="number">0</span>),
-                    src_i: IntersectionID(e.src.<span class="number">0</span>),
-                    dst_i: IntersectionID(e.dst.<span class="number">0</span>),
-                    way: e.osm_way,
-                    node1: e.osm_node1,
-                    node2: e.osm_node2,
-                    osm_tags: e.osm_tags,
-                    length_meters: e.linestring.euclidean_length(),
-                    linestring: e.linestring,
-
-                    access,
-                    max_speed,
-                    stops: Vec::new(),
-                }
+                access: Vec::new(),
+                cost: Vec::new(),
+                stops: Vec::new(),
             })
             .collect();
 
-        modify_roads(<span class="kw-2">&amp;mut </span>roads);
+        timer.step(<span class="string">"set up profiles"</span>);
+        <span class="kw">for </span>road <span class="kw">in </span><span class="kw-2">&amp;mut </span>roads {
+            <span class="kw">let </span><span class="kw-2">mut </span>access = Vec::new();
+            <span class="kw">let </span><span class="kw-2">mut </span>cost = Vec::new();
+            <span class="kw">for </span>(<span class="kw">_</span>, profile) <span class="kw">in </span><span class="kw-2">&amp;</span>profiles {
+                <span class="kw">let </span>(dir, c) = profile(road);
+                access.push(dir);
+                cost.push(c);
+            }
+            road.access = access;
+            road.cost = cost;
+        }
 
-        timer.push(<span class="string">"building router"</span>);
-        <span class="kw">let </span>router = EnumMap::from_fn(|mode| {
-            timer.step(<span class="macro">format!</span>(<span class="string">"for {mode:?}"</span>));
-            Router::new(<span class="kw-2">&amp;</span>roads, mode)
-        });
-        timer.pop();
+        timer.push(<span class="string">"building routers"</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>routers = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>profile_names = BTreeMap::new();
+        <span class="kw">for </span>(idx, (name, <span class="kw">_</span>)) <span class="kw">in </span>profiles.into_iter().enumerate() {
+            timer.step(<span class="macro">format!</span>(<span class="string">"for {name}"</span>));
+            routers.push(Router::new(<span class="kw-2">&amp;</span>roads, ProfileID(idx)));
+
+            profile_names.insert(name, ProfileID(idx));
+        }
 
         <span class="prelude-val">Ok</span>(Graph {
             roads,
             intersections,
             mercator: graph.mercator,
-            router,
+            profile_names,
+            walking_profile_for_transit: <span class="prelude-val">None</span>,
+            routers,
             boundary_polygon: graph.boundary_polygon,
 
             gtfs: GtfsModel::empty(),
@@ -329,7 +272,17 @@
 
     <span class="doccomment">/// Adds in GTFS data to the current graph. This only makes sense to call once.
     </span><span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
-    </span><span class="kw">pub async fn </span>setup_gtfs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, source: <span class="kw">crate</span>::GtfsSource, timer: <span class="kw-2">&amp;mut </span>Timer) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    </span><span class="kw">pub async fn </span>setup_gtfs(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        source: <span class="kw">crate</span>::GtfsSource,
+        profile: ProfileID,
+        timer: <span class="kw-2">&amp;mut </span>Timer,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">if </span><span class="self">self</span>.walking_profile_for_transit.is_some() {
+            <span class="macro">bail!</span>(<span class="string">"Can't call setup_gtfs twice"</span>);
+        }
+        <span class="self">self</span>.walking_profile_for_transit = <span class="prelude-val">Some</span>(profile);
+
         <span class="kw">use </span><span class="kw">crate</span>::GtfsSource;
 
         timer.push(<span class="string">"setting up GTFS"</span>);
@@ -339,93 +292,12 @@
             GtfsSource::Geomedea(url) =&gt; GtfsModel::from_geomedea(<span class="kw-2">&amp;</span>url, <span class="kw-2">&amp;</span><span class="self">self</span>.mercator).<span class="kw">await</span><span class="question-mark">?</span>,
             GtfsSource::None =&gt; GtfsModel::empty(),
         };
-        snap_stops(<span class="kw-2">&amp;mut </span><span class="self">self</span>.roads, <span class="kw-2">&amp;mut </span>gtfs, <span class="kw-2">&amp;</span><span class="self">self</span>.router[Mode::Foot], timer);
+        snap_stops(<span class="kw-2">&amp;mut </span><span class="self">self</span>.roads, <span class="kw-2">&amp;mut </span>gtfs, <span class="kw-2">&amp;</span><span class="self">self</span>.routers[profile.<span class="number">0</span>], timer);
         <span class="self">self</span>.gtfs = gtfs;
         timer.pop();
         <span class="prelude-val">Ok</span>(())
     }
 }
-
-<span class="comment">// TODO Should also look at any barriers
-</span><span class="kw">fn </span>calculate_access(tags: <span class="kw-2">&amp;</span>Tags) -&gt; EnumMap&lt;Mode, Direction&gt; {
-    <span class="kw">let </span>tags: muv_osm::Tag = tags.<span class="number">0</span>.iter().collect();
-    <span class="kw">let </span>regions: [<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str; <span class="number">0</span>] = [];
-    <span class="kw">let </span>lanes = muv_osm::lanes::highway_lanes(<span class="kw-2">&amp;</span>tags, <span class="kw-2">&amp;</span>regions).unwrap();
-
-    <span class="kw">let </span><span class="kw-2">mut </span>forwards: EnumMap&lt;Mode, bool&gt; = EnumMap::default();
-    <span class="kw">let </span><span class="kw-2">mut </span>backwards: EnumMap&lt;Mode, bool&gt; = EnumMap::default();
-
-    <span class="comment">// TODO Check if this logic is correct
-    </span><span class="kw">for </span>lane <span class="kw">in </span>lanes.lanes {
-        <span class="kw">if let </span>muv_osm::lanes::LaneVariant::Travel(lane) = lane.variant {
-            <span class="kw">for </span>(direction_per_mode, lane_direction) <span class="kw">in </span>[
-                (<span class="kw-2">&amp;mut </span>forwards, <span class="kw-2">&amp;</span>lane.forward),
-                (<span class="kw-2">&amp;mut </span>backwards, <span class="kw-2">&amp;</span>lane.backward),
-            ] {
-                <span class="kw">for </span>(mode, muv_mode) <span class="kw">in </span>[
-                    (Mode::Car, TMode::Motorcar),
-                    (Mode::Bicycle, TMode::Bicycle),
-                    (Mode::Foot, TMode::Foot),
-                ] {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(conditional_access) = lane_direction.access.get(muv_mode) {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(access) = conditional_access.base() {
-                            <span class="kw">if </span>access_level_allowed(access) {
-                                direction_per_mode[mode] = <span class="bool-val">true</span>;
-                            }
-                        }
-                    }
-
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(conditional_speed) = lane_direction.maxspeed.get(muv_mode) {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(_speed) = conditional_speed.base() {
-                            <span class="comment">// TODO
-                        </span>}
-                    }
-                }
-            }
-        }
-    }
-
-    EnumMap::from_fn(|mode| bool_to_dir(forwards[mode], backwards[mode]))
-}
-
-<span class="kw">fn </span>access_level_allowed(access: <span class="kw-2">&amp;</span>AccessLevel) -&gt; bool {
-    <span class="macro">matches!</span>(
-        access,
-        AccessLevel::Designated
-            | AccessLevel::Yes
-            | AccessLevel::Permissive
-            | AccessLevel::Discouraged
-            | AccessLevel::Destination
-            | AccessLevel::Customers
-            | AccessLevel::Private
-    )
-}
-
-<span class="kw">fn </span>bool_to_dir(f: bool, b: bool) -&gt; Direction {
-    <span class="kw">if </span>f &amp;&amp; b {
-        Direction::Both
-    } <span class="kw">else if </span>f {
-        Direction::Forwards
-    } <span class="kw">else if </span>b {
-        Direction::Backwards
-    } <span class="kw">else </span>{
-        Direction::None
-    }
-}
-
-<span class="kw">fn </span>calculate_max_speed(tags: <span class="kw-2">&amp;</span>Tags) -&gt; f64 {
-    <span class="comment">// TODO Use muv
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(x) = tags.get(<span class="string">"maxspeed"</span>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(kmph) = x.parse::&lt;f64&gt;().ok() {
-            <span class="kw">return </span><span class="number">0.277778 </span>* kmph;
-        }
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(mph) = x.strip_suffix(<span class="string">" mph"</span>).and_then(|x| x.parse::&lt;f64&gt;().ok()) {
-            <span class="kw">return </span><span class="number">0.44704 </span>* mph;
-        }
-    }
-    <span class="comment">// Arbitrary fallback
-    </span><span class="number">30.0 </span>* <span class="number">0.44704
-</span>}
 
 <span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
 </span><span class="kw">fn </span>snap_stops(

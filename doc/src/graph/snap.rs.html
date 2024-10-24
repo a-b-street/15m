@@ -136,33 +136,33 @@
     LineLocatePoint, LineString,
 };
 
-<span class="kw">use crate</span>::{Graph, IntersectionID, Mode, PathStep, Route};
+<span class="kw">use crate</span>::{Graph, IntersectionID, PathStep, ProfileID, Route};
 
 <span class="kw">impl </span>Graph {
-    <span class="doccomment">/// Given an input LineString (in Mercator), try to snap/map-match it to a given Mode's graph
-    </span><span class="kw">pub fn </span>snap_route(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>LineString, mode: Mode) -&gt; <span class="prelude-ty">Result</span>&lt;Route&gt; {
+    <span class="doccomment">/// Given an input LineString (in Mercator), try to snap/map-match it to a given profile's graph
+    </span><span class="kw">pub fn </span>snap_route(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>LineString, profile: ProfileID) -&gt; <span class="prelude-ty">Result</span>&lt;Route&gt; {
         <span class="kw">if </span><span class="bool-val">false </span>{
-            <span class="self">self</span>.snap_by_endpoints(input, mode)
+            <span class="self">self</span>.snap_by_endpoints(input, profile)
         } <span class="kw">else </span>{
-            <span class="self">self</span>.snap_greedy(input, mode)
+            <span class="self">self</span>.snap_greedy(input, profile)
         }
     }
 
-    <span class="kw">fn </span>snap_by_endpoints(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>LineString, mode: Mode) -&gt; <span class="prelude-ty">Result</span>&lt;Route&gt; {
+    <span class="kw">fn </span>snap_by_endpoints(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>LineString, profile: ProfileID) -&gt; <span class="prelude-ty">Result</span>&lt;Route&gt; {
         <span class="comment">// Simple start: just match the endpoints and find the optimal route, according to
-        // that mode's graph.
-        </span><span class="kw">let </span>start = <span class="self">self</span>.snap_to_road(<span class="kw-2">*</span>input.coords().next().unwrap(), mode);
-        <span class="kw">let </span>end = <span class="self">self</span>.snap_to_road(<span class="kw-2">*</span>input.coords().last().unwrap(), mode);
-        <span class="kw">let </span>route = <span class="self">self</span>.router[mode].route(<span class="self">self</span>, start, end)<span class="question-mark">?</span>;
+        // that profile's graph.
+        </span><span class="kw">let </span>start = <span class="self">self</span>.snap_to_road(<span class="kw-2">*</span>input.coords().next().unwrap(), profile);
+        <span class="kw">let </span>end = <span class="self">self</span>.snap_to_road(<span class="kw-2">*</span>input.coords().last().unwrap(), profile);
+        <span class="kw">let </span>route = <span class="self">self</span>.routers[profile.<span class="number">0</span>].route(<span class="self">self</span>, start, end)<span class="question-mark">?</span>;
 
         <span class="comment">// TODO Detect/handle zero-length output here
 
         </span><span class="prelude-val">Ok</span>(route)
     }
 
-    <span class="kw">fn </span>snap_greedy(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>LineString, mode: Mode) -&gt; <span class="prelude-ty">Result</span>&lt;Route&gt; {
-        <span class="kw">let </span>start = <span class="self">self</span>.snap_to_road(<span class="kw-2">*</span>input.coords().next().unwrap(), mode);
-        <span class="kw">let </span>end = <span class="self">self</span>.snap_to_road(<span class="kw-2">*</span>input.coords().last().unwrap(), mode);
+    <span class="kw">fn </span>snap_greedy(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>LineString, profile: ProfileID) -&gt; <span class="prelude-ty">Result</span>&lt;Route&gt; {
+        <span class="kw">let </span>start = <span class="self">self</span>.snap_to_road(<span class="kw-2">*</span>input.coords().next().unwrap(), profile);
+        <span class="kw">let </span>end = <span class="self">self</span>.snap_to_road(<span class="kw-2">*</span>input.coords().last().unwrap(), profile);
 
         <span class="kw">let </span><span class="kw-2">mut </span>current = start.intersection;
         <span class="kw">let </span><span class="kw-2">mut </span>fraction_along = <span class="number">0.0</span>;
@@ -206,7 +206,7 @@
         <span class="prelude-val">Ok</span>(Route { steps, start, end })
     }
 
-    <span class="comment">// TODO Ignores mode and direction
+    <span class="comment">// TODO Ignores profile and direction
     </span><span class="kw">fn </span>next_steps(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         i: IntersectionID,

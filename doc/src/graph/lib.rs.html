@@ -229,33 +229,25 @@
 <a href="#229" id="229">229</a>
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
 </pre></div><pre class="rust"><code><span class="attr">#[macro_use]
 </span><span class="kw">extern crate </span>anyhow;
 <span class="attr">#[macro_use]
 </span><span class="kw">extern crate </span>log;
 
-<span class="kw">mod </span>costs;
 <span class="kw">mod </span>gtfs;
 <span class="kw">mod </span>isochrone;
+<span class="attr">#[cfg(feature = <span class="string">"muv"</span>)]
+</span><span class="kw">pub mod </span>muv_profiles;
 <span class="kw">mod </span>route;
 <span class="kw">mod </span>scrape;
 <span class="kw">pub mod </span>snap;
 <span class="kw">mod </span>timer;
 <span class="kw">mod </span>transit_route;
 
+<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::time::Duration;
+
 <span class="kw">use </span>anyhow::Result;
-<span class="kw">use </span>enum_map::{Enum, EnumMap};
 <span class="kw">use </span>geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
 <span class="kw">use </span>geojson::{Feature, FeatureCollection, Geometry};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -275,7 +267,10 @@
     </span><span class="doccomment">/// `Graph` stores all geometry in a Mercator projection for the study area. This field helps
     /// translation to/from WGS84.
     </span><span class="kw">pub </span>mercator: Mercator,
-    <span class="kw">pub </span>router: EnumMap&lt;Mode, Router&gt;,
+    <span class="kw">pub </span>profile_names: BTreeMap&lt;String, ProfileID&gt;,
+    <span class="kw">pub </span>walking_profile_for_transit: <span class="prelude-ty">Option</span>&lt;ProfileID&gt;,
+    <span class="doccomment">/// Per profile
+    </span><span class="kw">pub </span>routers: Vec&lt;Router&gt;,
     <span class="doccomment">/// A polygon covering the study area.
     </span><span class="kw">pub </span>boundary_polygon: Polygon,
 
@@ -286,37 +281,16 @@
 </span><span class="kw">pub struct </span>RoadID(<span class="kw">pub </span>usize);
 <span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>IntersectionID(<span class="kw">pub </span>usize);
+<span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>ProfileID(<span class="kw">pub </span>usize);
 
-<span class="doccomment">/// How can a `Road` be crossed by a particular `Mode`?
+<span class="doccomment">/// How can a `Road` be crossed by a particular profile?
 </span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Direction {
     Forwards,
     Backwards,
     Both,
     <span class="prelude-val">None</span>,
-}
-
-<span class="doccomment">/// The graph structure is expressed for each of these different modes of travel.
-</span><span class="comment">// TODO Justify why PublicTransit isn't captured here
-</span><span class="attr">#[derive(Clone, Copy, Enum, Debug, Serialize, Deserialize)]
-</span><span class="kw">pub enum </span>Mode {
-    Car,
-    Bicycle,
-    Foot,
-}
-
-<span class="kw">impl </span>Mode {
-    <span class="doccomment">/// Parses a string. Treats "transit" as Mode::Foot
-    </span><span class="kw">pub fn </span>parse(x: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Mode&gt; {
-        <span class="kw">match </span>x {
-            <span class="string">"car" </span>=&gt; <span class="prelude-val">Ok</span>(Mode::Car),
-            <span class="string">"bicycle" </span>=&gt; <span class="prelude-val">Ok</span>(Mode::Bicycle),
-            <span class="string">"foot" </span>=&gt; <span class="prelude-val">Ok</span>(Mode::Foot),
-            <span class="comment">// Caller special-cases this
-            </span><span class="string">"transit" </span>=&gt; <span class="prelude-val">Ok</span>(Mode::Foot),
-            x =&gt; <span class="macro">bail!</span>(<span class="string">"unknown Mode input {x}"</span>),
-        }
-    }
 }
 
 <span class="doccomment">/// Represents an edge going between exactly two `Intersection`s.
@@ -333,12 +307,11 @@
     </span><span class="kw">pub </span>length_meters: f64,
     <span class="kw">pub </span>linestring: LineString,
 
-    <span class="comment">// A simplified view of who can access a road. All might be None (buses, trains ignored)
-    </span><span class="doccomment">/// Per mode, what direction is this road traversable?
-    </span><span class="kw">pub </span>access: EnumMap&lt;Mode, Direction&gt;,
-
-    <span class="doccomment">/// For cars, the speed limit in meters/second
-    </span><span class="kw">pub </span>max_speed: f64,
+    <span class="doccomment">/// Per profile, what direction is this road traversable?
+    </span><span class="kw">pub </span>access: Vec&lt;Direction&gt;,
+    <span class="doccomment">/// What's the cost of crossing this road? If there's no access, this is ignored. (TODO in
+    /// either direction, for now -- maybe combine with access)
+    </span><span class="kw">pub </span>cost: Vec&lt;Duration&gt;,
 
     <span class="doccomment">/// The bus stops associated with this road
     </span><span class="kw">pub </span>stops: Vec&lt;StopID&gt;,
@@ -360,7 +333,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>features = Vec::new();
 
         <span class="kw">for </span>r <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.roads {
-            features.push(r.to_gj(<span class="kw-2">&amp;</span><span class="self">self</span>.mercator));
+            features.push(r.to_gj(<span class="self">self</span>));
         }
         <span class="kw">for </span>s <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.gtfs.stops {
             features.push(s.to_gj(<span class="kw-2">&amp;</span><span class="self">self</span>.mercator));
@@ -403,10 +376,10 @@
         <span class="prelude-val">None
     </span>}
 
-    <span class="doccomment">/// Given a point (in Mercator) and mode, snap to a position along some road that mode can
+    <span class="doccomment">/// Given a point (in Mercator) and profile, snap to a position along some road that profile can
     /// cross.
-    </span><span class="kw">pub fn </span>snap_to_road(<span class="kw-2">&amp;</span><span class="self">self</span>, pt: Coord, mode: Mode) -&gt; Position {
-        <span class="kw">let </span>r = <span class="self">self</span>.router[mode]
+    </span><span class="kw">pub fn </span>snap_to_road(<span class="kw-2">&amp;</span><span class="self">self</span>, pt: Coord, profile: ProfileID) -&gt; Position {
+        <span class="kw">let </span>r = <span class="self">self</span>.routers[profile.<span class="number">0</span>]
             .closest_road
             .nearest_neighbor(<span class="kw-2">&amp;</span>pt.into())
             .unwrap()
@@ -427,30 +400,35 @@
 }
 
 <span class="kw">impl </span>Road {
-    <span class="doccomment">/// Can this mode cross this road in the forwards direction?
-    </span><span class="kw">pub fn </span>allows_forwards(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: Mode) -&gt; bool {
-        <span class="macro">matches!</span>(<span class="self">self</span>.access[mode], Direction::Forwards | Direction::Both)
+    <span class="doccomment">/// Can this profile cross this road in the forwards direction?
+    </span><span class="kw">pub fn </span>allows_forwards(<span class="kw-2">&amp;</span><span class="self">self</span>, profile: ProfileID) -&gt; bool {
+        <span class="macro">matches!</span>(
+            <span class="self">self</span>.access[profile.<span class="number">0</span>],
+            Direction::Forwards | Direction::Both
+        )
     }
 
-    <span class="doccomment">/// Can this mode cross this road in the backwards direction?
-    </span><span class="kw">pub fn </span>allows_backwards(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: Mode) -&gt; bool {
-        <span class="macro">matches!</span>(<span class="self">self</span>.access[mode], Direction::Backwards | Direction::Both)
+    <span class="doccomment">/// Can this profile cross this road in the backwards direction?
+    </span><span class="kw">pub fn </span>allows_backwards(<span class="kw-2">&amp;</span><span class="self">self</span>, profile: ProfileID) -&gt; bool {
+        <span class="macro">matches!</span>(
+            <span class="self">self</span>.access[profile.<span class="number">0</span>],
+            Direction::Backwards | Direction::Both
+        )
     }
 
-    <span class="kw">pub fn </span>to_gj(<span class="kw-2">&amp;</span><span class="self">self</span>, mercator: <span class="kw-2">&amp;</span>Mercator) -&gt; Feature {
-        <span class="kw">let </span><span class="kw-2">mut </span>f = Feature::from(Geometry::from(<span class="kw-2">&amp;</span>mercator.to_wgs84(<span class="kw-2">&amp;</span><span class="self">self</span>.linestring)));
+    <span class="kw">pub fn </span>to_gj(<span class="kw-2">&amp;</span><span class="self">self</span>, graph: <span class="kw-2">&amp;</span>Graph) -&gt; Feature {
+        <span class="kw">let </span><span class="kw-2">mut </span>f = Feature::from(Geometry::from(<span class="kw-2">&amp;</span>graph.mercator.to_wgs84(<span class="kw-2">&amp;</span><span class="self">self</span>.linestring)));
         <span class="comment">// TODO Rethink most of this -- it's debug info
         </span>f.set_property(<span class="string">"id"</span>, <span class="self">self</span>.id.<span class="number">0</span>);
         f.set_property(<span class="string">"way"</span>, <span class="self">self</span>.way.to_string());
         f.set_property(<span class="string">"node1"</span>, <span class="self">self</span>.node1.to_string());
         f.set_property(<span class="string">"node2"</span>, <span class="self">self</span>.node2.to_string());
-        f.set_property(<span class="string">"access_car"</span>, <span class="macro">format!</span>(<span class="string">"{:?}"</span>, <span class="self">self</span>.access[Mode::Car]));
-        f.set_property(
-            <span class="string">"access_bicycle"</span>,
-            <span class="macro">format!</span>(<span class="string">"{:?}"</span>, <span class="self">self</span>.access[Mode::Bicycle]),
-        );
-        f.set_property(<span class="string">"access_foot"</span>, <span class="macro">format!</span>(<span class="string">"{:?}"</span>, <span class="self">self</span>.access[Mode::Foot]));
-        f.set_property(<span class="string">"max_speed_mph"</span>, <span class="self">self</span>.max_speed * <span class="number">2.23694</span>);
+        <span class="kw">for </span>(profile, id) <span class="kw">in </span><span class="kw-2">&amp;</span>graph.profile_names {
+            f.set_property(
+                <span class="macro">format!</span>(<span class="string">"access_{profile}"</span>),
+                <span class="macro">format!</span>(<span class="string">"{:?}"</span>, <span class="self">self</span>.access[id.<span class="number">0</span>]),
+            );
+        }
         f
     }
 }
