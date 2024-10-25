@@ -1,47 +1,57 @@
 use std::time::Duration;
 
+use geo::{EuclideanLength, LineString};
 use muv_osm::{AccessLevel, TMode};
 use utils::Tags;
 
-use crate::{Direction, Road};
+use crate::Direction;
 
 // TODO Separate profiles like this will repeat work parsing!
 
-pub fn muv_car_profile() -> (String, Box<dyn Fn(&Road) -> (Direction, Duration)>) {
+pub fn muv_car_profile() -> (
+    String,
+    Box<dyn Fn(&Tags, &LineString) -> (Direction, Duration)>,
+) {
     (
         "car".to_string(),
-        Box::new(|road| {
-            let access = calculate_access(&road.osm_tags, TMode::Motorcar);
+        Box::new(|tags, linestring| {
+            let access = calculate_access(tags, TMode::Motorcar);
             let cost =
-                Duration::from_secs_f64(road.length_meters / calculate_max_speed(&road.osm_tags));
+                Duration::from_secs_f64(linestring.euclidean_length() / calculate_max_speed(tags));
             (access, cost)
         }),
     )
 }
 
-pub fn muv_bicycle_profile() -> (String, Box<dyn Fn(&Road) -> (Direction, Duration)>) {
+pub fn muv_bicycle_profile() -> (
+    String,
+    Box<dyn Fn(&Tags, &LineString) -> (Direction, Duration)>,
+) {
     (
         "bicycle".to_string(),
-        Box::new(|road| {
-            let access = calculate_access(&road.osm_tags, TMode::Bicycle);
+        Box::new(|tags, linestring| {
+            let access = calculate_access(tags, TMode::Bicycle);
             // TODO Use elevation and other more detailed things
             // 10 mph
             let max_bicycle_speed = 4.4704;
-            let cost = Duration::from_secs_f64(road.length_meters / max_bicycle_speed);
+            let cost = Duration::from_secs_f64(linestring.euclidean_length() / max_bicycle_speed);
             (access, cost)
         }),
     )
 }
 
-pub fn muv_pedestrian_profile() -> (String, Box<dyn Fn(&Road) -> (Direction, Duration)>) {
+pub fn muv_pedestrian_profile() -> (
+    String,
+    Box<dyn Fn(&Tags, &LineString) -> (Direction, Duration)>,
+) {
     (
         "foot".to_string(),
-        Box::new(|road| {
-            let access = calculate_access(&road.osm_tags, TMode::Foot);
+        Box::new(|tags, linestring| {
+            let access = calculate_access(tags, TMode::Foot);
             // TODO Use elevation and other more detailed things
             // 3 mph
             let max_foot_speed = 1.34112;
-            let cost = Duration::from_secs_f64(road.length_meters / max_foot_speed);
+            let cost = Duration::from_secs_f64(linestring.euclidean_length() / max_foot_speed);
             (access, cost)
         }),
     )

@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use anyhow::Result;
-use geo::EuclideanLength;
+use geo::{EuclideanLength, LineString};
+use utils::Tags;
 
 use crate::gtfs::GtfsModel;
 use crate::route::Router;
@@ -13,23 +14,34 @@ impl Graph {
     ///
     /// - `input_bytes`: Bytes of an osm.pbf or osm.xml file
     /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
-    /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost to
-    ///    each Road.
+    /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost,
+    ///   given OSM tags and a Euclidean center-line. If every profile assigns `Direction::None`,
+    ///   then the Road is completely excluded from the graph.
     pub fn new<R: utils::osm2graph::OsmReader>(
         input_bytes: &[u8],
         osm_reader: &mut R,
-        profiles: Vec<(String, Box<dyn Fn(&Road) -> (Direction, Duration)>)>,
+        profiles: Vec<(
+            String,
+            Box<dyn Fn(&Tags, &LineString) -> (Direction, Duration)>,
+        )>,
         timer: &mut Timer,
     ) -> Result<Graph> {
         timer.step("parse OSM and split graph");
 
         let graph = utils::osm2graph::Graph::new(
             input_bytes,
-            // Don't do any filtering by profile yet
-            // TODO Actually, see if any profile accepts it. But can we avoid calling the profiles
-            // twice?
             |tags| {
-                tags.has("highway") && !tags.is("highway", "proposed") && !tags.is("area", "yes")
+                if !tags.has("highway") || tags.is("highway", "proposed") || tags.is("area", "yes")
+                {
+                    return false;
+                }
+                // Make sure at least one profile allows access
+                // TODO It's weird to pass in an empty linestring
+                // TODO It's inefficient to call the profiles twice
+                let empty = LineString::new(Vec::new());
+                profiles
+                    .iter()
+                    .any(|(_, profile)| profile(tags, &empty).0 != Direction::None)
             },
             osm_reader,
         )?;
@@ -73,7 +85,7 @@ impl Graph {
             let mut access = Vec::new();
             let mut cost = Vec::new();
             for (_, profile) in &profiles {
-                let (dir, c) = profile(road);
+                let (dir, c) = profile(&road.osm_tags, &road.linestring);
                 access.push(dir);
                 cost.push(c);
             }
@@ -90,6 +102,7 @@ impl Graph {
 
             profile_names.insert(name, ProfileID(idx));
         }
+        timer.pop();
 
         Ok(Graph {
             roads,
