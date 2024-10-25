@@ -166,6 +166,23 @@ impl Graph {
             intersection,
         }
     }
+
+    pub fn add_profile(
+        &mut self,
+        name: String,
+        profile: Box<dyn Fn(&Tags, &LineString) -> (Direction, Duration)>,
+    ) -> ProfileID {
+        for road in &mut self.roads {
+            let (dir, c) = profile(&road.osm_tags, &road.linestring);
+            road.access.push(dir);
+            road.cost.push(c);
+        }
+
+        let id = ProfileID(self.profile_names.len());
+        self.routers.push(Router::new(&self.roads, id));
+        self.profile_names.insert(name, id);
+        id
+    }
 }
 
 impl Road {

@@ -8,7 +8,7 @@ use chrono::NaiveTime;
 use clap::{Parser, Subcommand};
 use geo::{Contains, Coord, EuclideanLength, LineString, Point};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
-use graph::{Graph, GtfsModel, ProfileID, Route, Router, Timer};
+use graph::{Direction, Graph, GtfsModel, ProfileID, Route, Timer};
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser)]
@@ -90,12 +90,20 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
     let mut timer = Timer::new("snap routes", None);
 
     timer.step("load model");
-    let model: MapModel = bincode::deserialize(&fs_err::read(&model_path)?)?;
-    let graph = model.graph();
-    let profile = graph.profile_names["bicycle"];
+    let mut model: MapModel = bincode::deserialize(&fs_err::read(&model_path)?)?;
 
     timer.step("prepare distance-based routing");
-    let router = Router::by_distance(&graph.roads);
+    let distance_profile = model.graph_mut().add_profile(
+        "distance".to_string(),
+        Box::new(|_, linestring| {
+            (
+                Direction::Both,
+                Duration::from_secs_f64(linestring.euclidean_length()),
+            )
+        }),
+    );
+
+    let graph = model.graph();
 
     timer.step("snap routes");
     let mut features = Vec::new();
@@ -122,7 +130,7 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
 
         graph.mercator.to_mercator_in_place(&mut input.geometry);
 
-        match snap(&input, graph, &router, profile) {
+        match snap(&input, graph, distance_profile) {
             Ok(route) => {
                 let output = route.linestring(graph);
                 let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&output)));
@@ -175,7 +183,7 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
     let start_time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
     fs_err::write(
         "buffered.geojson",
-        model.buffer_routes(routes, profile, start_time, limit)?,
+        model.buffer_routes(routes, graph.profile_names["bicycle"], start_time, limit)?,
     )?;
 
     timer.done();
@@ -209,12 +217,7 @@ struct Waypoint {
     snapped: bool,
 }
 
-fn snap(
-    input: &GeoJsonLineString,
-    graph: &Graph,
-    router: &Router,
-    profile: ProfileID,
-) -> Result<Route> {
+fn snap(input: &GeoJsonLineString, graph: &Graph, profile: ProfileID) -> Result<Route> {
     // Use waypoints if they're all snapped
     if !input.waypoints.is_empty() && input.waypoints.iter().all(|waypt| waypt.snapped) {
         let pts: Vec<Coord> = input
@@ -232,12 +235,7 @@ fn snap(
         }
         let mut routes = Vec::new();
         for pair in pts.windows(2) {
-            routes.push(hack_snap_route(
-                &LineString::new(pair.to_vec()),
-                graph,
-                router,
-                profile,
-            )?);
+            routes.push(graph.snap_route(&LineString::new(pair.to_vec()), profile)?);
         }
 
         // TODO Naively concatenate
@@ -253,17 +251,4 @@ fn snap(
     }
 
     bail!("TODO, skip without all snapped waypoints");
-    //hack_snap_route(&input.geometry, graph, router)
-}
-
-// TODO API is getting so messy
-fn hack_snap_route(
-    input: &LineString,
-    graph: &Graph,
-    router: &Router,
-    profile: ProfileID,
-) -> Result<Route> {
-    let start = graph.snap_to_road(*input.coords().next().unwrap(), profile);
-    let end = graph.snap_to_road(*input.coords().last().unwrap(), profile);
-    router.route(graph, start, end)
 }

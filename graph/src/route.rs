@@ -79,47 +79,6 @@ impl Router {
         }
     }
 
-    /// Create a router allowing every road in both directions, and just costing by distance.
-    /// TODO Rethink the APIs here
-    pub fn by_distance(roads: &Vec<Road>) -> Self {
-        let mut input_graph = InputGraph::new();
-        let mut node_map = NodeMap::new();
-
-        for road in roads {
-            // cm
-            let cost = (road.length_meters * 100.0) as usize;
-            let node1 = node_map.get_or_insert(road.src_i);
-            let node2 = node_map.get_or_insert(road.dst_i);
-
-            // Loops aren't ever part of a shortest path, and fast_paths warns loudly, so just skip
-            if node1 == node2 {
-                continue;
-            }
-
-            input_graph.add_edge(node1, node2, cost);
-            input_graph.add_edge(node2, node1, cost);
-        }
-        input_graph.freeze();
-        let ch = fast_paths::prepare(&input_graph);
-
-        let path_calc = RefCell::new(Some(fast_paths::create_calculator(&ch)));
-
-        let closest_road = RTree::bulk_load(
-            roads
-                .iter()
-                .map(|r| EdgeLocation::new(r.linestring.clone(), r.id))
-                .collect(),
-        );
-
-        Self {
-            node_map,
-            ch,
-            path_calc,
-
-            closest_road,
-        }
-    }
-
     /// Calculates a route between two positions.
     pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<Route> {
         debug!("route from {start:?} to {end:?}");

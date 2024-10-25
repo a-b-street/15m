@@ -320,6 +320,10 @@ impl MapModel {
     pub fn graph(&self) -> &Graph {
         &self.graph
     }
+
+    pub fn graph_mut(&mut self) -> &mut Graph {
+        &mut self.graph
+    }
 }
 
 #[derive(Deserialize)]
