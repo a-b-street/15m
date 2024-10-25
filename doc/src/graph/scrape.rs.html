@@ -164,11 +164,25 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>anyhow::Result;
-<span class="kw">use </span>geo::EuclideanLength;
+<span class="kw">use </span>geo::{EuclideanLength, LineString};
+<span class="kw">use </span>utils::Tags;
 
 <span class="kw">use </span><span class="kw">crate</span>::gtfs::GtfsModel;
 <span class="kw">use </span><span class="kw">crate</span>::route::Router;
@@ -179,23 +193,34 @@
     ///
     /// - `input_bytes`: Bytes of an osm.pbf or osm.xml file
     /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
-    /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost to
-    ///    each Road.
+    /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost,
+    ///   given OSM tags and a Euclidean center-line. If every profile assigns `Direction::None`,
+    ///   then the Road is completely excluded from the graph.
     </span><span class="kw">pub fn </span>new&lt;R: utils::osm2graph::OsmReader&gt;(
         input_bytes: <span class="kw-2">&amp;</span>[u8],
         osm_reader: <span class="kw-2">&amp;mut </span>R,
-        profiles: Vec&lt;(String, Box&lt;<span class="kw">dyn </span>Fn(<span class="kw-2">&amp;</span>Road) -&gt; (Direction, Duration)&gt;)&gt;,
+        profiles: Vec&lt;(
+            String,
+            Box&lt;<span class="kw">dyn </span>Fn(<span class="kw-2">&amp;</span>Tags, <span class="kw-2">&amp;</span>LineString) -&gt; (Direction, Duration)&gt;,
+        )&gt;,
         timer: <span class="kw-2">&amp;mut </span>Timer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Graph&gt; {
         timer.step(<span class="string">"parse OSM and split graph"</span>);
 
         <span class="kw">let </span>graph = utils::osm2graph::Graph::new(
             input_bytes,
-            <span class="comment">// Don't do any filtering by profile yet
-            // TODO Actually, see if any profile accepts it. But can we avoid calling the profiles
-            // twice?
-            </span>|tags| {
-                tags.has(<span class="string">"highway"</span>) &amp;&amp; !tags.is(<span class="string">"highway"</span>, <span class="string">"proposed"</span>) &amp;&amp; !tags.is(<span class="string">"area"</span>, <span class="string">"yes"</span>)
+            |tags| {
+                <span class="kw">if </span>!tags.has(<span class="string">"highway"</span>) || tags.is(<span class="string">"highway"</span>, <span class="string">"proposed"</span>) || tags.is(<span class="string">"area"</span>, <span class="string">"yes"</span>)
+                {
+                    <span class="kw">return </span><span class="bool-val">false</span>;
+                }
+                <span class="comment">// Make sure at least one profile allows access
+                // TODO It's weird to pass in an empty linestring
+                // TODO It's inefficient to call the profiles twice
+                </span><span class="kw">let </span>empty = LineString::new(Vec::new());
+                profiles
+                    .iter()
+                    .any(|(<span class="kw">_</span>, profile)| profile(tags, <span class="kw-2">&amp;</span>empty).<span class="number">0 </span>!= Direction::None)
             },
             osm_reader,
         )<span class="question-mark">?</span>;
@@ -239,7 +264,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>access = Vec::new();
             <span class="kw">let </span><span class="kw-2">mut </span>cost = Vec::new();
             <span class="kw">for </span>(<span class="kw">_</span>, profile) <span class="kw">in </span><span class="kw-2">&amp;</span>profiles {
-                <span class="kw">let </span>(dir, c) = profile(road);
+                <span class="kw">let </span>(dir, c) = profile(<span class="kw-2">&amp;</span>road.osm_tags, <span class="kw-2">&amp;</span>road.linestring);
                 access.push(dir);
                 cost.push(c);
             }
@@ -256,6 +281,7 @@
 
             profile_names.insert(name, ProfileID(idx));
         }
+        timer.pop();
 
         <span class="prelude-val">Ok</span>(Graph {
             roads,
