@@ -79,6 +79,41 @@ impl Router {
         }
     }
 
+    /// After the caller has manually updated per-road costs, this will recalculate the contraction
+    /// hierarchy. Note that access must remain the same!
+    pub fn update_costs(&mut self, roads: &Vec<Road>, profile: ProfileID) {
+        let mut input_graph = InputGraph::new();
+        for road in roads {
+            let cost = road.cost[profile.0].as_millis() as usize;
+            let node1 = self
+                .node_map
+                .get(road.src_i)
+                .expect("new intersections somehow added");
+            let node2 = self
+                .node_map
+                .get(road.dst_i)
+                .expect("new intersections somehow added");
+
+            // Loops aren't ever part of a shortest path, and fast_paths warns loudly, so just skip
+            if node1 == node2 {
+                continue;
+            }
+
+            if road.allows_forwards(profile) {
+                input_graph.add_edge(node1, node2, cost);
+            }
+            if road.allows_backwards(profile) {
+                input_graph.add_edge(node2, node1, cost);
+            }
+        }
+        input_graph.freeze();
+
+        let node_ordering = self.ch.get_node_ordering();
+        let ch = fast_paths::prepare_with_order(&input_graph, &node_ordering)
+            .expect("prepare_with_order failed");
+        self.ch = ch;
+    }
+
     /// Calculates a route between two positions.
     pub fn route(&self, graph: &Graph, start: Position, end: Position) -> Result<Route> {
         debug!("route from {start:?} to {end:?}");
