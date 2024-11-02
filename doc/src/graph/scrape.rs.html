@@ -181,7 +181,7 @@
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>anyhow::Result;
-<span class="kw">use </span>geo::{EuclideanLength, LineString};
+<span class="kw">use </span>geo::{Euclidean, Length, LineString};
 <span class="kw">use </span>utils::Tags;
 
 <span class="kw">use </span><span class="kw">crate</span>::gtfs::GtfsModel;
@@ -250,7 +250,7 @@
                 node1: e.osm_node1,
                 node2: e.osm_node2,
                 osm_tags: e.osm_tags,
-                length_meters: e.linestring.euclidean_length(),
+                length_meters: e.linestring.length::&lt;Euclidean&gt;(),
                 linestring: e.linestring,
 
                 access: Vec::new(),

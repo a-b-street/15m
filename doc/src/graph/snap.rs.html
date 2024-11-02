@@ -132,8 +132,8 @@
 <a href="#132" id="132">132</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>geo::{
-    Closest, ClosestPoint, EuclideanDistance, EuclideanLength, LineInterpolatePoint,
-    LineLocatePoint, LineString,
+    Closest, ClosestPoint, Distance, Euclidean, Length, LineInterpolatePoint, LineLocatePoint,
+    LineString,
 };
 
 <span class="kw">use crate</span>::{Graph, IntersectionID, PathStep, ProfileID, Route};
@@ -181,7 +181,7 @@
                             </span><span class="kw">let </span>new_fraction_along = input.line_locate_point(<span class="kw-2">&amp;</span>pt)<span class="question-mark">?</span>;
                             <span class="kw">if </span>new_fraction_along &gt; fraction_along {
                                 <span class="kw">let </span>dist = (<span class="number">100.0
-                                    </span>* pt.euclidean_distance(<span class="kw-2">&amp;</span><span class="self">self</span>.intersections[i.<span class="number">0</span>].point))
+                                    </span>* Euclidean::distance(pt, <span class="self">self</span>.intersections[i.<span class="number">0</span>].point))
                                     <span class="kw">as </span>usize;
                                 <span class="prelude-val">Some</span>((i, step, dist, new_fraction_along))
                             } <span class="kw">else </span>{
@@ -240,8 +240,8 @@
 <span class="comment">// TODO Reconsider exposing
 </span><span class="kw">pub fn </span>score_similarity(ls1: <span class="kw-2">&amp;</span>LineString, ls2: <span class="kw-2">&amp;</span>LineString) -&gt; <span class="prelude-ty">Option</span>&lt;(f64, f64)&gt; {
     <span class="comment">// Just check length
-    </span><span class="kw">let </span>len1 = ls1.euclidean_length();
-    <span class="kw">let </span>len2 = ls2.euclidean_length();
+    </span><span class="kw">let </span>len1 = ls1.length::&lt;Euclidean&gt;();
+    <span class="kw">let </span>len2 = ls2.length::&lt;Euclidean&gt;();
     <span class="kw">let </span>len_pct = <span class="kw">if </span>len1 &lt; len2 {
         len2 / len1
     } <span class="kw">else </span>{
@@ -257,7 +257,7 @@
         </span><span class="kw">let </span>pt1 = ls1.line_interpolate_point(pct)<span class="question-mark">?</span>;
         <span class="kw">let </span>pt2 = ls2.line_interpolate_point(pct)<span class="question-mark">?</span>;
 
-        dist_between_equiv_pts += pt1.euclidean_distance(<span class="kw-2">&amp;</span>pt2);
+        dist_between_equiv_pts += Euclidean::distance(pt1, pt2);
     }
 
     <span class="prelude-val">Some</span>((len_pct, dist_between_equiv_pts))

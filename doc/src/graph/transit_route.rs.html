@@ -294,7 +294,7 @@
 
 <span class="kw">use </span>anyhow::{bail, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>chrono::NaiveTime;
-<span class="kw">use </span>geo::{EuclideanDistance, LineString};
+<span class="kw">use </span>geo::{Distance, Euclidean, LineString};
 <span class="kw">use </span>geojson::{Feature, GeoJson, Geometry};
 <span class="kw">use </span>utils::PriorityQueueItem;
 
@@ -326,7 +326,7 @@
         </span><span class="kw">let </span>heuristic = |i: IntersectionID| {
             <span class="kw">if </span>use_heuristic {
                 Duration::from_secs_f64(
-                    <span class="self">self</span>.intersections[i.<span class="number">0</span>].point.euclidean_distance(<span class="kw-2">&amp;</span>end_pt) / <span class="number">1.34112</span>,
+                    Euclidean::distance(<span class="self">self</span>.intersections[i.<span class="number">0</span>].point, end_pt) / <span class="number">1.34112</span>,
                 )
             } <span class="kw">else </span>{
                 Duration::ZERO
