@@ -6,7 +6,7 @@ use anyhow::{bail, Result};
 use backend::MapModel;
 use chrono::NaiveTime;
 use clap::{Parser, Subcommand};
-use geo::{Contains, Coord, EuclideanLength, LineString, Point};
+use geo::{Contains, Coord, Euclidean, Length, LineString, Point};
 use geojson::{de::deserialize_geometry, Feature, GeoJson, Geometry};
 use graph::{Direction, Graph, GtfsModel, ProfileID, Route, Timer};
 use serde::{Deserialize, Serialize};
@@ -98,7 +98,7 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
         Box::new(|_, linestring| {
             (
                 Direction::Both,
-                Duration::from_secs_f64(linestring.euclidean_length()),
+                Duration::from_secs_f64(linestring.length::<Euclidean>()),
             )
         }),
     );
@@ -144,8 +144,8 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
                     if len_pct > 10.0 {
                         println!(
                             "  Skipping; this is too likely wrong. Input length {}, output {}",
-                            input.geometry.euclidean_length(),
-                            output.euclidean_length()
+                            input.geometry.length::<Euclidean>(),
+                            output.length::<Euclidean>()
                         );
                         errors += 1;
                         continue;
@@ -155,7 +155,10 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
                     f.set_property("dist_between_equiv_pts", dist_between_equiv_pts);
                     len_pcts.push(len_pct);
                 } else {
-                    println!("scoring broke! output len is {}", output.euclidean_length());
+                    println!(
+                        "scoring broke! output len is {}",
+                        output.length::<Euclidean>()
+                    );
                 }
 
                 // Only show inputs successfully snapped (to conveniently clip, for now)

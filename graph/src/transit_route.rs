@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 use chrono::NaiveTime;
-use geo::{EuclideanDistance, LineString};
+use geo::{Distance, Euclidean, LineString};
 use geojson::{Feature, GeoJson, Geometry};
 use utils::PriorityQueueItem;
 
@@ -36,7 +36,7 @@ impl Graph {
         let heuristic = |i: IntersectionID| {
             if use_heuristic {
                 Duration::from_secs_f64(
-                    self.intersections[i.0].point.euclidean_distance(&end_pt) / 1.34112,
+                    Euclidean::distance(self.intersections[i.0].point, end_pt) / 1.34112,
                 )
             } else {
                 Duration::ZERO

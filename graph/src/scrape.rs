@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use anyhow::Result;
-use geo::{EuclideanLength, LineString};
+use geo::{Euclidean, Length, LineString};
 use utils::Tags;
 
 use crate::gtfs::GtfsModel;
@@ -71,7 +71,7 @@ impl Graph {
                 node1: e.osm_node1,
                 node2: e.osm_node2,
                 osm_tags: e.osm_tags,
-                length_meters: e.linestring.euclidean_length(),
+                length_meters: e.linestring.length::<Euclidean>(),
                 linestring: e.linestring,
 
                 access: Vec::new(),

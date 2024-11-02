@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use chrono::NaiveTime;
-use geo::{Coord, Densify, Rect};
+use geo::{Coord, Densify, Euclidean, Rect};
 use geojson::{Feature, Geometry};
 use graph::{Graph, ProfileID, Timer};
 use serde::Deserialize;
@@ -66,7 +66,11 @@ pub fn calculate(
             );
 
             for (r, cost) in cost_per_road {
-                for pt in graph.roads[r.0].linestring.densify(RESOLUTION_M / 2.0).0 {
+                for pt in graph.roads[r.0]
+                    .linestring
+                    .densify::<Euclidean>(RESOLUTION_M / 2.0)
+                    .0
+                {
                     let grid_idx = grid.idx(
                         (pt.x / RESOLUTION_M) as usize,
                         (pt.y / RESOLUTION_M) as usize,

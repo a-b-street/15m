@@ -1,7 +1,7 @@
 use anyhow::Result;
 use geo::{
-    Closest, ClosestPoint, EuclideanDistance, EuclideanLength, LineInterpolatePoint,
-    LineLocatePoint, LineString,
+    Closest, ClosestPoint, Distance, Euclidean, Length, LineInterpolatePoint, LineLocatePoint,
+    LineString,
 };
 
 use crate::{Graph, IntersectionID, PathStep, ProfileID, Route};
@@ -49,7 +49,7 @@ impl Graph {
                             let new_fraction_along = input.line_locate_point(&pt)?;
                             if new_fraction_along > fraction_along {
                                 let dist = (100.0
-                                    * pt.euclidean_distance(&self.intersections[i.0].point))
+                                    * Euclidean::distance(pt, self.intersections[i.0].point))
                                     as usize;
                                 Some((i, step, dist, new_fraction_along))
                             } else {
@@ -108,8 +108,8 @@ impl Graph {
 // TODO Reconsider exposing
 pub fn score_similarity(ls1: &LineString, ls2: &LineString) -> Option<(f64, f64)> {
     // Just check length
-    let len1 = ls1.euclidean_length();
-    let len2 = ls2.euclidean_length();
+    let len1 = ls1.length::<Euclidean>();
+    let len2 = ls2.length::<Euclidean>();
     let len_pct = if len1 < len2 {
         len2 / len1
     } else {
@@ -125,7 +125,7 @@ pub fn score_similarity(ls1: &LineString, ls2: &LineString) -> Option<(f64, f64)
         let pt1 = ls1.line_interpolate_point(pct)?;
         let pt2 = ls2.line_interpolate_point(pct)?;
 
-        dist_between_equiv_pts += pt1.euclidean_distance(&pt2);
+        dist_between_equiv_pts += Euclidean::distance(pt1, pt2);
     }
 
     Some((len_pct, dist_between_equiv_pts))
