@@ -135,6 +135,11 @@ impl Graph {
 
     /// Find the Road going from `i1` to `i2` or vice versa
     pub fn find_edge(&self, i1: IntersectionID, i2: IntersectionID) -> Option<&Road> {
+        // TODO Maybe disallow this entirely
+        if i1 == i2 {
+            warn!("find_edge({i1:?}, {i2:?}) called -- this might be unintentional");
+        }
+
         // TODO Store lookup table
         for r in &self.intersections[i1.0].roads {
             let road = &self.roads[r.0];
