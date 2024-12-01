@@ -278,6 +278,35 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 
 <span class="kw">use </span>anyhow::{bail, <span class="prelude-ty">Result</span>};
@@ -486,13 +515,37 @@
 <span class="kw">impl </span>Route {
     <span class="doccomment">/// Renders a route as a linestring (in Mercator), with precise positions at the start and end.
     </span><span class="kw">pub fn </span>linestring(<span class="kw-2">&amp;</span><span class="self">self</span>, graph: <span class="kw-2">&amp;</span>Graph) -&gt; LineString {
+        <span class="self">self</span>.split_linestrings(graph, |<span class="kw">_</span>| ()).pop().unwrap().<span class="number">0
+    </span>}
+
+    <span class="doccomment">/// Renders a route as a linestring (in Mercator), with precise positions at the start and end.
+    /// Optionally splits when some function on PathSteps produces a different value.
+    </span><span class="kw">pub fn </span>split_linestrings&lt;T: Copy + PartialEq, F: Fn(RoadID) -&gt; T&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        graph: <span class="kw-2">&amp;</span>Graph,
+        key: F,
+    ) -&gt; Vec&lt;(LineString, T)&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::new();
+
         <span class="kw">let </span><span class="kw-2">mut </span>pts = Vec::new();
-        <span class="macro">debug!</span>(<span class="string">"turning {} steps into linestring"</span>, <span class="self">self</span>.steps.len());
-        <span class="macro">debug!</span>(<span class="string">"route start is {:?}, end is {:?}"</span>, <span class="self">self</span>.start, <span class="self">self</span>.end);
+        <span class="kw">let </span><span class="kw-2">mut </span>current_key = <span class="prelude-val">None</span>;
+
         <span class="kw">for </span>(pos, step) <span class="kw">in </span><span class="self">self</span>.steps.iter().with_position() {
             <span class="kw">match </span>step {
                 PathStep::Road { road, forwards } =&gt; {
-                    <span class="macro">debug!</span>(<span class="string">"step on {road:?}, forwards = {forwards}"</span>);
+                    <span class="kw">let </span>this_key = key(<span class="kw-2">*</span>road);
+                    <span class="kw">if </span>current_key.is_none() {
+                        current_key = <span class="prelude-val">Some</span>(this_key);
+                    } <span class="kw">else if </span>current_key != <span class="prelude-val">Some</span>(this_key) {
+                        <span class="comment">// Something new
+                        </span>pts.dedup();
+                        results.push((
+                            LineString::new(std::mem::take(<span class="kw-2">&amp;mut </span>pts)),
+                            current_key.take().unwrap(),
+                        ));
+                        current_key = <span class="prelude-val">Some</span>(this_key);
+                    }
+
                     pts.extend(slice_road_step(
                         <span class="kw-2">&amp;</span>graph.roads[road.<span class="number">0</span>].linestring,
                         <span class="kw-2">*</span>forwards,
@@ -504,8 +557,13 @@
                 PathStep::Transit { .. } =&gt; <span class="macro">unreachable!</span>(),
             }
         }
+
         pts.dedup();
-        LineString::new(pts)
+        results.push((
+            LineString::new(std::mem::take(<span class="kw-2">&amp;mut </span>pts)),
+            current_key.take().unwrap(),
+        ));
+        results
     }
 }
 
