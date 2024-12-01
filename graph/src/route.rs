@@ -206,13 +206,37 @@ impl Router {
 impl Route {
     /// Renders a route as a linestring (in Mercator), with precise positions at the start and end.
     pub fn linestring(&self, graph: &Graph) -> LineString {
+        self.split_linestrings(graph, |_| ()).pop().unwrap().0
+    }
+
+    /// Renders a route as a linestring (in Mercator), with precise positions at the start and end.
+    /// Optionally splits when some function on PathSteps produces a different value.
+    pub fn split_linestrings<T: Copy + PartialEq, F: Fn(RoadID) -> T>(
+        &self,
+        graph: &Graph,
+        key: F,
+    ) -> Vec<(LineString, T)> {
+        let mut results = Vec::new();
+
         let mut pts = Vec::new();
-        debug!("turning {} steps into linestring", self.steps.len());
-        debug!("route start is {:?}, end is {:?}", self.start, self.end);
+        let mut current_key = None;
+
         for (pos, step) in self.steps.iter().with_position() {
             match step {
                 PathStep::Road { road, forwards } => {
-                    debug!("step on {road:?}, forwards = {forwards}");
+                    let this_key = key(*road);
+                    if current_key.is_none() {
+                        current_key = Some(this_key);
+                    } else if current_key != Some(this_key) {
+                        // Something new
+                        pts.dedup();
+                        results.push((
+                            LineString::new(std::mem::take(&mut pts)),
+                            current_key.take().unwrap(),
+                        ));
+                        current_key = Some(this_key);
+                    }
+
                     pts.extend(slice_road_step(
                         &graph.roads[road.0].linestring,
                         *forwards,
@@ -224,8 +248,13 @@ impl Route {
                 PathStep::Transit { .. } => unreachable!(),
             }
         }
+
         pts.dedup();
-        LineString::new(pts)
+        results.push((
+            LineString::new(std::mem::take(&mut pts)),
+            current_key.take().unwrap(),
+        ));
+        results
     }
 }
 
