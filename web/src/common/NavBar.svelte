@@ -33,6 +33,13 @@
 
     <li>
       <button
+        on:click={() => ($mode = { kind: "coverage" })}
+        disabled={$mode.kind == "coverage"}>Coverage</button
+      >
+    </li>
+
+    <li>
+      <button
         on:click={() => ($mode = { kind: "upload-route" })}
         disabled={$mode.kind == "upload-route"}>Upload a route</button
       >

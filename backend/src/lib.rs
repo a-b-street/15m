@@ -108,10 +108,16 @@ impl MapModel {
     #[wasm_bindgen(js_name = isochrone)]
     pub fn isochrone(&self, input: JsValue) -> Result<String, JsValue> {
         let req: IsochroneRequest = serde_wasm_bindgen::from_value(input)?;
-        let start = self
-            .graph
-            .mercator
-            .pt_to_mercator(Coord { x: req.x, y: req.y });
+        let start = if req.from_amenity.is_empty() {
+            isochrone::Source::Single(
+                self.graph
+                    .mercator
+                    .pt_to_mercator(Coord { x: req.x, y: req.y }),
+            )
+        } else {
+            isochrone::Source::FromAmenity(req.from_amenity)
+        };
+
         let profile = self.parse_profile(&req.profile)?;
         isochrone::calculate(
             &self.graph,
@@ -331,6 +337,9 @@ pub struct IsochroneRequest {
     // TODO Rename lon, lat to be clear?
     x: f64,
     y: f64,
+    // TODO Improve this API -- it's an enum, either a single start, or from every amenity
+    from_amenity: String,
+
     profile: String,
     transit: bool,
     style: String,

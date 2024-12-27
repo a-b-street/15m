@@ -17,10 +17,15 @@ pub enum Style {
     Contours,
 }
 
+pub enum Source {
+    Single(Coord),
+    FromAmenity(String),
+}
+
 pub fn calculate(
     graph: &Graph,
     amenities: &Amenities,
-    req: Coord,
+    source: Source,
     profile: ProfileID,
     style: Style,
     public_transit: bool,
@@ -28,9 +33,34 @@ pub fn calculate(
     limit: Duration,
     mut timer: Timer,
 ) -> Result<String> {
+    let mut starts = Vec::new();
+    match source {
+        Source::Single(pt) => {
+            starts.push(graph.snap_to_road(pt, profile).intersection);
+        }
+        Source::FromAmenity(kind) => {
+            for (r, lists) in amenities.per_road.iter().enumerate() {
+                for a in &lists[profile.0] {
+                    let amenity = &amenities.amenities[a.0];
+                    if amenity.kind == kind {
+                        let road = &graph.roads[r];
+                        // TODO Which intersection is closer? Just start from either
+                        starts.push(road.src_i);
+                        starts.push(road.dst_i);
+                    }
+                }
+            }
+            starts.sort();
+            starts.dedup();
+            if starts.is_empty() {
+                bail!("No amenities of kind {kind}");
+            }
+        }
+    }
+
     timer.step("get_costs");
     let cost_per_road = graph.get_costs(
-        vec![graph.snap_to_road(req, profile).intersection],
+        starts,
         profile,
         public_transit,
         start_time,

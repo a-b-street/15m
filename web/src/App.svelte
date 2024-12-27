@@ -19,6 +19,7 @@
   import RouteMode from "./RouteMode.svelte";
   import DebugRouteMode from "./DebugRouteMode.svelte";
   import ScoreMode from "./ScoreMode.svelte";
+  import CoverageMode from "./CoverageMode.svelte";
   import {
     map as mapStore,
     mode,
@@ -171,6 +172,8 @@
           <RouteMode />
         {:else if $mode.kind == "score"}
           <ScoreMode />
+        {:else if $mode.kind == "coverage"}
+          <CoverageMode />
         {:else if $mode.kind == "debug-route"}
           <DebugRouteMode
             debugGj={$mode.debugGj}

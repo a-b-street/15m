@@ -13,6 +13,7 @@ export type Mode =
   | { kind: "isochrone" }
   | { kind: "route" }
   | { kind: "score" }
+  | { kind: "coverage" }
   | {
       kind: "debug-route";
       debugGj: FeatureCollection;
@@ -45,6 +46,7 @@ export let useHeuristic = writable(true);
 export let showRouteBuffer = writable(false);
 export let showRouteBufferPopulation = writable(false);
 export let isochroneMins = writable(15);
+export let coverageMins = writable(1);
 export let bufferMins = writable(5);
 
 // TODO Does this need to be a store?

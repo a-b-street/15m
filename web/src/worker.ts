@@ -109,6 +109,32 @@ export class Backend {
       this.inner.isochrone({
         x: req.start.lng,
         y: req.start.lat,
+        from_amenity: "",
+        profile: req.profile == "transit" ? "foot" : req.profile,
+        transit: req.profile == "transit",
+        style: req.style,
+        start_time: req.startTime,
+        max_seconds: req.maxSeconds,
+      }),
+    );
+  }
+
+  isochroneFromAmenity(req: {
+    fromAmenity: string;
+    profile: Profile;
+    style: string;
+    startTime: string;
+    maxSeconds: number;
+  }): FeatureCollection {
+    if (!this.inner) {
+      throw new Error("Backend used without a file loaded");
+    }
+
+    return JSON.parse(
+      this.inner.isochrone({
+        x: 0,
+        y: 0,
+        from_amenity: req.fromAmenity,
         profile: req.profile == "transit" ? "foot" : req.profile,
         transit: req.profile == "transit",
         style: req.style,
