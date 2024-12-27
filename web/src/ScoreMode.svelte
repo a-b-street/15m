@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { downloadGeneratedFile } from "svelte-utils";
   import * as Comlink from "comlink";
   import { Loading, NavBar, PickAmenityKinds, PickProfile } from "./common";
   import type { Feature, FeatureCollection, Point } from "geojson";
@@ -74,6 +75,12 @@
     }
   }
   $: updateRoute(hoveredAmenity);
+
+  function download() {
+    if (gj) {
+      downloadGeneratedFile("15m_scores.geojson", JSON.stringify(gj));
+    }
+  }
 </script>
 
 {#if gj == null}
@@ -124,6 +131,10 @@
         target="_blank">OpenStreetMap Carto</a
       >
     </p>
+
+    <button class="secondary" on:click={download} disabled={gj == null}
+      >Download results</button
+    >
   </div>
   <div slot="map">
     {#if gj}
