@@ -1,45 +1,45 @@
 <script lang="ts">
   import "@picocss/pico/css/pico.jade.min.css";
-  import cycleParking from "../assets/bicycle_parking.png?url";
-  import logo from "../assets/logo_light.svg?url";
-  import About from "./About.svelte";
-  import { notNull } from "svelte-utils";
-  import { Geocoder } from "svelte-utils/map";
+  import * as Comlink from "comlink";
   import type { Map } from "maplibre-gl";
+  import maplibregl from "maplibre-gl";
+  // TODO Indirect dependencies
+  import * as pmtiles from "pmtiles";
   import { onMount } from "svelte";
   import { FillLayer, GeoJSON, MapLibre } from "svelte-maplibre";
+  import { notNull } from "svelte-utils";
+  import { Geocoder } from "svelte-utils/map";
   import {
     Layout,
     mapContents,
     sidebarContents,
     topContents,
   } from "svelte-utils/top_bar_layout";
+  import cycleParking from "../assets/bicycle_parking.png?url";
+  import logo from "../assets/logo_light.svg?url";
+  import About from "./About.svelte";
+  import { PopulationLayer } from "./common";
+  import CoverageMode from "./CoverageMode.svelte";
   import DebugMode from "./DebugMode.svelte";
+  import DebugRouteMode from "./DebugRouteMode.svelte";
   import IsochroneMode from "./IsochroneMode.svelte";
   import RouteMode from "./RouteMode.svelte";
-  import DebugRouteMode from "./DebugRouteMode.svelte";
   import ScoreMode from "./ScoreMode.svelte";
-  import CoverageMode from "./CoverageMode.svelte";
   import {
-    map as mapStore,
-    mode,
     backend,
-    maptilerApiKey,
     isLoaded,
-    showAbout,
+    map as mapStore,
+    maptilerApiKey,
+    mode,
     routeA,
     routeB,
+    showAbout,
     showPopulation,
   } from "./stores";
   import TitleMode from "./title/TitleMode.svelte";
   import UploadRouteMode from "./UploadRouteMode.svelte";
-  import workerWrapper from "./worker?worker";
   import { type Backend } from "./worker";
-  import * as Comlink from "comlink";
-  import { PopulationLayer } from "./common";
-  // TODO Indirect dependencies
-  import * as pmtiles from "pmtiles";
-  import maplibregl from "maplibre-gl";
+  import workerWrapper from "./worker?worker";
 
   let offlineMode = new URLSearchParams(window.location.search).has("offline");
   if (offlineMode) {

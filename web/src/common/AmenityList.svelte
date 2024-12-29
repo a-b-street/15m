@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Feature, Point, FeatureCollection } from "geojson";
-  import { type Amenity, describeAmenity } from "../stores";
+  import type { Feature, FeatureCollection, Point } from "geojson";
+  import { describeAmenity, type Amenity } from "../stores";
 
   // Can contain things besides amenities
   export let gj: FeatureCollection;

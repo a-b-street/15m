@@ -1,32 +1,32 @@
 <script lang="ts">
-  import { PickProfile, NavBar } from "./common";
+  import type { FeatureCollection } from "geojson";
   import type { MapMouseEvent } from "maplibre-gl";
   import {
-    MapEvents,
     GeoJSON,
-    LineLayer,
-    Marker,
     hoverStateFilter,
+    LineLayer,
+    MapEvents,
+    Marker,
   } from "svelte-maplibre";
+  import { notNull, PropertiesTable, SequentialLegend } from "svelte-utils";
+  import { constructMatchExpression, Popup } from "svelte-utils/map";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import BufferLayer from "./BufferLayer.svelte";
+  import { colorScale } from "./colors";
+  import { NavBar, PickProfile } from "./common";
   import {
-    mode,
     backend,
+    bufferMins,
+    mode,
     profile,
-    type Profile,
-    startTime,
-    useHeuristic,
     routeA,
     routeB,
-    bufferMins,
     showRouteBuffer,
     showRouteBufferPopulation,
+    startTime,
+    useHeuristic,
+    type Profile,
   } from "./stores";
-  import { Popup, constructMatchExpression } from "svelte-utils/map";
-  import { notNull, SequentialLegend, PropertiesTable } from "svelte-utils";
-  import type { FeatureCollection } from "geojson";
-  import { colorScale } from "./colors";
-  import BufferLayer from "./BufferLayer.svelte";
 
   let gj: FeatureCollection | null = null;
   let totalPopulationInBuffer = 0;

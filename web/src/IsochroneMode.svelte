@@ -1,22 +1,21 @@
 <script lang="ts">
-  import { AmenityLayer, AmenityList, PickProfile, NavBar } from "./common";
-  import type { Feature, Point } from "geojson";
-  import { colorScale } from "./colors";
-  import type { FeatureCollection } from "geojson";
-  import { GeoJSON, FillLayer, LineLayer, Marker } from "svelte-maplibre";
+  import type { Feature, FeatureCollection, Point } from "geojson";
+  import { onMount } from "svelte";
+  import { FillLayer, GeoJSON, LineLayer, Marker } from "svelte-maplibre";
+  import { SequentialLegend } from "svelte-utils";
+  import { isLine, isPolygon, makeColorRamp, Popup } from "svelte-utils/map";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import { colorScale } from "./colors";
+  import { AmenityLayer, AmenityList, NavBar, PickProfile } from "./common";
   import {
     backend,
-    profile,
-    type Profile,
-    startTime,
-    type Amenity,
     describeAmenity,
     isochroneMins,
+    profile,
+    startTime,
+    type Amenity,
+    type Profile,
   } from "./stores";
-  import { SequentialLegend } from "svelte-utils";
-  import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
-  import { onMount } from "svelte";
 
   let start: { lng: number; lat: number } | null = null;
   onMount(async () => {

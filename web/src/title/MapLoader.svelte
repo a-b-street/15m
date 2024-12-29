@@ -2,8 +2,8 @@
   import * as Comlink from "comlink";
   import { onMount } from "svelte";
   import { OverpassSelector } from "svelte-utils/overpass";
-  import { map, backend, isLoaded } from "../stores";
   import { Loading } from "../common";
+  import { backend, isLoaded, map } from "../stores";
 
   let example = "";
   let loading: string[] = [];

@@ -1,9 +1,8 @@
-import type { Map } from "maplibre-gl";
-import { writable, type Writable } from "svelte/store";
-import type { ExpressionSpecification } from "maplibre-gl";
 import * as Comlink from "comlink";
+import type { Feature, FeatureCollection, Point } from "geojson";
+import type { ExpressionSpecification, Map } from "maplibre-gl";
+import { writable, type Writable } from "svelte/store";
 import { type Backend } from "./worker";
-import type { Feature, Point, FeatureCollection } from "geojson";
 
 export let maptilerApiKey = "MZEJTanw3WpxRvt7qDfo";
 

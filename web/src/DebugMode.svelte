@@ -1,18 +1,18 @@
 <script lang="ts">
-  import {
-    StopsLayer,
-    PickProfile,
-    AmenityList,
-    AmenityLayer,
-    NavBar,
-  } from "./common";
-  import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
-  import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { PropertiesTable, notNull } from "svelte-utils";
-  import { Popup } from "svelte-utils/map";
-  import { backend, profile, filterForProfile } from "./stores";
-  import { onMount } from "svelte";
   import type { FeatureCollection } from "geojson";
+  import { onMount } from "svelte";
+  import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
+  import { notNull, PropertiesTable } from "svelte-utils";
+  import { Popup } from "svelte-utils/map";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import {
+    AmenityLayer,
+    AmenityList,
+    NavBar,
+    PickProfile,
+    StopsLayer,
+  } from "./common";
+  import { backend, filterForProfile, profile } from "./stores";
 
   let gj: FeatureCollection | null = null;
   onMount(async () => {

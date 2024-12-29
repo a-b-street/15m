@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { backend } from "../stores";
   import { onMount } from "svelte";
   import { Modal, notNull } from "svelte-utils";
+  import { backend } from "../stores";
 
   let kinds: Map<string, { enabled: boolean; num: number }> = new Map();
   let show = false;

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { CircleLayer, hoverStateFilter } from "svelte-maplibre";
-  import { notNull, Modal } from "svelte-utils";
+  import { Modal, notNull } from "svelte-utils";
   import { Popup } from "svelte-utils/map";
 
   let next_steps: [any][] | null = null;

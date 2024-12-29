@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { LineLayer, FillLayer, hoverStateFilter } from "svelte-maplibre";
-  import { showRouteBufferPopulation } from "./stores";
-  import { Popup, makeColorRamp } from "svelte-utils/map";
+  import { FillLayer, hoverStateFilter, LineLayer } from "svelte-maplibre";
+  import { makeColorRamp, Popup } from "svelte-utils/map";
   import { colorScale } from "./colors";
+  import { showRouteBufferPopulation } from "./stores";
 
   export let totalPopulationInBuffer: number;
   export let limits: number[];

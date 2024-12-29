@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { GeoJSON, CircleLayer, LineLayer, Marker } from "svelte-maplibre";
-  import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { map, mode } from "./stores";
   import type { FeatureCollection } from "geojson";
-  import { onMount, onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { CircleLayer, GeoJSON, LineLayer, Marker } from "svelte-maplibre";
   import { notNull } from "svelte-utils";
   import { constructMatchExpression } from "svelte-utils/map";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import { map, mode } from "./stores";
 
   export let debugGj: FeatureCollection;
   export let start: { lng: number; lat: number };

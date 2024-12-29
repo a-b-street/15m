@@ -1,13 +1,13 @@
-import * as Comlink from "comlink";
 import init, { MapModel } from "backend";
-import type { Profile, ScoreProps, Amenity } from "./stores";
+import * as Comlink from "comlink";
 import type {
-  Position,
   Feature,
+  FeatureCollection,
   Point,
   Polygon,
-  FeatureCollection,
+  Position,
 } from "geojson";
+import type { Amenity, Profile, ScoreProps } from "./stores";
 
 export class Backend {
   inner: MapModel | null;

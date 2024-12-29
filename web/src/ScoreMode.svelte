@@ -1,20 +1,23 @@
 <script lang="ts">
-  import { downloadGeneratedFile } from "svelte-utils";
   import * as Comlink from "comlink";
-  import { Loading, NavBar, PickAmenityKinds, PickProfile } from "./common";
   import type { Feature, FeatureCollection, Point } from "geojson";
-  import { colorScale } from "./colors";
   import {
-    GeoJSON,
     CircleLayer,
-    LineLayer,
+    GeoJSON,
     hoverStateFilter,
+    LineLayer,
     SymbolLayer,
   } from "svelte-maplibre";
-  import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { backend, profile, type ScoreProps } from "./stores";
-  import { SequentialLegend, notNull } from "svelte-utils";
+  import {
+    downloadGeneratedFile,
+    notNull,
+    SequentialLegend,
+  } from "svelte-utils";
   import { makeColorRamp } from "svelte-utils/map";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import { colorScale } from "./colors";
+  import { Loading, NavBar, PickAmenityKinds, PickProfile } from "./common";
+  import { backend, profile, type ScoreProps } from "./stores";
 
   let loading: string[] = [];
   let maxSeconds = 600;

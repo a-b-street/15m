@@ -1,18 +1,18 @@
 <script lang="ts">
-  import { PickProfile, NavBar } from "./common";
-  import { colorScale } from "./colors";
   import type { FeatureCollection } from "geojson";
-  import { SymbolLayer, GeoJSON, FillLayer, LineLayer } from "svelte-maplibre";
+  import { FillLayer, GeoJSON, LineLayer, SymbolLayer } from "svelte-maplibre";
+  import { notNull, SequentialLegend } from "svelte-utils";
+  import { isLine, isPolygon, makeColorRamp, Popup } from "svelte-utils/map";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import { colorScale } from "./colors";
+  import { NavBar, PickProfile } from "./common";
   import {
     backend,
-    profile,
-    type Profile,
-    startTime,
     coverageMins,
+    profile,
+    startTime,
+    type Profile,
   } from "./stores";
-  import { SequentialLegend, notNull } from "svelte-utils";
-  import { Popup, makeColorRamp, isLine, isPolygon } from "svelte-utils/map";
 
   let fromAmenity = "bicycle_parking";
   // TODO Generalize; show source amenity

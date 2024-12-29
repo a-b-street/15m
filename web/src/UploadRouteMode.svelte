@@ -1,23 +1,23 @@
 <script lang="ts">
   import * as Comlink from "comlink";
-  import { Loading, NavBar, PickProfile } from "./common";
-  import { SplitComponent } from "svelte-utils/top_bar_layout";
   import type { FeatureCollection } from "geojson";
+  import { onDestroy, onMount } from "svelte";
+  import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
+  import { SequentialLegend } from "svelte-utils";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import BufferLayer from "./BufferLayer.svelte";
+  import { colorScale } from "./colors";
+  import { Loading, NavBar, PickProfile } from "./common";
   import {
     backend,
+    bufferMins,
     map,
     profile,
-    bufferMins,
     showRouteBuffer,
     showRouteBufferPopulation,
     startTime,
     type Profile,
   } from "./stores";
-  import { GeoJSON, LineLayer, hoverStateFilter } from "svelte-maplibre";
-  import BufferLayer from "./BufferLayer.svelte";
-  import { SequentialLegend } from "svelte-utils";
-  import { colorScale } from "./colors";
-  import { onMount, onDestroy } from "svelte";
 
   let loading: string[] = [];
 

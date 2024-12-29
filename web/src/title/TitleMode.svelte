@@ -1,9 +1,9 @@
 <script lang="ts">
   import { PolygonToolLayer } from "maplibre-draw-polygon";
-  import { SplitComponent } from "svelte-utils/top_bar_layout";
-  import { map, backend, isLoaded, routeA, routeB } from "../stores";
-  import MapLoader from "./MapLoader.svelte";
   import { onMount } from "svelte";
+  import { SplitComponent } from "svelte-utils/top_bar_layout";
+  import { backend, isLoaded, map, routeA, routeB } from "../stores";
+  import MapLoader from "./MapLoader.svelte";
 
   // When other modes reset here, they can't clear without a race condition
   onMount(async () => {

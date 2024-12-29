@@ -1,11 +1,11 @@
 <script lang="ts">
-  import {
-    GeoJSON,
-    LineLayer,
-    FillLayer,
-    hoverStateFilter,
-  } from "svelte-maplibre";
   import type { FeatureCollection } from "geojson";
+  import {
+    FillLayer,
+    GeoJSON,
+    hoverStateFilter,
+    LineLayer,
+  } from "svelte-maplibre";
   import { makeColorRamp, Popup } from "svelte-utils/map";
   import { populationColorScale } from "../colors";
 
