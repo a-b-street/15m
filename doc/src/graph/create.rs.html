@@ -177,7 +177,11 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>anyhow::Result;
@@ -193,12 +197,15 @@
     ///
     /// - `input_bytes`: Bytes of an osm.pbf or osm.xml file
     /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
+    /// - `post_process_graph`: A callback to remove edges and intersections after initially
+    ///   importing.
     /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost,
     ///   given OSM tags and a Euclidean center-line. If every profile assigns `Direction::None`,
     ///   then the Road is completely excluded from the graph.
     </span><span class="kw">pub fn </span>new&lt;R: utils::osm2graph::OsmReader&gt;(
         input_bytes: <span class="kw-2">&amp;</span>[u8],
         osm_reader: <span class="kw-2">&amp;mut </span>R,
+        post_process_graph: Box&lt;<span class="kw">dyn </span>Fn(<span class="kw-2">&amp;mut </span>utils::osm2graph::Graph) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;&gt;,
         profiles: Vec&lt;(
             String,
             Box&lt;<span class="kw">dyn </span>Fn(<span class="kw-2">&amp;</span>Tags, <span class="kw-2">&amp;</span>LineString) -&gt; (Direction, Duration)&gt;,
@@ -207,7 +214,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Graph&gt; {
         timer.step(<span class="string">"parse OSM and split graph"</span>);
 
-        <span class="kw">let </span>graph = utils::osm2graph::Graph::new(
+        <span class="kw">let </span><span class="kw-2">mut </span>graph = utils::osm2graph::Graph::new(
             input_bytes,
             |tags| {
                 <span class="kw">if </span>!tags.has(<span class="string">"highway"</span>) || tags.is(<span class="string">"highway"</span>, <span class="string">"proposed"</span>) || tags.is(<span class="string">"area"</span>, <span class="string">"yes"</span>)
@@ -224,6 +231,7 @@
             },
             osm_reader,
         )<span class="question-mark">?</span>;
+        post_process_graph(<span class="kw-2">&amp;mut </span>graph)<span class="question-mark">?</span>;
 
         timer.step(<span class="string">"calculate road attributes"</span>);
         <span class="comment">// Copy all the fields
