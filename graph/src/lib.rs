@@ -3,12 +3,12 @@ extern crate anyhow;
 #[macro_use]
 extern crate log;
 
+mod create;
 mod gtfs;
 mod isochrone;
 #[cfg(feature = "muv")]
 pub mod muv_profiles;
 mod route;
-mod scrape;
 pub mod snap;
 mod timer;
 mod transit_route;
