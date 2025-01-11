@@ -14,12 +14,15 @@ impl Graph {
     ///
     /// - `input_bytes`: Bytes of an osm.pbf or osm.xml file
     /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
+    /// - `post_process_graph`: A callback to remove edges and intersections after initially
+    ///   importing.
     /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost,
     ///   given OSM tags and a Euclidean center-line. If every profile assigns `Direction::None`,
     ///   then the Road is completely excluded from the graph.
     pub fn new<R: utils::osm2graph::OsmReader>(
         input_bytes: &[u8],
         osm_reader: &mut R,
+        post_process_graph: Box<dyn Fn(&mut utils::osm2graph::Graph) -> Result<()>>,
         profiles: Vec<(
             String,
             Box<dyn Fn(&Tags, &LineString) -> (Direction, Duration)>,
@@ -28,7 +31,7 @@ impl Graph {
     ) -> Result<Graph> {
         timer.step("parse OSM and split graph");
 
-        let graph = utils::osm2graph::Graph::new(
+        let mut graph = utils::osm2graph::Graph::new(
             input_bytes,
             |tags| {
                 if !tags.has("highway") || tags.is("highway", "proposed") || tags.is("area", "yes")
@@ -45,6 +48,7 @@ impl Graph {
             },
             osm_reader,
         )?;
+        post_process_graph(&mut graph)?;
 
         timer.step("calculate road attributes");
         // Copy all the fields

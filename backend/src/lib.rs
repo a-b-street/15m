@@ -255,6 +255,7 @@ impl MapModel {
         let mut graph = Graph::new(
             input_bytes,
             &mut amenities,
+            Box::new(|_| Ok(())),
             vec![
                 graph::muv_profiles::muv_car_profile(),
                 graph::muv_profiles::muv_bicycle_profile(),
