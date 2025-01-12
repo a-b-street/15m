@@ -49,12 +49,13 @@ impl Graph {
             osm_reader,
         )?;
         post_process_graph(&mut graph)?;
+        graph.compact_ids();
 
         timer.step("calculate road attributes");
         // Copy all the fields
         let intersections: Vec<Intersection> = graph
             .intersections
-            .into_iter()
+            .into_values()
             .map(|i| Intersection {
                 id: IntersectionID(i.id.0),
                 point: i.point,
@@ -66,7 +67,7 @@ impl Graph {
         // Add in a bit
         let mut roads: Vec<Road> = graph
             .edges
-            .into_iter()
+            .into_values()
             .map(|e| Road {
                 id: RoadID(e.id.0),
                 src_i: IntersectionID(e.src.0),

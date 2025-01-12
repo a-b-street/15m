@@ -379,7 +379,6 @@ dependencies = [
  "serde_json",
  "simple_logger",
  "tokio",
- "utils",
 ]
 
 [[package]]
@@ -2580,12 +2579,13 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 [[package]]
 name = "utils"
 version = "0.1.0"
-source = "git+https://github.com/a-b-street/utils#9144e3b9e0094640178565ea1e30ea037e5b2481"
+source = "git+https://github.com/a-b-street/utils#88666e7363f1693597e5ed6afe5a1ba498fd187c"
 dependencies = [
  "anyhow",
  "fast_paths",
  "geo",
  "geo-types",
+ "geojson",
  "log",
  "osm-reader",
  "serde",
