@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use anyhow::Result;
-use geo::{Euclidean, Length, LineString};
+use geo::{Coord, Euclidean, Length, Line, LineString, Point};
 use utils::Tags;
 
 use crate::gtfs::GtfsModel;
@@ -52,19 +52,6 @@ impl Graph {
         graph.compact_ids();
 
         timer.step("calculate road attributes");
-        // Copy all the fields
-        let intersections: Vec<Intersection> = graph
-            .intersections
-            .into_values()
-            .map(|i| Intersection {
-                id: IntersectionID(i.id.0),
-                point: i.point,
-                node: i.osm_node,
-                roads: i.edges.into_iter().map(|e| RoadID(e.0)).collect(),
-            })
-            .collect();
-
-        // Add in a bit
         let mut roads: Vec<Road> = graph
             .edges
             .into_values()
@@ -82,6 +69,32 @@ impl Graph {
                 access: Vec::new(),
                 cost: Vec::new(),
                 stops: Vec::new(),
+            })
+            .collect();
+
+        // Copy all the fields
+        let intersections: Vec<Intersection> = graph
+            .intersections
+            .into_values()
+            .map(|mut i| {
+                // Sort intersection roads clockwise, starting from North
+                i.edges.sort_by_cached_key(|edge_id| {
+                    let road = &roads[edge_id.0];
+                    let bearing = bearing_from_endpoint(i.point, &road.linestring);
+                    // work around that f64 is not Ord
+                    debug_assert!(
+                        bearing.is_finite(),
+                        "Assuming bearing output is always 0...360, this shouldn't happen"
+                    );
+                    (bearing * 1e6) as i64
+                });
+
+                Intersection {
+                    id: IntersectionID(i.id.0),
+                    point: i.point,
+                    node: i.osm_node,
+                    roads: i.edges.into_iter().map(|e| RoadID(e.0)).collect(),
+                }
             })
             .collect();
 
@@ -181,4 +194,38 @@ fn snap_stops(
             error!("{stop_id:?} didn't snap to any road");
         }
     }
+}
+
+// Code copied from https://github.com/a-b-street/ltn/blob/main/backend/src/geo_helpers/mod.rs,
+// without tests.
+// TODO Upstream to utils or geo.
+/// The bearing of the first segment of `linestring` starting from `endpoint`.
+///
+/// precondition: `endpoint` must be either the first or last point in `linestring`
+/// precondition: `linestring` must have at least 2 coordinates
+fn bearing_from_endpoint(endpoint: Point, linestring: &LineString) -> f64 {
+    assert!(
+        linestring.0.len() >= 2,
+        "zero length roads should be filtered out"
+    );
+    let next_coord = if endpoint.0 == linestring.0[0] {
+        linestring.0[1]
+    } else if endpoint.0 == linestring.0[linestring.0.len() - 1] {
+        linestring.0[linestring.0.len() - 2]
+    } else {
+        // I'm assuming this won't happen, but maybe it's possible,
+        // e.g. to different rounding schemes.
+        debug_assert!(false, "road does not terminate at intersection");
+        linestring.0[1]
+    };
+
+    euclidean_bearing(endpoint.0, next_coord)
+}
+
+fn euclidean_bearing(origin: Coord, destination: Coord) -> f64 {
+    (angle_of_line(Line::new(origin, destination)) + 450.0) % 360.0
+}
+
+fn angle_of_line(line: Line) -> f64 {
+    (line.dy()).atan2(line.dx()).to_degrees()
 }

@@ -93,16 +93,24 @@ pub struct Intersection {
     #[allow(dead_code)]
     pub node: osm_reader::NodeID,
     pub point: Point,
+    /// Ordered clockwise from north
     pub roads: Vec<RoadID>,
 }
 
 impl Graph {
-    /// Returns GeoJSON with roads and stops
+    /// Returns GeoJSON with roads, intersections, and bus stops
     pub fn render_debug(&self) -> FeatureCollection {
         let mut features = Vec::new();
 
         for r in &self.roads {
             features.push(r.to_gj(self));
+        }
+        for i in &self.intersections {
+            let mut f = self.mercator.to_wgs84_gj(&i.point);
+            f.set_property("id", i.id.0);
+            f.set_property("node", i.node.to_string());
+            f.set_property("roads", i.roads.iter().map(|r| r.0).collect::<Vec<_>>());
+            features.push(f);
         }
         for s in &self.gtfs.stops {
             features.push(s.to_gj(&self.mercator));
@@ -208,7 +216,7 @@ impl Road {
     }
 
     pub fn to_gj(&self, graph: &Graph) -> Feature {
-        let mut f = Feature::from(Geometry::from(&graph.mercator.to_wgs84(&self.linestring)));
+        let mut f = graph.mercator.to_wgs84_gj(&self.linestring);
         // TODO Rethink most of this -- it's debug info
         f.set_property("id", self.id.0);
         f.set_property("way", self.way.to_string());
