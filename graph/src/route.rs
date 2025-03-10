@@ -270,6 +270,30 @@ impl Router {
 
         Ok(Route { start, end, steps })
     }
+
+    /// Calculate a route covering a sequence of waypoints. There may be spurs and doubling back.
+    pub fn route_between_many_intersections(
+        &self,
+        graph: &Graph,
+        waypoints: Vec<IntersectionID>,
+    ) -> Result<Route> {
+        if waypoints.len() < 2 {
+            bail!("Not enough waypoints");
+        }
+
+        let mut routes = Vec::new();
+        for pair in waypoints.windows(2) {
+            routes.push(self.route_between_intersections(graph, pair[0], pair[1])?);
+        }
+
+        let mut route = routes.remove(0);
+        for append in routes {
+            assert_eq!(route.end, append.start);
+            route.steps.extend(append.steps);
+            route.end = append.end;
+        }
+        Ok(route)
+    }
 }
 
 impl Route {
