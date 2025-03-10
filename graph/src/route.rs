@@ -201,6 +201,75 @@ impl Router {
 
         Ok(Route { start, end, steps })
     }
+
+    /// Calculates a route between two intersections.
+    pub fn route_between_intersections(
+        &self,
+        graph: &Graph,
+        start_i: IntersectionID,
+        end_i: IntersectionID,
+    ) -> Result<Route> {
+        if start_i == end_i {
+            bail!("start = end");
+        }
+
+        let start_node = self.node_map.get(start_i).unwrap();
+        let end_node = self.node_map.get(end_i).unwrap();
+
+        let Some(path) = self
+            .path_calc
+            .borrow_mut()
+            // This'll be empty right after loading a serialized Graph
+            .get_or_insert_with(|| fast_paths::create_calculator(&self.ch))
+            .calc_path(&self.ch, start_node, end_node)
+        else {
+            bail!("No path");
+        };
+
+        let mut steps = Vec::new();
+        for pair in path.get_nodes().windows(2) {
+            let i1 = self.node_map.translate_id(pair[0]);
+            let i2 = self.node_map.translate_id(pair[1]);
+            let Some(road) = graph.find_edge(i1, i2) else {
+                bail!("No road between {i1:?} and {i2:?}");
+            };
+
+            steps.push(PathStep::Road {
+                road: road.id,
+                forwards: road.src_i == i1,
+            });
+        }
+
+        let first_road = match steps[0] {
+            PathStep::Road { road, .. } => road,
+            _ => unreachable!(),
+        };
+        let start = Position {
+            intersection: start_i,
+            road: first_road,
+            fraction_along: if graph.roads[first_road.0].src_i == start_i {
+                0.0
+            } else {
+                1.0
+            },
+        };
+
+        let last_road = match steps.last().unwrap() {
+            PathStep::Road { road, .. } => *road,
+            _ => unreachable!(),
+        };
+        let end = Position {
+            intersection: end_i,
+            road: last_road,
+            fraction_along: if graph.roads[last_road.0].src_i == end_i {
+                0.0
+            } else {
+                1.0
+            },
+        };
+
+        Ok(Route { start, end, steps })
+    }
 }
 
 impl Route {
@@ -255,6 +324,29 @@ impl Route {
             current_key.take().unwrap(),
         ));
         results
+    }
+
+    /// Returns the intersections in order. If the start or end steps are in the middle of the
+    /// road, snaps to the nearest intersection.
+    pub fn intersections(&self, graph: &Graph) -> Vec<IntersectionID> {
+        let mut result = vec![self.start.intersection];
+        for step in &self.steps {
+            if let PathStep::Road { road, forwards } = step {
+                let road = &graph.roads[road.0];
+                if *forwards {
+                    result.push(road.src_i);
+                    result.push(road.dst_i);
+                } else {
+                    result.push(road.dst_i);
+                    result.push(road.src_i);
+                }
+            }
+        }
+        result.push(self.end.intersection);
+        // The logic above is simpler by just adding everything, not worrying about pairs of
+        // things. Just dedupe here.
+        result.dedup();
+        result
     }
 }
 
