@@ -1,6 +1,6 @@
 use anyhow::Result;
 use geo::{
-    Closest, ClosestPoint, Distance, Euclidean, Length, LineInterpolatePoint, LineLocatePoint,
+    Closest, ClosestPoint, Distance, Euclidean, InterpolatableLine, Length, LineLocatePoint,
     LineString,
 };
 
@@ -49,7 +49,7 @@ impl Graph {
                             let new_fraction_along = input.line_locate_point(&pt)?;
                             if new_fraction_along > fraction_along {
                                 let dist = (100.0
-                                    * Euclidean::distance(pt, self.intersections[i.0].point))
+                                    * Euclidean.distance(pt, self.intersections[i.0].point))
                                     as usize;
                                 Some((i, step, dist, new_fraction_along))
                             } else {
@@ -108,8 +108,8 @@ impl Graph {
 // TODO Reconsider exposing
 pub fn score_similarity(ls1: &LineString, ls2: &LineString) -> Option<(f64, f64)> {
     // Just check length
-    let len1 = ls1.length::<Euclidean>();
-    let len2 = ls2.length::<Euclidean>();
+    let len1 = Euclidean.length(ls1);
+    let len2 = Euclidean.length(ls2);
     let len_pct = if len1 < len2 {
         len2 / len1
     } else {
@@ -122,10 +122,10 @@ pub fn score_similarity(ls1: &LineString, ls2: &LineString) -> Option<(f64, f64)
     for pct in 0..=100 {
         let pct = (pct as f64) / 100.0;
         // TODO Where do we have zero-length lines?
-        let pt1 = ls1.line_interpolate_point(pct)?;
-        let pt2 = ls2.line_interpolate_point(pct)?;
+        let pt1 = ls1.point_at_ratio_from_start(&Euclidean, pct)?;
+        let pt2 = ls2.point_at_ratio_from_start(&Euclidean, pct)?;
 
-        dist_between_equiv_pts += Euclidean::distance(pt1, pt2);
+        dist_between_equiv_pts += Euclidean.distance(pt1, pt2);
     }
 
     Some((len_pct, dist_between_equiv_pts))

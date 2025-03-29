@@ -63,7 +63,7 @@ impl Graph {
                 node1: e.osm_node1,
                 node2: e.osm_node2,
                 osm_tags: e.osm_tags,
-                length_meters: e.linestring.length::<Euclidean>(),
+                length_meters: Euclidean.length(&e.linestring),
                 linestring: e.linestring,
 
                 access: Vec::new(),

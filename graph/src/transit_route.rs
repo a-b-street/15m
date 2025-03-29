@@ -36,7 +36,7 @@ impl Graph {
         let heuristic = |i: IntersectionID| {
             if use_heuristic {
                 Duration::from_secs_f64(
-                    Euclidean::distance(self.intersections[i.0].point, end_pt) / 1.34112,
+                    Euclidean.distance(self.intersections[i.0].point, end_pt) / 1.34112,
                 )
             } else {
                 Duration::ZERO

@@ -16,9 +16,8 @@ pub fn muv_car_profile() -> (
         "car".to_string(),
         Box::new(|tags, linestring| {
             let access = calculate_access(tags, TMode::Motorcar);
-            let cost = Duration::from_secs_f64(
-                linestring.length::<Euclidean>() / calculate_max_speed(tags),
-            );
+            let cost =
+                Duration::from_secs_f64(Euclidean.length(linestring) / calculate_max_speed(tags));
             (access, cost)
         }),
     )
@@ -35,8 +34,7 @@ pub fn muv_bicycle_profile() -> (
             // TODO Use elevation and other more detailed things
             // 10 mph
             let max_bicycle_speed = 4.4704;
-            let cost =
-                Duration::from_secs_f64(linestring.length::<Euclidean>() / max_bicycle_speed);
+            let cost = Duration::from_secs_f64(Euclidean.length(linestring) / max_bicycle_speed);
             (access, cost)
         }),
     )
@@ -53,7 +51,7 @@ pub fn muv_pedestrian_profile() -> (
             // TODO Use elevation and other more detailed things
             // 3 mph
             let max_foot_speed = 1.34112;
-            let cost = Duration::from_secs_f64(linestring.length::<Euclidean>() / max_foot_speed);
+            let cost = Duration::from_secs_f64(Euclidean.length(linestring) / max_foot_speed);
             (access, cost)
         }),
     )
