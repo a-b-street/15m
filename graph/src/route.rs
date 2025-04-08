@@ -288,7 +288,7 @@ impl Router {
 
         let mut route = routes.remove(0);
         for append in routes {
-            assert_eq!(route.end, append.start);
+            assert_eq!(route.end.intersection, append.start.intersection);
             route.steps.extend(append.steps);
             route.end = append.end;
         }
