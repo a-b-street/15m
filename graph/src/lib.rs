@@ -142,20 +142,24 @@ impl Graph {
     }
 
     /// Find the Road going from `i1` to `i2` or vice versa
+    // TODO Remove this method. It's only used for finding roads after routing in a CH. It handles
+    // multi-edges by returning the shortest road, which the CH will use.
     pub fn find_edge(&self, i1: IntersectionID, i2: IntersectionID) -> Option<&Road> {
         // TODO Maybe disallow this entirely
         if i1 == i2 {
             warn!("find_edge({i1:?}, {i2:?}) called -- this might be unintentional");
         }
 
-        // TODO Store lookup table
+        let mut candidates = Vec::new();
         for r in &self.intersections[i1.0].roads {
             let road = &self.roads[r.0];
             if road.src_i == i2 || road.dst_i == i2 {
-                return Some(road);
+                candidates.push(road);
             }
         }
-        None
+        candidates
+            .into_iter()
+            .min_by_key(|road| (road.length_meters * 1000.0) as usize)
     }
 
     /// Given a point (in Mercator) and profile, snap to a position along some road that profile can
