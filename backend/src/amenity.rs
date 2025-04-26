@@ -173,4 +173,11 @@ impl utils::osm2graph::OsmReader for Amenities {
     }
 
     // TODO Are there amenities as relations?
+    fn relation(
+        &mut self,
+        _id: osm_reader::RelationID,
+        _members: &Vec<(String, OsmID)>,
+        _tags: &Tags,
+    ) {
+    }
 }
