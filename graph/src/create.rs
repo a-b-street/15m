@@ -16,6 +16,8 @@ impl Graph {
     /// - `osm_reader`: A callback for every OSM element read, to extract non-graph data
     /// - `post_process_graph`: A callback to remove edges and intersections after initially
     ///   importing.
+    /// - `scrape_graph`: A callback to capture anything from osm2graph that's otherwise lost. It
+    ///   can be stored on the `osm_reader` struct.
     /// - `profiles`: A list of named profiles. Each one assigns an access direction and cost,
     ///   given OSM tags and a Euclidean center-line. If every profile assigns `Direction::None`,
     ///   then the Road is completely excluded from the graph.
@@ -23,6 +25,7 @@ impl Graph {
         input_bytes: &[u8],
         osm_reader: &mut R,
         post_process_graph: Box<dyn Fn(&mut utils::osm2graph::Graph) -> Result<()>>,
+        scrape_graph: Box<dyn Fn(&mut R, &utils::osm2graph::Graph) -> Result<()>>,
         profiles: Vec<(
             String,
             Box<dyn Fn(&Tags, &LineString) -> (Direction, Duration)>,
@@ -50,6 +53,7 @@ impl Graph {
         )?;
         post_process_graph(&mut graph)?;
         graph.compact_ids();
+        scrape_graph(osm_reader, &graph)?;
 
         timer.step("calculate road attributes");
         let mut roads: Vec<Road> = graph

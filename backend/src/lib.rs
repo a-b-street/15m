@@ -256,6 +256,7 @@ impl MapModel {
             input_bytes,
             &mut amenities,
             Box::new(|_| Ok(())),
+            Box::new(|_, _| Ok(())),
             vec![
                 graph::muv_profiles::muv_car_profile(),
                 graph::muv_profiles::muv_bicycle_profile(),
