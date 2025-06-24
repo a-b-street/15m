@@ -1,6 +1,12 @@
 <script lang="ts">
   import type { FeatureCollection } from "geojson";
-  import { CircleLayer, FillLayer, GeoJSON, LineLayer } from "svelte-maplibre";
+  import {
+    CircleLayer,
+    FillLayer,
+    GeoJSON,
+    hoverStateFilter,
+    LineLayer,
+  } from "svelte-maplibre";
   import { notNull, SequentialLegend } from "svelte-utils";
   import { isLine, isPolygon, makeColorRamp, Popup } from "svelte-utils/map";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
@@ -14,7 +20,7 @@
     type Profile,
   } from "./stores";
 
-  let fromAmenities = [];
+  let fromAmenities: string[] = [];
   let showAmenities = true;
 
   let style = "Roads";
@@ -139,6 +145,7 @@
               "circle-radius": 5,
               "circle-opacity": 0,
               "circle-stroke-width": 2,
+              "circle-stroke-color": hoverStateFilter("orange", "red"),
             }}
             filter={[
               "all",
@@ -148,6 +155,14 @@
             layout={{
               visibility: showAmenities ? "visible" : "none",
             }}
+            manageHoverState
+            on:click={(e) =>
+              window.open(
+                notNull(e.detail.features[0].properties).osm_id,
+                "_blank",
+              )}
+            hoverCursor="pointer"
+            eventsIfTopMost
           />
         </GeoJSON>
       {/await}
