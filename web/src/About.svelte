@@ -42,7 +42,7 @@
         >open source</a
       >
       tool is created by
-      <a href="https://github.com/dabreegster/" target="_blank"
+      <a href="https://abstreet.uk" target="_blank"
         >Dustin Carlino</a
       >.
     </p>
