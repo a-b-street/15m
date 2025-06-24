@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { FeatureCollection } from "geojson";
-  import { FillLayer, GeoJSON, LineLayer, SymbolLayer } from "svelte-maplibre";
+  import { CircleLayer, FillLayer, GeoJSON, LineLayer } from "svelte-maplibre";
   import { notNull, SequentialLegend } from "svelte-utils";
   import { isLine, isPolygon, makeColorRamp, Popup } from "svelte-utils/map";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { colorScale } from "./colors";
-  import { NavBar, PickProfile } from "./common";
+  import { NavBar, PickAmenityKinds, PickProfile } from "./common";
   import {
     backend,
     coverageMins,
@@ -14,9 +14,8 @@
     type Profile,
   } from "./stores";
 
-  let fromAmenity = "bicycle_parking";
-  // TODO Generalize; show source amenity
-  let showParking = true;
+  let fromAmenities = [];
+  let showAmenities = true;
 
   let style = "Roads";
 
@@ -24,15 +23,15 @@
   let err = "";
 
   async function updateIsochrone(
-    _x: string,
+    _x: string[],
     _y: Profile,
     _z: string,
     _t: string,
     _im: number,
   ) {
     try {
-      isochroneGj = await $backend!.isochroneFromAmenity({
-        fromAmenity,
+      isochroneGj = await $backend!.isochroneFromAmenities({
+        fromAmenities,
         profile: $profile,
         style,
         startTime: $startTime,
@@ -44,7 +43,7 @@
       err = err.toString();
     }
   }
-  $: updateIsochrone(fromAmenity, $profile, style, $startTime, $coverageMins);
+  $: updateIsochrone(fromAmenities, $profile, style, $startTime, $coverageMins);
 
   $: limits = Array.from(Array(6).keys()).map(
     (i) => (($coverageMins * 60) / (6 - 1)) * i,
@@ -59,9 +58,11 @@
   <div slot="sidebar">
     <h2>Coverage mode</h2>
 
+    <PickAmenityKinds bind:enabled={fromAmenities} />
+
     <label>
-      <input type="checkbox" bind:checked={showParking} />
-      Show parking
+      <input type="checkbox" bind:checked={showAmenities} />
+      Show amenities
     </label>
 
     <PickProfile bind:profile={$profile} />
@@ -132,13 +133,20 @@
 
       {#await notNull($backend).renderAmenities() then data}
         <GeoJSON {data}>
-          <SymbolLayer
-            filter={["==", ["get", "amenity_kind"], "bicycle_parking"]}
+          <CircleLayer
+            id="amenities"
+            paint={{
+              "circle-radius": 5,
+              "circle-opacity": 0,
+              "circle-stroke-width": 2,
+            }}
+            filter={[
+              "all",
+              ["has", "amenity_kind"],
+              ["in", ["get", "amenity_kind"], ["literal", fromAmenities]],
+            ]}
             layout={{
-              "icon-image": "cycle_parking",
-              "icon-size": 1.0,
-              "icon-allow-overlap": true,
-              visibility: showParking ? "visible" : "none",
+              visibility: showAmenities ? "visible" : "none",
             }}
           />
         </GeoJSON>

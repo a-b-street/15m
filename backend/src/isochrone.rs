@@ -19,7 +19,7 @@ pub enum Style {
 
 pub enum Source {
     Single(Coord),
-    FromAmenity(String),
+    FromAmenities(Vec<String>),
 }
 
 pub fn calculate(
@@ -38,11 +38,11 @@ pub fn calculate(
         Source::Single(pt) => {
             starts.push(graph.snap_to_road(pt, profile).intersection);
         }
-        Source::FromAmenity(kind) => {
+        Source::FromAmenities(kinds) => {
             for (r, lists) in amenities.per_road.iter().enumerate() {
                 for a in &lists[profile.0] {
                     let amenity = &amenities.amenities[a.0];
-                    if amenity.kind == kind {
+                    if kinds.contains(&amenity.kind) {
                         let road = &graph.roads[r];
                         // TODO Which intersection is closer? Just start from either
                         starts.push(road.src_i);
@@ -53,7 +53,7 @@ pub fn calculate(
             starts.sort();
             starts.dedup();
             if starts.is_empty() {
-                bail!("No amenities of kind {kind}");
+                bail!("No amenities of kinds {kinds:?}");
             }
         }
     }

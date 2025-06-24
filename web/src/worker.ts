@@ -109,7 +109,7 @@ export class Backend {
       this.inner.isochrone({
         x: req.start.lng,
         y: req.start.lat,
-        from_amenity: "",
+        from_amenities: [],
         profile: req.profile == "transit" ? "foot" : req.profile,
         transit: req.profile == "transit",
         style: req.style,
@@ -119,8 +119,8 @@ export class Backend {
     );
   }
 
-  isochroneFromAmenity(req: {
-    fromAmenity: string;
+  isochroneFromAmenities(req: {
+    fromAmenities: string[];
     profile: Profile;
     style: string;
     startTime: string;
@@ -134,7 +134,7 @@ export class Backend {
       this.inner.isochrone({
         x: 0,
         y: 0,
-        from_amenity: req.fromAmenity,
+        from_amenities: req.fromAmenities,
         profile: req.profile == "transit" ? "foot" : req.profile,
         transit: req.profile == "transit",
         style: req.style,
