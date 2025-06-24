@@ -16,7 +16,7 @@
     topContents,
   } from "svelte-utils/top_bar_layout";
   import cycleParking from "../assets/bicycle_parking.png?url";
-  import logo from "../assets/logo_light.svg?url";
+  import logo from "../assets/logo.svg?url";
   import About from "./About.svelte";
   import { PopulationLayer } from "./common";
   import CoverageMode from "./CoverageMode.svelte";
