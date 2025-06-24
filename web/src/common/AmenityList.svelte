@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Feature, FeatureCollection, Point } from "geojson";
-  import { describeAmenity, type Amenity } from "../stores";
+  import { describeAmenity, hideAmenityKinds, type Amenity } from "../stores";
 
   // Can contain things besides amenities
   export let gj: FeatureCollection;
@@ -8,6 +8,7 @@
   $: amenityFeatures = gj.features.filter(
     (f) => "amenity_kind" in f.properties!,
   ) as Feature<Point, Amenity>[];
+  $: kinds = groupByKind(amenityFeatures);
 
   // Sorted by number of members
   function groupByKind(
@@ -25,11 +26,31 @@
     list.sort((a, b) => b[1].length - a[1].length);
     return list;
   }
+
+  $: updateKinds(kinds);
+  function updateKinds(kinds: [string, any][]) {
+    for (let [kind, _] of kinds) {
+      if (!$hideAmenityKinds.has(kind)) {
+        $hideAmenityKinds.set(kind, false);
+      }
+    }
+    $hideAmenityKinds = $hideAmenityKinds;
+  }
 </script>
 
-{#each groupByKind(amenityFeatures) as [kind, list]}
+{#each kinds as [kind, list]}
   <details>
-    <summary>{kind} ({list.length})</summary>
+    <summary
+      ><input
+        type="checkbox"
+        checked={!$hideAmenityKinds.get(kind)}
+        on:change={() => {
+          $hideAmenityKinds.set(kind, !$hideAmenityKinds.get(kind));
+          $hideAmenityKinds = $hideAmenityKinds;
+        }}
+      />
+      {kind} ({list.length})</summary
+    >
     <ol>
       {#each list as f}
         <li>

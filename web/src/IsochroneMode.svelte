@@ -142,6 +142,7 @@
     {/if}
 
     {#if isochroneGj}
+      <hr />
       <AmenityList gj={isochroneGj} />
     {/if}
   </div>

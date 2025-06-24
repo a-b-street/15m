@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import type { Feature, FeatureCollection, Point } from "geojson";
-import type { ExpressionSpecification, Map } from "maplibre-gl";
+import type { ExpressionSpecification, Map as MaplibreMap } from "maplibre-gl";
 import { writable, type Writable } from "svelte/store";
 import { type Backend } from "./worker";
 
@@ -23,7 +23,7 @@ export type Mode =
   | { kind: "upload-route" };
 
 export let mode: Writable<Mode> = writable({ kind: "title" });
-export let map: Writable<Map | null> = writable(null);
+export let map: Writable<MaplibreMap | null> = writable(null);
 export let showAbout: Writable<boolean> = writable(true);
 export let showPopulation: Writable<boolean> = writable(false);
 
@@ -52,6 +52,10 @@ export let bufferMins = writable(5);
 export let backend: Writable<Comlink.Remote<Backend> | null> = writable(null);
 // Indicates the backend is ready and a file is loaded
 export let isLoaded = writable(false);
+
+export let hideAmenityKinds: Writable<Map<string, boolean>> = writable(
+  new Map(),
+);
 
 // ----
 // TODO Move to another file
