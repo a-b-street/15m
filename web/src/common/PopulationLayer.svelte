@@ -6,7 +6,7 @@
     hoverStateFilter,
     LineLayer,
   } from "svelte-maplibre";
-  import { makeColorRamp, Popup } from "svelte-utils/map";
+  import { makeRamp, Popup } from "svelte-utils/map";
   import { populationColorScale } from "../colors";
 
   export let gj: FeatureCollection;
@@ -21,11 +21,7 @@
   <FillLayer
     manageHoverState
     paint={{
-      "fill-color": makeColorRamp(
-        ["get", "density"],
-        limits,
-        populationColorScale,
-      ),
+      "fill-color": makeRamp(["get", "density"], limits, populationColorScale),
       "fill-opacity": hoverStateFilter(0.2, 0.8),
     }}
   >

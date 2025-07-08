@@ -146,7 +146,10 @@
         {totalPopulationInBuffer.toLocaleString()} people live in this buffer. Show:
         <input type="checkbox" bind:checked={$showRouteBufferPopulation} />
       </label>
-      <SequentialLegend {colorScale} limits={limits.map((l) => l / 60)} />
+      <SequentialLegend
+        {colorScale}
+        labels={{ limits: limits.map((l) => l / 60) }}
+      />
     {/if}
 
     <p>

@@ -13,7 +13,7 @@
     notNull,
     SequentialLegend,
   } from "svelte-utils";
-  import { makeColorRamp } from "svelte-utils/map";
+  import { makeRamp } from "svelte-utils/map";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { colorScale } from "./colors";
   import { Loading, NavBar, PickAmenityKinds, PickProfile } from "./common";
@@ -108,7 +108,7 @@
 
     <PickAmenityKinds bind:enabled={poiKinds} />
 
-    <SequentialLegend {colorScale} {limits} />
+    <SequentialLegend {colorScale} labels={{ limits }} />
 
     <label>
       <input type="number" bind:value={maxSeconds} />
@@ -145,7 +145,7 @@
         <CircleLayer
           paint={{
             "circle-radius": 15,
-            "circle-color": makeColorRamp(["get", "cost"], limits, colorScale),
+            "circle-color": makeRamp(["get", "cost"], limits, colorScale),
             "circle-stroke-width": hoverStateFilter(1, 3),
             "circle-stroke-color": "black",
           }}

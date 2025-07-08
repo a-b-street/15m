@@ -4,6 +4,11 @@
   import { Popup } from "svelte-utils/map";
 
   let next_steps: [any][] | null = null;
+  let show = false;
+
+  $: if (!show) {
+    next_steps = null;
+  }
 </script>
 
 <CircleLayer
@@ -14,10 +19,12 @@
   }}
   manageHoverState
   filter={["has", "next_steps"]}
-  on:click={(e) =>
-    (next_steps = JSON.parse(
+  on:click={(e) => {
+    next_steps = JSON.parse(
       notNull(e.detail.features[0].properties).next_steps,
-    ))}
+    );
+    show = true;
+  }}
   hoverCursor="pointer"
   eventsIfTopMost
 >
@@ -26,10 +33,8 @@
   >
 </CircleLayer>
 
-{#if next_steps}
-  <Modal on:close={() => (next_steps = null)}>
-    {#each next_steps as x}
-      <p>{JSON.stringify(x)}</p>
-    {/each}
-  </Modal>
-{/if}
+<Modal bind:show>
+  {#each next_steps || [] as x}
+    <p>{JSON.stringify(x)}</p>
+  {/each}
+</Modal>

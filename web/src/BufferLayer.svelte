@@ -1,6 +1,6 @@
 <script lang="ts">
   import { FillLayer, hoverStateFilter, LineLayer } from "svelte-maplibre";
-  import { makeColorRamp, Popup } from "svelte-utils/map";
+  import { makeRamp, Popup } from "svelte-utils/map";
   import { colorScale } from "./colors";
   import { showRouteBufferPopulation } from "./stores";
 
@@ -16,7 +16,7 @@
       "case",
       ["==", ["get", "kind"], "route"],
       "red",
-      makeColorRamp(["get", "cost_seconds"], limits, colorScale),
+      makeRamp(["get", "cost_seconds"], limits, colorScale),
     ],
     "line-opacity": 0.5,
   }}

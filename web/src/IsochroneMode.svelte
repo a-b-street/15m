@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { FillLayer, GeoJSON, LineLayer, Marker } from "svelte-maplibre";
   import { SequentialLegend } from "svelte-utils";
-  import { isLine, isPolygon, makeColorRamp, Popup } from "svelte-utils/map";
+  import { isLine, isPolygon, makeRamp, Popup } from "svelte-utils/map";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import { colorScale } from "./colors";
   import { AmenityLayer, AmenityList, NavBar, PickProfile } from "./common";
@@ -136,7 +136,10 @@
       >Minutes away
       <input type="number" bind:value={$isochroneMins} min="1" max="30" />
     </label>
-    <SequentialLegend {colorScale} limits={limits.map((l) => l / 60)} />
+    <SequentialLegend
+      {colorScale}
+      labels={{ limits: limits.map((l) => l / 60) }}
+    />
     {#if err}
       <p>{err}</p>
     {/if}
@@ -158,11 +161,7 @@
           filter={isLine}
           paint={{
             "line-width": 2,
-            "line-color": makeColorRamp(
-              ["get", "cost_seconds"],
-              limits,
-              colorScale,
-            ),
+            "line-color": makeRamp(["get", "cost_seconds"], limits, colorScale),
             "line-opacity": 0.5,
           }}
           eventsIfTopMost
@@ -176,11 +175,7 @@
           id="isochrone-contours"
           filter={isPolygon}
           paint={{
-            "fill-color": makeColorRamp(
-              ["get", "min_seconds"],
-              limits,
-              colorScale,
-            ),
+            "fill-color": makeRamp(["get", "min_seconds"], limits, colorScale),
             "fill-opacity": 0.5,
           }}
         />

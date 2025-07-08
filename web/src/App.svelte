@@ -151,7 +151,7 @@
       }}
     >
       {#if !offlineMode}
-        <Geocoder {map} apiKey={maptilerApiKey} />
+        <Geocoder {map} apiKey={maptilerApiKey} country={undefined} />
       {/if}
       <div bind:this={mapDiv} />
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { Modal, notNull } from "svelte-utils";
+  import { Modal } from "svelte-utils";
   import { backend } from "../stores";
 
   let kinds: Map<string, { enabled: boolean; num: number }> = new Map();
@@ -42,26 +42,22 @@
   }
 </script>
 
-{#if show}
-  <Modal on:close={() => (show = false)} let:dialog>
-    <h2>Pick types of amenity to search from</h2>
+<Modal bind:show>
+  <h2>Pick types of amenity to search from</h2>
 
-    <fieldset>
-      <legend>Amenities:</legend>
+  <fieldset>
+    <legend>Amenities:</legend>
 
-      {#each kinds.entries() as [key, value]}
-        <label>
-          <input type="checkbox" bind:checked={value.enabled} />
-          {key} ({value.num})
-        </label>
-      {/each}
-    </fieldset>
+    {#each kinds.entries() as [key, value]}
+      <label>
+        <input type="checkbox" bind:checked={value.enabled} />
+        {key} ({value.num})
+      </label>
+    {/each}
+  </fieldset>
 
-    <center
-      ><button on:click={() => notNull(dialog).close()}>Start!</button></center
-    >
-  </Modal>
-{:else}
-  <p>Amenities: {enabled.join(", ")}</p>
-  <button on:click={() => (show = true)}>Choose</button>
-{/if}
+  <center><button on:click={() => (show = false)}>Start!</button></center>
+</Modal>
+
+<p>Amenities: {enabled.join(", ")}</p>
+<button on:click={() => (show = true)}>Choose</button>

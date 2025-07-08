@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as Comlink from "comlink";
+  import type { Feature, Polygon } from "geojson";
   import { onMount } from "svelte";
   import { OverpassSelector } from "svelte-utils/overpass";
   import { Loading } from "../common";
@@ -81,10 +82,12 @@
     loading = [...loading, msg];
   }
 
-  async function gotXml(e: CustomEvent<string>) {
+  async function gotXml(
+    e: CustomEvent<{ xml: string; boundary: Feature<Polygon> }>,
+  ) {
     try {
       // TODO Can we avoid turning into bytes?
-      await loadModel(new TextEncoder().encode(e.detail));
+      await loadModel(new TextEncoder().encode(e.detail.xml));
       example = "";
     } catch (err) {
       window.alert(`Couldn't import from Overpass: ${err}`);
