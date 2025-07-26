@@ -134,6 +134,7 @@ impl Amenity {
                 "taxi",
                 "telephone",
                 "toilets",
+                "vacant",
                 "vending_machine",
                 "waste_basket",
                 "waste_disposal",

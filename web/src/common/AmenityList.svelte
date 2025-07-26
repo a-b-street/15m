@@ -10,6 +10,8 @@
   ) as Feature<Point, Amenity>[];
   $: kinds = groupByKind(amenityFeatures);
 
+  $: numHidden = [...$hideAmenityKinds.values().filter((x) => x)].length;
+
   // Sorted by number of members
   function groupByKind(
     features: Feature<Point, Amenity>[],
@@ -36,7 +38,20 @@
     }
     $hideAmenityKinds = $hideAmenityKinds;
   }
+
+  function setAll(hide: boolean) {
+    for (let [kind, _] of kinds) {
+      $hideAmenityKinds.set(kind, hide);
+    }
+    $hideAmenityKinds = $hideAmenityKinds;
+  }
 </script>
+
+{#if numHidden == 0}
+  <button on:click={() => setAll(true)}>Hide all</button>
+{:else}
+  <button on:click={() => setAll(false)}>Show all</button>
+{/if}
 
 {#each kinds as [kind, list]}
   <details>
