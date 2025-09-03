@@ -98,7 +98,7 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
         Box::new(|_, linestring| {
             (
                 Direction::Both,
-                Duration::from_secs_f64(linestring.length::<Euclidean>()),
+                Duration::from_secs_f64(Euclidean.length(linestring)),
             )
         }),
     );
@@ -144,8 +144,8 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
                     if len_pct > 10.0 {
                         println!(
                             "  Skipping; this is too likely wrong. Input length {}, output {}",
-                            input.geometry.length::<Euclidean>(),
-                            output.length::<Euclidean>()
+                            Euclidean.length(&input.geometry),
+                            Euclidean.length(&output)
                         );
                         errors += 1;
                         continue;
@@ -155,10 +155,7 @@ fn snap_test(model_path: String, routes_path: String, limit: Duration) -> Result
                     f.set_property("dist_between_equiv_pts", dist_between_equiv_pts);
                     len_pcts.push(len_pct);
                 } else {
-                    println!(
-                        "scoring broke! output len is {}",
-                        output.length::<Euclidean>()
-                    );
+                    println!("scoring broke! output len is {}", Euclidean.length(&output));
                 }
 
                 // Only show inputs successfully snapped (to conveniently clip, for now)
