@@ -43,6 +43,9 @@ pub struct Graph {
     /// A polygon covering the study area.
     pub boundary_polygon: Polygon,
 
+    /// Seconds since the epoch, representing how recent the OSM data is
+    pub timestamp: Option<i64>,
+
     pub gtfs: GtfsModel,
 }
 

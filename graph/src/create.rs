@@ -135,6 +135,8 @@ impl Graph {
             routers,
             boundary_polygon: graph.boundary_polygon,
 
+            timestamp: graph.timestamp,
+
             gtfs: GtfsModel::empty(),
         })
     }
