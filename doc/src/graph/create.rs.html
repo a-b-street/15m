@@ -135,101 +135,103 @@
 <a href=#135 id=135 data-nosnippet>135</a>            routers,
 <a href=#136 id=136 data-nosnippet>136</a>            boundary_polygon: graph.boundary_polygon,
 <a href=#137 id=137 data-nosnippet>137</a>
-<a href=#138 id=138 data-nosnippet>138</a>            gtfs: GtfsModel::empty(),
-<a href=#139 id=139 data-nosnippet>139</a>        })
-<a href=#140 id=140 data-nosnippet>140</a>    }
-<a href=#141 id=141 data-nosnippet>141</a>
-<a href=#142 id=142 data-nosnippet>142</a>    <span class="doccomment">/// Adds in GTFS data to the current graph. This only makes sense to call once.
-<a href=#143 id=143 data-nosnippet>143</a>    </span><span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
-<a href=#144 id=144 data-nosnippet>144</a>    </span><span class="kw">pub async fn </span>setup_gtfs(
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#146 id=146 data-nosnippet>146</a>        source: <span class="kw">crate</span>::GtfsSource,
-<a href=#147 id=147 data-nosnippet>147</a>        profile: ProfileID,
-<a href=#148 id=148 data-nosnippet>148</a>        timer: <span class="kw-2">&amp;mut </span>Timer,
-<a href=#149 id=149 data-nosnippet>149</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#150 id=150 data-nosnippet>150</a>        <span class="kw">if </span><span class="self">self</span>.walking_profile_for_transit.is_some() {
-<a href=#151 id=151 data-nosnippet>151</a>            <span class="macro">bail!</span>(<span class="string">"Can't call setup_gtfs twice"</span>);
-<a href=#152 id=152 data-nosnippet>152</a>        }
-<a href=#153 id=153 data-nosnippet>153</a>        <span class="self">self</span>.walking_profile_for_transit = <span class="prelude-val">Some</span>(profile);
-<a href=#154 id=154 data-nosnippet>154</a>
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">use </span><span class="kw">crate</span>::GtfsSource;
+<a href=#138 id=138 data-nosnippet>138</a>            timestamp: graph.timestamp,
+<a href=#139 id=139 data-nosnippet>139</a>
+<a href=#140 id=140 data-nosnippet>140</a>            gtfs: GtfsModel::empty(),
+<a href=#141 id=141 data-nosnippet>141</a>        })
+<a href=#142 id=142 data-nosnippet>142</a>    }
+<a href=#143 id=143 data-nosnippet>143</a>
+<a href=#144 id=144 data-nosnippet>144</a>    <span class="doccomment">/// Adds in GTFS data to the current graph. This only makes sense to call once.
+<a href=#145 id=145 data-nosnippet>145</a>    </span><span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
+<a href=#146 id=146 data-nosnippet>146</a>    </span><span class="kw">pub async fn </span>setup_gtfs(
+<a href=#147 id=147 data-nosnippet>147</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#148 id=148 data-nosnippet>148</a>        source: <span class="kw">crate</span>::GtfsSource,
+<a href=#149 id=149 data-nosnippet>149</a>        profile: ProfileID,
+<a href=#150 id=150 data-nosnippet>150</a>        timer: <span class="kw-2">&amp;mut </span>Timer,
+<a href=#151 id=151 data-nosnippet>151</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#152 id=152 data-nosnippet>152</a>        <span class="kw">if </span><span class="self">self</span>.walking_profile_for_transit.is_some() {
+<a href=#153 id=153 data-nosnippet>153</a>            <span class="macro">bail!</span>(<span class="string">"Can't call setup_gtfs twice"</span>);
+<a href=#154 id=154 data-nosnippet>154</a>        }
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="self">self</span>.walking_profile_for_transit = <span class="prelude-val">Some</span>(profile);
 <a href=#156 id=156 data-nosnippet>156</a>
-<a href=#157 id=157 data-nosnippet>157</a>        timer.push(<span class="string">"setting up GTFS"</span>);
-<a href=#158 id=158 data-nosnippet>158</a>        timer.step(<span class="string">"parse"</span>);
-<a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">let </span><span class="kw-2">mut </span>gtfs = <span class="kw">match </span>source {
-<a href=#160 id=160 data-nosnippet>160</a>            GtfsSource::Dir(path) =&gt; GtfsModel::parse(<span class="kw-2">&amp;</span>path, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.mercator))<span class="question-mark">?</span>,
-<a href=#161 id=161 data-nosnippet>161</a>            GtfsSource::Geomedea(url) =&gt; GtfsModel::from_geomedea(<span class="kw-2">&amp;</span>url, <span class="kw-2">&amp;</span><span class="self">self</span>.mercator).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#162 id=162 data-nosnippet>162</a>            GtfsSource::None =&gt; GtfsModel::empty(),
-<a href=#163 id=163 data-nosnippet>163</a>        };
-<a href=#164 id=164 data-nosnippet>164</a>        snap_stops(<span class="kw-2">&amp;mut </span><span class="self">self</span>.roads, <span class="kw-2">&amp;mut </span>gtfs, <span class="kw-2">&amp;</span><span class="self">self</span>.routers[profile.<span class="number">0</span>], timer);
-<a href=#165 id=165 data-nosnippet>165</a>        <span class="self">self</span>.gtfs = gtfs;
-<a href=#166 id=166 data-nosnippet>166</a>        timer.pop();
-<a href=#167 id=167 data-nosnippet>167</a>        <span class="prelude-val">Ok</span>(())
-<a href=#168 id=168 data-nosnippet>168</a>    }
-<a href=#169 id=169 data-nosnippet>169</a>}
-<a href=#170 id=170 data-nosnippet>170</a>
-<a href=#171 id=171 data-nosnippet>171</a><span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
-<a href=#172 id=172 data-nosnippet>172</a></span><span class="kw">fn </span>snap_stops(
-<a href=#173 id=173 data-nosnippet>173</a>    roads: <span class="kw-2">&amp;mut </span>Vec&lt;Road&gt;,
-<a href=#174 id=174 data-nosnippet>174</a>    gtfs: <span class="kw-2">&amp;mut </span>GtfsModel,
-<a href=#175 id=175 data-nosnippet>175</a>    foot_router: <span class="kw-2">&amp;</span>Router,
-<a href=#176 id=176 data-nosnippet>176</a>    timer: <span class="kw-2">&amp;mut </span>Timer,
-<a href=#177 id=177 data-nosnippet>177</a>) {
-<a href=#178 id=178 data-nosnippet>178</a>    <span class="kw">if </span>gtfs.stops.is_empty() {
-<a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">return</span>;
-<a href=#180 id=180 data-nosnippet>180</a>    }
-<a href=#181 id=181 data-nosnippet>181</a>
-<a href=#182 id=182 data-nosnippet>182</a>    timer.step(<span class="macro">format!</span>(
-<a href=#183 id=183 data-nosnippet>183</a>        <span class="string">"find closest roads per stop ({})"</span>,
-<a href=#184 id=184 data-nosnippet>184</a>        gtfs.stops.len()
-<a href=#185 id=185 data-nosnippet>185</a>    ));
-<a href=#186 id=186 data-nosnippet>186</a>    <span class="comment">// TODO Make an iterator method that returns the IDs too
-<a href=#187 id=187 data-nosnippet>187</a>    </span><span class="kw">for </span>(idx, stop) <span class="kw">in </span>gtfs.stops.iter_mut().enumerate() {
-<a href=#188 id=188 data-nosnippet>188</a>        <span class="kw">let </span>stop_id = <span class="kw">crate</span>::gtfs::StopID(idx);
-<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(r) = foot_router
-<a href=#190 id=190 data-nosnippet>190</a>            .closest_road
-<a href=#191 id=191 data-nosnippet>191</a>            .nearest_neighbor(<span class="kw-2">&amp;</span>stop.point.into())
-<a href=#192 id=192 data-nosnippet>192</a>        {
-<a href=#193 id=193 data-nosnippet>193</a>            <span class="comment">// TODO Limit how far away we snap, or use the boundary polygon
-<a href=#194 id=194 data-nosnippet>194</a>            </span>roads[r.data.<span class="number">0</span>].stops.push(stop_id);
-<a href=#195 id=195 data-nosnippet>195</a>            stop.road = r.data;
-<a href=#196 id=196 data-nosnippet>196</a>        } <span class="kw">else </span>{
-<a href=#197 id=197 data-nosnippet>197</a>            <span class="comment">// TODO Need to get rid of the stop
-<a href=#198 id=198 data-nosnippet>198</a>            </span><span class="macro">error!</span>(<span class="string">"{stop_id:?} didn't snap to any road"</span>);
-<a href=#199 id=199 data-nosnippet>199</a>        }
-<a href=#200 id=200 data-nosnippet>200</a>    }
-<a href=#201 id=201 data-nosnippet>201</a>}
-<a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a><span class="comment">// Code copied from https://github.com/a-b-street/ltn/blob/main/backend/src/geo_helpers/mod.rs,
-<a href=#204 id=204 data-nosnippet>204</a>// without tests.
-<a href=#205 id=205 data-nosnippet>205</a>// TODO Upstream to utils or geo.
-<a href=#206 id=206 data-nosnippet>206</a></span><span class="doccomment">/// The bearing of the first segment of `linestring` starting from `endpoint`.
-<a href=#207 id=207 data-nosnippet>207</a>///
-<a href=#208 id=208 data-nosnippet>208</a>/// precondition: `endpoint` must be either the first or last point in `linestring`
-<a href=#209 id=209 data-nosnippet>209</a>/// precondition: `linestring` must have at least 2 coordinates
-<a href=#210 id=210 data-nosnippet>210</a></span><span class="kw">fn </span>bearing_from_endpoint(endpoint: Point, linestring: <span class="kw-2">&amp;</span>LineString) -&gt; f64 {
-<a href=#211 id=211 data-nosnippet>211</a>    <span class="macro">assert!</span>(
-<a href=#212 id=212 data-nosnippet>212</a>        linestring.<span class="number">0</span>.len() &gt;= <span class="number">2</span>,
-<a href=#213 id=213 data-nosnippet>213</a>        <span class="string">"zero length roads should be filtered out"
-<a href=#214 id=214 data-nosnippet>214</a>    </span>);
-<a href=#215 id=215 data-nosnippet>215</a>    <span class="kw">let </span>next_coord = <span class="kw">if </span>endpoint.<span class="number">0 </span>== linestring.<span class="number">0</span>[<span class="number">0</span>] {
-<a href=#216 id=216 data-nosnippet>216</a>        linestring.<span class="number">0</span>[<span class="number">1</span>]
-<a href=#217 id=217 data-nosnippet>217</a>    } <span class="kw">else if </span>endpoint.<span class="number">0 </span>== linestring.<span class="number">0</span>[linestring.<span class="number">0</span>.len() - <span class="number">1</span>] {
-<a href=#218 id=218 data-nosnippet>218</a>        linestring.<span class="number">0</span>[linestring.<span class="number">0</span>.len() - <span class="number">2</span>]
-<a href=#219 id=219 data-nosnippet>219</a>    } <span class="kw">else </span>{
-<a href=#220 id=220 data-nosnippet>220</a>        <span class="comment">// I'm assuming this won't happen, but maybe it's possible,
-<a href=#221 id=221 data-nosnippet>221</a>        // e.g. to different rounding schemes.
-<a href=#222 id=222 data-nosnippet>222</a>        </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"road does not terminate at intersection"</span>);
-<a href=#223 id=223 data-nosnippet>223</a>        linestring.<span class="number">0</span>[<span class="number">1</span>]
-<a href=#224 id=224 data-nosnippet>224</a>    };
-<a href=#225 id=225 data-nosnippet>225</a>
-<a href=#226 id=226 data-nosnippet>226</a>    euclidean_bearing(endpoint.<span class="number">0</span>, next_coord)
-<a href=#227 id=227 data-nosnippet>227</a>}
-<a href=#228 id=228 data-nosnippet>228</a>
-<a href=#229 id=229 data-nosnippet>229</a><span class="kw">fn </span>euclidean_bearing(origin: Coord, destination: Coord) -&gt; f64 {
-<a href=#230 id=230 data-nosnippet>230</a>    (angle_of_line(Line::new(origin, destination)) + <span class="number">450.0</span>) % <span class="number">360.0
-<a href=#231 id=231 data-nosnippet>231</a></span>}
-<a href=#232 id=232 data-nosnippet>232</a>
-<a href=#233 id=233 data-nosnippet>233</a><span class="kw">fn </span>angle_of_line(line: Line) -&gt; f64 {
-<a href=#234 id=234 data-nosnippet>234</a>    (line.dy()).atan2(line.dx()).to_degrees()
-<a href=#235 id=235 data-nosnippet>235</a>}</code></pre></div></section></main></body></html>
+<a href=#157 id=157 data-nosnippet>157</a>        <span class="kw">use </span><span class="kw">crate</span>::GtfsSource;
+<a href=#158 id=158 data-nosnippet>158</a>
+<a href=#159 id=159 data-nosnippet>159</a>        timer.push(<span class="string">"setting up GTFS"</span>);
+<a href=#160 id=160 data-nosnippet>160</a>        timer.step(<span class="string">"parse"</span>);
+<a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">let </span><span class="kw-2">mut </span>gtfs = <span class="kw">match </span>source {
+<a href=#162 id=162 data-nosnippet>162</a>            GtfsSource::Dir(path) =&gt; GtfsModel::parse(<span class="kw-2">&amp;</span>path, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.mercator))<span class="question-mark">?</span>,
+<a href=#163 id=163 data-nosnippet>163</a>            GtfsSource::Geomedea(url) =&gt; GtfsModel::from_geomedea(<span class="kw-2">&amp;</span>url, <span class="kw-2">&amp;</span><span class="self">self</span>.mercator).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#164 id=164 data-nosnippet>164</a>            GtfsSource::None =&gt; GtfsModel::empty(),
+<a href=#165 id=165 data-nosnippet>165</a>        };
+<a href=#166 id=166 data-nosnippet>166</a>        snap_stops(<span class="kw-2">&amp;mut </span><span class="self">self</span>.roads, <span class="kw-2">&amp;mut </span>gtfs, <span class="kw-2">&amp;</span><span class="self">self</span>.routers[profile.<span class="number">0</span>], timer);
+<a href=#167 id=167 data-nosnippet>167</a>        <span class="self">self</span>.gtfs = gtfs;
+<a href=#168 id=168 data-nosnippet>168</a>        timer.pop();
+<a href=#169 id=169 data-nosnippet>169</a>        <span class="prelude-val">Ok</span>(())
+<a href=#170 id=170 data-nosnippet>170</a>    }
+<a href=#171 id=171 data-nosnippet>171</a>}
+<a href=#172 id=172 data-nosnippet>172</a>
+<a href=#173 id=173 data-nosnippet>173</a><span class="attr">#[cfg(feature = <span class="string">"gtfs"</span>)]
+<a href=#174 id=174 data-nosnippet>174</a></span><span class="kw">fn </span>snap_stops(
+<a href=#175 id=175 data-nosnippet>175</a>    roads: <span class="kw-2">&amp;mut </span>Vec&lt;Road&gt;,
+<a href=#176 id=176 data-nosnippet>176</a>    gtfs: <span class="kw-2">&amp;mut </span>GtfsModel,
+<a href=#177 id=177 data-nosnippet>177</a>    foot_router: <span class="kw-2">&amp;</span>Router,
+<a href=#178 id=178 data-nosnippet>178</a>    timer: <span class="kw-2">&amp;mut </span>Timer,
+<a href=#179 id=179 data-nosnippet>179</a>) {
+<a href=#180 id=180 data-nosnippet>180</a>    <span class="kw">if </span>gtfs.stops.is_empty() {
+<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">return</span>;
+<a href=#182 id=182 data-nosnippet>182</a>    }
+<a href=#183 id=183 data-nosnippet>183</a>
+<a href=#184 id=184 data-nosnippet>184</a>    timer.step(<span class="macro">format!</span>(
+<a href=#185 id=185 data-nosnippet>185</a>        <span class="string">"find closest roads per stop ({})"</span>,
+<a href=#186 id=186 data-nosnippet>186</a>        gtfs.stops.len()
+<a href=#187 id=187 data-nosnippet>187</a>    ));
+<a href=#188 id=188 data-nosnippet>188</a>    <span class="comment">// TODO Make an iterator method that returns the IDs too
+<a href=#189 id=189 data-nosnippet>189</a>    </span><span class="kw">for </span>(idx, stop) <span class="kw">in </span>gtfs.stops.iter_mut().enumerate() {
+<a href=#190 id=190 data-nosnippet>190</a>        <span class="kw">let </span>stop_id = <span class="kw">crate</span>::gtfs::StopID(idx);
+<a href=#191 id=191 data-nosnippet>191</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(r) = foot_router
+<a href=#192 id=192 data-nosnippet>192</a>            .closest_road
+<a href=#193 id=193 data-nosnippet>193</a>            .nearest_neighbor(<span class="kw-2">&amp;</span>stop.point.into())
+<a href=#194 id=194 data-nosnippet>194</a>        {
+<a href=#195 id=195 data-nosnippet>195</a>            <span class="comment">// TODO Limit how far away we snap, or use the boundary polygon
+<a href=#196 id=196 data-nosnippet>196</a>            </span>roads[r.data.<span class="number">0</span>].stops.push(stop_id);
+<a href=#197 id=197 data-nosnippet>197</a>            stop.road = r.data;
+<a href=#198 id=198 data-nosnippet>198</a>        } <span class="kw">else </span>{
+<a href=#199 id=199 data-nosnippet>199</a>            <span class="comment">// TODO Need to get rid of the stop
+<a href=#200 id=200 data-nosnippet>200</a>            </span><span class="macro">error!</span>(<span class="string">"{stop_id:?} didn't snap to any road"</span>);
+<a href=#201 id=201 data-nosnippet>201</a>        }
+<a href=#202 id=202 data-nosnippet>202</a>    }
+<a href=#203 id=203 data-nosnippet>203</a>}
+<a href=#204 id=204 data-nosnippet>204</a>
+<a href=#205 id=205 data-nosnippet>205</a><span class="comment">// Code copied from https://github.com/a-b-street/ltn/blob/main/backend/src/geo_helpers/mod.rs,
+<a href=#206 id=206 data-nosnippet>206</a>// without tests.
+<a href=#207 id=207 data-nosnippet>207</a>// TODO Upstream to utils or geo.
+<a href=#208 id=208 data-nosnippet>208</a></span><span class="doccomment">/// The bearing of the first segment of `linestring` starting from `endpoint`.
+<a href=#209 id=209 data-nosnippet>209</a>///
+<a href=#210 id=210 data-nosnippet>210</a>/// precondition: `endpoint` must be either the first or last point in `linestring`
+<a href=#211 id=211 data-nosnippet>211</a>/// precondition: `linestring` must have at least 2 coordinates
+<a href=#212 id=212 data-nosnippet>212</a></span><span class="kw">fn </span>bearing_from_endpoint(endpoint: Point, linestring: <span class="kw-2">&amp;</span>LineString) -&gt; f64 {
+<a href=#213 id=213 data-nosnippet>213</a>    <span class="macro">assert!</span>(
+<a href=#214 id=214 data-nosnippet>214</a>        linestring.<span class="number">0</span>.len() &gt;= <span class="number">2</span>,
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="string">"zero length roads should be filtered out"
+<a href=#216 id=216 data-nosnippet>216</a>    </span>);
+<a href=#217 id=217 data-nosnippet>217</a>    <span class="kw">let </span>next_coord = <span class="kw">if </span>endpoint.<span class="number">0 </span>== linestring.<span class="number">0</span>[<span class="number">0</span>] {
+<a href=#218 id=218 data-nosnippet>218</a>        linestring.<span class="number">0</span>[<span class="number">1</span>]
+<a href=#219 id=219 data-nosnippet>219</a>    } <span class="kw">else if </span>endpoint.<span class="number">0 </span>== linestring.<span class="number">0</span>[linestring.<span class="number">0</span>.len() - <span class="number">1</span>] {
+<a href=#220 id=220 data-nosnippet>220</a>        linestring.<span class="number">0</span>[linestring.<span class="number">0</span>.len() - <span class="number">2</span>]
+<a href=#221 id=221 data-nosnippet>221</a>    } <span class="kw">else </span>{
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="comment">// I'm assuming this won't happen, but maybe it's possible,
+<a href=#223 id=223 data-nosnippet>223</a>        // e.g. to different rounding schemes.
+<a href=#224 id=224 data-nosnippet>224</a>        </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"road does not terminate at intersection"</span>);
+<a href=#225 id=225 data-nosnippet>225</a>        linestring.<span class="number">0</span>[<span class="number">1</span>]
+<a href=#226 id=226 data-nosnippet>226</a>    };
+<a href=#227 id=227 data-nosnippet>227</a>
+<a href=#228 id=228 data-nosnippet>228</a>    euclidean_bearing(endpoint.<span class="number">0</span>, next_coord)
+<a href=#229 id=229 data-nosnippet>229</a>}
+<a href=#230 id=230 data-nosnippet>230</a>
+<a href=#231 id=231 data-nosnippet>231</a><span class="kw">fn </span>euclidean_bearing(origin: Coord, destination: Coord) -&gt; f64 {
+<a href=#232 id=232 data-nosnippet>232</a>    (angle_of_line(Line::new(origin, destination)) + <span class="number">450.0</span>) % <span class="number">360.0
+<a href=#233 id=233 data-nosnippet>233</a></span>}
+<a href=#234 id=234 data-nosnippet>234</a>
+<a href=#235 id=235 data-nosnippet>235</a><span class="kw">fn </span>angle_of_line(line: Line) -&gt; f64 {
+<a href=#236 id=236 data-nosnippet>236</a>    (line.dy()).atan2(line.dx()).to_degrees()
+<a href=#237 id=237 data-nosnippet>237</a>}</code></pre></div></section></main></body></html>
