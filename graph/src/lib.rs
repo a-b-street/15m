@@ -17,8 +17,11 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use anyhow::Result;
-use geo::{Coord, LineLocatePoint, LineString, Point, Polygon};
+use geo::{
+    Coord, Distance, Euclidean, InterpolatableLine, LineLocatePoint, LineString, Point, Polygon,
+};
 use geojson::{Feature, FeatureCollection, Geometry};
+use rstar::AABB;
 use serde::{Deserialize, Serialize};
 use utils::{Mercator, Tags};
 
@@ -185,6 +188,52 @@ impl Graph {
             fraction_along,
             intersection,
         }
+    }
+
+    /// Given a point (in Mercator) and profile, snap to a position along all nearby roads that
+    /// profile can cross. Sort by the shortest distance first.
+    pub fn snap_to_roads_nearby(
+        &self,
+        pt: Coord,
+        profile: ProfileID,
+        within_meters: f64,
+    ) -> Vec<Position> {
+        let aabb = AABB::from_corners(
+            Point::new(pt.x - within_meters, pt.y - within_meters),
+            Point::new(pt.x + within_meters, pt.y + within_meters),
+        );
+        let mut candidates: Vec<(Position, usize)> = Vec::new();
+        for obj in self.routers[profile.0]
+            .closest_road
+            .locate_in_envelope_intersecting(&aabb)
+        {
+            let road = &self.roads[obj.data.0];
+            let fraction_along = road.linestring.line_locate_point(&pt.into()).unwrap();
+            let intersection = if fraction_along <= 0.5 {
+                road.src_i
+            } else {
+                road.dst_i
+            };
+
+            let snapped_pt = road
+                .linestring
+                .point_at_ratio_from_start(&Euclidean, fraction_along)
+                .unwrap();
+            let distance: f64 = Euclidean.distance(pt, Coord::from(snapped_pt));
+
+            candidates.push((
+                Position {
+                    road: road.id,
+                    fraction_along,
+                    intersection,
+                },
+                (100.0 * distance).round() as usize,
+            ));
+        }
+
+        candidates.sort_by_key(|(_, dist)| *dist);
+
+        candidates.into_iter().map(|(pos, _)| pos).collect()
     }
 
     pub fn add_profile(
