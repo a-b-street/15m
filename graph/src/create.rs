@@ -55,6 +55,19 @@ impl Graph {
         graph.compact_ids();
         scrape_graph(osm_reader, &graph)?;
 
+        Self::new_from_osm2graph(graph, profiles, timer)
+    }
+
+    /// Constructs a graph from osm2graph. Unlike `new`, the caller has to set this up correctly,
+    /// including calling `compact_ids`.
+    pub fn new_from_osm2graph(
+        graph: utils::osm2graph::Graph,
+        profiles: Vec<(
+            String,
+            Box<dyn Fn(&Tags, &LineString) -> (Direction, Duration)>,
+        )>,
+        timer: &mut Timer,
+    ) -> Result<Graph> {
         timer.step("calculate road attributes");
         let mut roads: Vec<Road> = graph
             .edges
