@@ -27,6 +27,7 @@ pub struct Router {
 pub type EdgeLocation = GeomWithData<LineString, RoadID>;
 
 /// A route between two positions.
+#[derive(Clone)]
 pub struct Route {
     pub start: Position,
     pub end: Position,

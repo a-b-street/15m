@@ -303,7 +303,7 @@ pub enum GtfsSource {
 }
 
 /// A single step along a route
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum PathStep {
     Road {
         road: RoadID,
