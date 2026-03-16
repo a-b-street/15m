@@ -15,7 +15,7 @@ console_log = "1.0.0"
 contour = "0.13.1"
 flatgeobuf = "4.3.0"
 geo = "0.32.0"
-geojson = { git = "https://github.com/georust/geojson", features = ["geo-types"] }
+geojson = { version = "1.0.0", features = ["geo-types"] }
 geozero = { version = "0.13.0", default-features = false, features = ["with-geo"] }
 # TODO Due to geo
 getrandom = { version = "0.2.16", features = ["js"] }

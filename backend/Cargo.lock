@@ -782,14 +782,16 @@ dependencies = [
 
 [[package]]
 name = "geojson"
-version = "0.24.2"
-source = "git+https://github.com/georust/geojson#7d5f52b69536408ee528fb9590d062cbbb03593f"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "510c094bfc76ea34d02eee00833254945b70491d79a9c0b050abed6eaa799ffb"
 dependencies = [
  "geo-types",
  "log",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
+ "tinyvec",
 ]
 
 [[package]]
@@ -2280,10 +2282,11 @@ checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
 
 [[package]]
 name = "serde"
-version = "1.0.202"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "226b61a0d411b2ba5ff6d7f73a476ac4f8bb900373459cd00fab8512828ba395"
+checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
+ "serde_core",
  "serde_derive",
 ]
 
@@ -2309,10 +2312,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_derive"
-version = "1.0.202"
+name = "serde_core"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6048858004bcff69094cd972ed40a32500f153bd3be9f716b2eed2e8217c4838"
+checksum = "41d385c7d4ca58e59fc732af25c3983b67ac852c1a25000afe1175de458b67ad"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2557,10 +2569,11 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.6.1"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c55115c6fbe2d2bef26eb09ad74bde02d8255476fc0c7b515ef09fbb35742d82"
+checksum = "3e61e67053d25a4e82c844e8424039d9745781b3fc4f32b8d55ed50f5f667ef3"
 dependencies = [
+ "serde_core",
  "tinyvec_macros",
 ]
 
@@ -2746,7 +2759,7 @@ checksum = "daf8dba3b7eb870caf1ddeed7bc9d2a049f3cfdfae7cb521b087cc33ae4c49da"
 [[package]]
 name = "utils"
 version = "0.1.0"
-source = "git+https://github.com/a-b-street/utils#4018aabd32d520d59462a81c38bb8c7dabb339a5"
+source = "git+https://github.com/a-b-street/utils#371bfb829e197ea11e34be5da5faa761dc5c7757"
 dependencies = [
  "anyhow",
  "fast_paths",

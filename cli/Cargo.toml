@@ -11,7 +11,7 @@ chrono = { version = "0.4.33", default-features = false }
 clap = { version = "4.5.16", features = ["derive"] }
 fs-err = "2.11.0"
 geo = "0.32.0"
-geojson = { git = "https://github.com/georust/geojson", features = ["geo-types"] }
+geojson = { version = "1.0.0", features = ["geo-types"] }
 graph = { path = "../graph" }
 log = "0.4.22"
 serde = "1.0.209"
