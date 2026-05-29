@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashSet;
 
 use anyhow::{bail, Result};
 use fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
@@ -40,22 +41,37 @@ impl Router {
     pub fn new(roads: &Vec<Road>, profile: ProfileID) -> Self {
         let mut input_graph = InputGraph::new();
         let mut node_map = NodeMap::new();
+        let mut duplicate_edges = HashSet::new();
 
         for road in roads {
             let cost = road.cost[profile.0].as_millis() as usize;
             let node1 = node_map.get_or_insert(road.src_i);
             let node2 = node_map.get_or_insert(road.dst_i);
 
-            // Loops aren't ever part of a shortest path, and fast_paths warns loudly, so just skip
+            // Loops aren't ever part of a shortest path. The fast_paths warning isn't actionable,
+            // so use our own
             if node1 == node2 {
+                warn!("Loop on {} by {} won't be routeable", road.way, road.node1);
                 continue;
             }
 
             if road.allows_forwards(profile) {
                 input_graph.add_edge(node1, node2, cost);
+                if !duplicate_edges.insert((node1, node2)) {
+                    warn!(
+                        "Multiple edges from {} to {}; only one will be routeable",
+                        road.node1, road.node2
+                    );
+                }
             }
             if road.allows_backwards(profile) {
                 input_graph.add_edge(node2, node1, cost);
+                if !duplicate_edges.insert((node2, node1)) {
+                    warn!(
+                        "Multiple edges from {} to {}; only one will be routeable",
+                        road.node2, road.node1
+                    );
+                }
             }
         }
         input_graph.freeze();
@@ -84,6 +100,7 @@ impl Router {
     /// hierarchy. Note that access must remain the same!
     pub fn update_costs(&mut self, roads: &Vec<Road>, profile: ProfileID) {
         let mut input_graph = InputGraph::new();
+        let mut duplicate_edges = HashSet::new();
         for road in roads {
             let cost = road.cost[profile.0].as_millis() as usize;
             let node1 = self
@@ -95,16 +112,28 @@ impl Router {
                 .get(road.dst_i)
                 .expect("new intersections somehow added");
 
-            // Loops aren't ever part of a shortest path, and fast_paths warns loudly, so just skip
             if node1 == node2 {
+                warn!("Loop on {} by {} won't be routeable", road.way, road.node1);
                 continue;
             }
 
             if road.allows_forwards(profile) {
                 input_graph.add_edge(node1, node2, cost);
+                if !duplicate_edges.insert((node1, node2)) {
+                    warn!(
+                        "Multiple edges from {} to {}; only one will be routeable",
+                        road.node1, road.node2
+                    );
+                }
             }
             if road.allows_backwards(profile) {
                 input_graph.add_edge(node2, node1, cost);
+                if !duplicate_edges.insert((node2, node1)) {
+                    warn!(
+                        "Multiple edges from {} to {}; only one will be routeable",
+                        road.node2, road.node1
+                    );
+                }
             }
         }
         input_graph.freeze();
