@@ -28,7 +28,7 @@ fn new_router_id() -> usize {
 /// routes very quickly. They are slower to construct, but fast to query.
 #[derive(Serialize, Deserialize)]
 pub struct Router {
-    #[serde(default = "new_router_id", skip_serializing)]
+    #[serde(default = "new_router_id", skip_serializing, skip_deserializing)]
     id: usize,
     #[serde(deserialize_with = "deserialize_nodemap")]
     node_map: NodeMap<IntersectionID>,
