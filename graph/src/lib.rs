@@ -315,3 +315,15 @@ pub enum PathStep {
         stop2: StopID,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_thread_safe<T: Send + Sync>() {}
+
+    #[test]
+    fn graph_is_thread_safe() {
+        assert_thread_safe::<Graph>();
+    }
+}

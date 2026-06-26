@@ -1,5 +1,6 @@
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{bail, Result};
 use fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
@@ -11,16 +12,28 @@ use utils::{deserialize_nodemap, LineSplit, NodeMap};
 
 use crate::{Direction, Graph, IntersectionID, PathStep, Position, ProfileID, Road, RoadID};
 
+// There's a mutable PathCalculator scratch space per thread and per Router, so that Router is Send
+// and Sync
+thread_local! {
+    static PATH_CALCULATORS: RefCell<HashMap<usize, PathCalculator>> = RefCell::new(HashMap::new());
+}
+
+static NEXT_ROUTER_ID: AtomicUsize = AtomicUsize::new(0);
+
+fn new_router_id() -> usize {
+    NEXT_ROUTER_ID.fetch_add(1, Ordering::Relaxed)
+}
+
 /// Manages routing queries for one profile. This structure uses contraction hierarchies to calculate
 /// routes very quickly. They are slower to construct, but fast to query.
 #[derive(Serialize, Deserialize)]
 pub struct Router {
+    #[serde(default = "new_router_id", skip_serializing)]
+    id: usize,
     #[serde(deserialize_with = "deserialize_nodemap")]
     node_map: NodeMap<IntersectionID>,
     #[serde(serialize_with = "serialize_32", deserialize_with = "deserialize_32")]
     ch: FastGraph,
-    #[serde(skip_serializing, skip_deserializing)]
-    path_calc: RefCell<Option<PathCalculator>>,
 
     pub closest_road: RTree<EdgeLocation>,
 }
@@ -77,8 +90,6 @@ impl Router {
         input_graph.freeze();
         let ch = fast_paths::prepare(&input_graph);
 
-        let path_calc = RefCell::new(Some(fast_paths::create_calculator(&ch)));
-
         let closest_road = RTree::bulk_load(
             roads
                 .iter()
@@ -88,10 +99,9 @@ impl Router {
         );
 
         Self {
+            id: new_router_id(),
             node_map,
             ch,
-            path_calc,
-
             closest_road,
         }
     }
@@ -138,6 +148,7 @@ impl Router {
         }
         input_graph.freeze();
 
+        // The number of edges won't change, just costs
         let node_ordering = self.ch.get_node_ordering();
         let ch = fast_paths::prepare_with_order(&input_graph, &node_ordering)
             .expect("prepare_with_order failed");
@@ -187,13 +198,13 @@ impl Router {
         let start_node = self.node_map.get(start.intersection).unwrap();
         let end_node = self.node_map.get(end.intersection).unwrap();
 
-        let Some(path) = self
-            .path_calc
-            .borrow_mut()
-            // This'll be empty right after loading a serialized Graph
-            .get_or_insert_with(|| fast_paths::create_calculator(&self.ch))
-            .calc_path(&self.ch, start_node, end_node)
-        else {
+        let Some(path) = PATH_CALCULATORS.with(|calcs| {
+            calcs
+                .borrow_mut()
+                .entry(self.id)
+                .or_insert_with(|| fast_paths::create_calculator(&self.ch))
+                .calc_path(&self.ch, start_node, end_node)
+        }) else {
             bail!("No path");
         };
 
@@ -246,13 +257,13 @@ impl Router {
         let start_node = self.node_map.get(start_i).unwrap();
         let end_node = self.node_map.get(end_i).unwrap();
 
-        let Some(path) = self
-            .path_calc
-            .borrow_mut()
-            // This'll be empty right after loading a serialized Graph
-            .get_or_insert_with(|| fast_paths::create_calculator(&self.ch))
-            .calc_path(&self.ch, start_node, end_node)
-        else {
+        let Some(path) = PATH_CALCULATORS.with(|calcs| {
+            calcs
+                .borrow_mut()
+                .entry(self.id)
+                .or_insert_with(|| fast_paths::create_calculator(&self.ch))
+                .calc_path(&self.ch, start_node, end_node)
+        }) else {
             bail!("No path");
         };
 
