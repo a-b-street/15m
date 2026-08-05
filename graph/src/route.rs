@@ -335,6 +335,49 @@ impl Router {
         }
         Ok(route)
     }
+
+    /// Calculate a route covering a sequence of waypoints. There may be spurs and doubling
+    /// back. If `start` or `end` are set, the first or last leg of the route uses that exact
+    /// position, instead of starting/ending at the first/last intersection.
+    pub fn route_between_many_intersections_with_exact_endpoints(
+        &self,
+        graph: &Graph,
+        waypoints: Vec<IntersectionID>,
+        start: Option<Position>,
+        end: Option<Position>,
+    ) -> Result<Route> {
+        if waypoints.len() < 2 {
+            bail!("Not enough waypoints");
+        }
+
+        let last_pair_idx = waypoints.len() - 2;
+        let mut routes = Vec::new();
+        for (idx, pair) in waypoints.windows(2).enumerate() {
+            let exact_start = if idx == 0 { start } else { None };
+            let exact_end = if idx == last_pair_idx { end } else { None };
+
+            let route = match (exact_start, exact_end) {
+                (None, None) => self.route_between_intersections(graph, pair[0], pair[1])?,
+                (exact_start, exact_end) => {
+                    let approx = self.route_between_intersections(graph, pair[0], pair[1])?;
+                    self.route(
+                        graph,
+                        exact_start.unwrap_or(approx.start),
+                        exact_end.unwrap_or(approx.end),
+                    )?
+                }
+            };
+            routes.push(route);
+        }
+
+        let mut route = routes.remove(0);
+        for append in routes {
+            assert_eq!(route.end.intersection, append.start.intersection);
+            route.steps.extend(append.steps);
+            route.end = append.end;
+        }
+        Ok(route)
+    }
 }
 
 impl Route {
