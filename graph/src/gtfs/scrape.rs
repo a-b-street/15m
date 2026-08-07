@@ -7,7 +7,7 @@ use geo::{Contains, Point};
 use serde::Deserialize;
 use utils::Mercator;
 
-use super::ids::{orig_ids, IDMapping};
+use super::ids::{IDMapping, orig_ids};
 use super::{GtfsModel, NextStep, Route, RouteID, Stop, StopID, Trip, TripID};
 use crate::RoadID;
 

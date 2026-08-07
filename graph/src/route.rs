@@ -2,13 +2,13 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use anyhow::{bail, Result};
-use fast_paths::{deserialize_32, serialize_32, FastGraph, InputGraph, PathCalculator};
+use anyhow::{Result, bail};
+use fast_paths::{FastGraph, InputGraph, PathCalculator, deserialize_32, serialize_32};
 use geo::{Coord, LineString};
 use itertools::Itertools;
-use rstar::{primitives::GeomWithData, RTree};
+use rstar::{RTree, primitives::GeomWithData};
 use serde::{Deserialize, Serialize};
-use utils::{deserialize_nodemap, LineSplit, NodeMap};
+use utils::{LineSplit, NodeMap, deserialize_nodemap};
 
 use crate::{Direction, Graph, IntersectionID, PathStep, Position, ProfileID, Road, RoadID};
 
@@ -178,7 +178,7 @@ impl Router {
             let common_intersection = start.intersection;
             debug!("path: start = end intersection case");
             let start_road = &graph.roads[start.road.0];
-            let end_road = &graph.roads[start.road.0];
+            let end_road = &graph.roads[end.road.0];
             return Ok(Route {
                 start,
                 end,
@@ -336,16 +336,20 @@ impl Router {
         Ok(route)
     }
 
-    /// Calculate a route covering a sequence of waypoints. There may be spurs and doubling
-    /// back. If `start` or `end` are set, the first or last leg of the route uses that exact
-    /// position, instead of starting/ending at the first/last intersection.
+    /// Calculate a route covering a sequence of waypoints. There may be spurs and doubling back.
+    /// If `start_end` is set, the first and last leg of the route uses that exact position,
+    /// instead of the first/last intersection.
     pub fn route_between_many_intersections_with_exact_endpoints(
         &self,
         graph: &Graph,
         waypoints: Vec<IntersectionID>,
-        start: Option<Position>,
-        end: Option<Position>,
+        start_end: Option<(Position, Position)>,
     ) -> Result<Route> {
+        if waypoints.len() <= 2
+            && let Some((start, end)) = start_end
+        {
+            return self.route(graph, start, end);
+        }
         if waypoints.len() < 2 {
             bail!("Not enough waypoints");
         }
@@ -353,21 +357,18 @@ impl Router {
         let last_pair_idx = waypoints.len() - 2;
         let mut routes = Vec::new();
         for (idx, pair) in waypoints.windows(2).enumerate() {
-            let exact_start = if idx == 0 { start } else { None };
-            let exact_end = if idx == last_pair_idx { end } else { None };
-
-            let route = match (exact_start, exact_end) {
-                (None, None) => self.route_between_intersections(graph, pair[0], pair[1])?,
-                (exact_start, exact_end) => {
-                    let approx = self.route_between_intersections(graph, pair[0], pair[1])?;
-                    self.route(
-                        graph,
-                        exact_start.unwrap_or(approx.start),
-                        exact_end.unwrap_or(approx.end),
-                    )?
+            let route_between_intersections =
+                self.route_between_intersections(graph, pair[0], pair[1])?;
+            if let Some((exact_start, exact_end)) = start_end {
+                if idx == 0 {
+                    routes.push(self.route(graph, exact_start, route_between_intersections.end)?);
+                    continue;
+                } else if idx == last_pair_idx {
+                    routes.push(self.route(graph, route_between_intersections.start, exact_end)?);
+                    continue;
                 }
-            };
-            routes.push(route);
+            }
+            routes.push(route_between_intersections);
         }
 
         let mut route = routes.remove(0);

@@ -1,11 +1,11 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use chrono::NaiveTime;
 use futures_util::StreamExt;
 use geo::{Contains, Coord, LineString};
 use geomedea::{Bounds, Geometry, LngLat, Properties, PropertyValue};
 use utils::Mercator;
 
-use super::{orig_ids, GtfsModel, Route, RouteID, Stop, StopID, Trip};
+use super::{GtfsModel, Route, RouteID, Stop, StopID, Trip, orig_ids};
 use crate::RoadID;
 
 impl GtfsModel {

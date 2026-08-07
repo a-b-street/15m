@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{BinaryHeap, HashMap};
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use chrono::NaiveTime;
 use geo::{Distance, Euclidean, LineString};
 use geojson::{Feature, GeoJson, Geometry};
