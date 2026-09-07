@@ -389,7 +389,7 @@ impl Route {
 
     /// Renders a route as a linestring (in Mercator), with precise positions at the start and end.
     /// Optionally splits when some function on PathSteps produces a different value.
-    pub fn split_linestrings<T: Copy + PartialEq, F: Fn(RoadID) -> T>(
+    pub fn split_linestrings<T: Clone + PartialEq, F: Fn(RoadID) -> T>(
         &self,
         graph: &Graph,
         key: F,
@@ -405,14 +405,14 @@ impl Route {
                     let this_key = key(*road);
                     if current_key.is_none() {
                         current_key = Some(this_key);
-                    } else if current_key != Some(this_key) {
+                    } else if current_key != Some(this_key.clone()) {
                         // Something new
                         pts.dedup();
                         results.push((
                             LineString::new(std::mem::take(&mut pts)),
                             current_key.take().unwrap(),
                         ));
-                        current_key = Some(this_key);
+                        current_key = Some(this_key.clone());
                     }
 
                     pts.extend(slice_road_step(
