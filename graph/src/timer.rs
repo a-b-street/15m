@@ -7,6 +7,8 @@ pub struct Timer {
     lines: Vec<String>,
     indent: usize,
     last_step: Option<(String, usize, Instant)>,
+    // For each nested step, the index into lines and when it started
+    stack: Vec<(usize, Instant)>,
 }
 
 impl Timer {
@@ -17,6 +19,7 @@ impl Timer {
             lines: Vec::new(),
             indent: 0,
             last_step: None,
+            stack: Vec::new(),
         };
         timer.push(overall_name);
         timer
@@ -35,10 +38,10 @@ impl Timer {
     fn record_last(&mut self) {
         if let Some((step, indent, start)) = self.last_step.take() {
             self.lines.push(format!(
-                "{}{}: {:?}",
+                "{}{}: {}",
                 "  ".repeat(indent),
                 step,
-                Instant::now() - start
+                format_duration(Instant::now() - start)
             ));
         }
     }
@@ -58,6 +61,7 @@ impl Timer {
         self.log(step.clone());
 
         self.record_last();
+        self.stack.push((self.lines.len(), Instant::now()));
         self.lines
             .push(format!("{}{}", "  ".repeat(self.indent), step));
         self.indent += 1;
@@ -70,7 +74,15 @@ impl Timer {
             return;
         }
         self.record_last();
+        self.finish_nested();
         self.indent -= 1;
+    }
+
+    fn finish_nested(&mut self) {
+        if let Some((idx, start)) = self.stack.pop() {
+            let line = &mut self.lines[idx];
+            line.push_str(&format!(": {}", format_duration(Instant::now() - start)));
+        }
     }
 
     pub fn done(mut self) {
@@ -78,9 +90,22 @@ impl Timer {
         if self.indent != 1 {
             error!("Timer done() called improperly");
         }
+        // Only the overall step should be left, but close everything to be safe
+        while !self.stack.is_empty() {
+            self.finish_nested();
+        }
 
         for x in self.lines {
             info!("{x}");
         }
+    }
+}
+
+fn format_duration(d: std::time::Duration) -> String {
+    let secs = d.as_secs_f64();
+    if secs >= 1.0 {
+        format!("{secs:.1}s")
+    } else {
+        format!("{:.1}ms", secs * 1000.0)
     }
 }
