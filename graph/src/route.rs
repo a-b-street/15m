@@ -38,6 +38,18 @@ pub struct Router {
     pub closest_road: RTree<EdgeLocation>,
 }
 
+// A clone needs a new ID
+impl Clone for Router {
+    fn clone(&self) -> Self {
+        Self {
+            id: new_router_id(),
+            node_map: self.node_map.clone(),
+            ch: self.ch.clone(),
+            closest_road: self.closest_road.clone(),
+        }
+    }
+}
+
 pub type EdgeLocation = GeomWithData<LineString, RoadID>;
 
 /// A route between two positions.

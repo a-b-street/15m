@@ -252,6 +252,20 @@ impl Graph {
         self.profile_names.insert(name, id);
         id
     }
+
+    /// Adds a new profile identical to an existing one. Meant to be used later with
+    /// `Router::update_costs`.
+    pub fn duplicate_profile(&mut self, name: String, from: ProfileID) -> ProfileID {
+        for road in &mut self.roads {
+            road.access.push(road.access[from.0]);
+            road.cost.push(road.cost[from.0]);
+        }
+
+        let id = ProfileID(self.profile_names.len());
+        self.routers.push(self.routers[from.0].clone());
+        self.profile_names.insert(name, id);
+        id
+    }
 }
 
 impl Road {
